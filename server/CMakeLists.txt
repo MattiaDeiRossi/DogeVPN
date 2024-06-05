@@ -13,7 +13,8 @@ find_package(bsoncxx REQUIRED)
 
 include_directories(include)
 
-add_executable(mongo src/mongo.cpp)
+add_library(mongo src/mongo.cpp)
+add_executable(main src/main.cpp)
 
 target_include_directories(mongo PUBLIC
   ${MONGOCXX_INCLUDE_DIR}/mongocxx/v_noabi
@@ -25,6 +26,8 @@ target_link_libraries(mongo PRIVATE
   mongocxx 
   bsoncxx
 )
+
+target_link_libraries(main mongo)
 
 install(TARGETS 
   mongo

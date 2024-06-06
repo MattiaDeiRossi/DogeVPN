@@ -163,25 +163,3 @@ int start_clear_doge_vpn() {
 int start_encrypted_doge_vpn() {
 	return 0;
 }
-
-
-int main(int argc, char const *argv[]) {
-	
-	char const *mode = argv[1];
-	int return_val = MODE_DETECTION_ERROR;
-
-	if (is_clear_mode(mode)) {
-
-		// This will be deprecated, but initial setup won't consider encryption using OpenSSL.
-		return_val = start_clear_doge_vpn();
-	} else if (is_enrcypted_mode(mode)) {
-
-		// The final version.
-		return_val = start_encrypted_doge_vpn();
-	} else {
-
-		fprintf(stderr, "Failed to detect mode.\n");
-	}
-
-	return return_val;
-}

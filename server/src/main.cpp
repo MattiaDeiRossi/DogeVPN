@@ -2,7 +2,7 @@
 
 int main()
 {
-   mongo mongo("mongodb://user:pwd@localhost:27017/vpndb");
+   mongo mongo("mongodb://user:pwd@10.5.0.5:27017/vpndb");
    mongo.add_user("0", "user1", "psw");
    mongo.get_users();
 

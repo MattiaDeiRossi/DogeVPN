@@ -377,7 +377,6 @@ int create_tcp_socket(SOCKET *tcp_socket) {
 
     if (!IS_VALID_SOCKET(sockfd)) {
         log_vpn_client_error(TCP_SOCKET_ERROR);
-        // freeaddrinfo(bind_address); TODO: verificare se serve fare free della struct
         return TCP_SOCKET_ERROR;
     }
 
@@ -393,11 +392,9 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     ret_val = connect(sockfd, (SA*)&servaddr, sizeof(servaddr));
     if (!IS_VALID_SOCKET(ret_val)) {
         log_vpn_client_error(TCP_CONNECT_ERROR);
-        // freeaddrinfo(bind_address); TODO: verificare se serve fare free della struct
         return TCP_CONNECT_ERROR;
     }
     printf("connected to the server..\n");
-    
 
     *tcp_socket = sockfd;
  
@@ -421,7 +418,7 @@ int send_credentials(SOCKET *tcp_socket){
 
 
     strcpy(auth_credentials, username);
-    strcat(auth_credentials, ":"); //separatore -> valutare con i ragazzoni del server quale separatore usare
+    strcat(auth_credentials, ":"); //assicurarsi che username non possa avere :
     strcat(auth_credentials, password);
     strcat(auth_credentials, "\0");
 
@@ -463,9 +460,6 @@ int start_clear_doge_vpn() {
     ret_val = init_ssl(&ctx);
     if (ret_val) return ret_val;
 
-    // Init set of sockets for further selects.
-    fd_set master;
-    FD_ZERO(&master);
 
     // Init tcp socket and credentials comunication.
     SOCKET tcp_socket;
@@ -481,10 +475,7 @@ int start_clear_doge_vpn() {
     while(ret_val == WRONG_CREDENTIALS);
     
 
-
-
     //Start UDP traffic with symmetric key previsously provided
-
 
     
     printf("Closing listening socket...\n");
@@ -494,11 +485,8 @@ int start_clear_doge_vpn() {
 }
 
 
-
 int main(int argc, char const *argv[]) {
-    
     return start_clear_doge_vpn();
-    
 }
 
 // A TUN interface should be created to perfrom tunnelling properly.

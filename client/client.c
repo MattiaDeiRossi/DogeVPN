@@ -1,3 +1,5 @@
+// Compile with gcc client.c -lssl -lcrypto -o client
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -350,10 +352,11 @@ int up_to_bind(int is_tcp, char const *host, char *const port, SOCKET *ret_socke
 int create_tcp_socket(
     char const *host, char *const port, unsigned int max_cnts, SOCKET *tcp_socket
 ) {
-    
+    int sockfd, connfd;
+    struct sockaddr_in servaddr, cli;
     int ret_val = 0;
     
-    ret_val = up_to_bind(1, host, port, tcp_socket);
+    //ret_val = up_to_bind(1, host, port, tcp_socket);
     if (ret_val) return ret_val;
 
     /* Listen put the socket in a state where it listens for new connections.
@@ -361,100 +364,16 @@ int create_tcp_socket(
     *  If connections become queued up, then the operating system will reject new connections.
     */
     
-    printf("*** Making TCP socket writing for connections ***\n");          
-
-    return ret_val;
-}
-
-int create_udp_socket(char const *host, char *const port, SOCKET *udp_socket) {
-
-    /* A UDP socket does not need to set itself to a listen state.
-    *  Just up to bind. 
-    */
-    return up_to_bind(0, host, port, udp_socket);
-}
-
-int start_clear_doge_vpn() {
-    char user[] = "simone";
-    char password[] = "el_rubio_hermoso";
-    char auth_data[1000];
-    bzero(auth_data, sizeof(auth_data));
-    strcat(auth_data, user);
-    strcat(auth_data, password);
-    char respone_auth[1000];
-    int i = 0;
-
-    int ret_val = 0;
-
-    // SSL initialization.
-    SSL_CTX *ctx = NULL;
-    ret_val = init_ssl(&ctx);
-    if (ret_val) return ret_val;
-
-    // Init set of sockets for further selects.
-    fd_set master;
-    FD_ZERO(&master);
-
-    // Init tcp socket.
-    SOCKET tcp_socket;
-    ret_val = create_tcp_socket(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tcp_socket);
-    if (ret_val) return ret_val;
-    
-    write(ret_val, auth_data, sizeof(auth_data));
-    do {
-        i++;
-        printf("1\n"); 
-        bzero(respone_auth, sizeof(respone_auth));
-        printf("2\n"); 
-        read(ret_val, respone_auth, sizeof(respone_auth));
-        printf("Loop n : %d\n", i); 
-        printf("From Server : %s\n", respone_auth); 
-    } while(respone_auth != 0);
-
-    printf("Closing listening socket...\n");
-    //CLOSE_SOCKET(tcp_socket);
-
-	return 0;
-}
-
-int start_doge_vpn() {
-
-    return start_clear_doge_vpn();
-}
-
-void func(int sockfd)
-{
-    char buff[1000];
-    int n;
-    for (;;) {
-        bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
-        n = 0;
-        while ((buff[n++] = getchar()) != '\n')
-            ;
-        write(sockfd, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
-        read(sockfd, buff, sizeof(buff));
-        printf("From Server : %s", buff);
-        if ((strncmp(buff, "exit", 4)) == 0) {
-            printf("Client Exit...\n");
-            break;
-        }
-    }
-}
-
-int main(int argc, char const *argv[]) {
-    int sockfd, connfd;
-    struct sockaddr_in servaddr, cli;
- 
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        printf("socket creation failed...\n");
-        exit(0);
+
+    if (!IS_VALID_SOCKET(sockfd)) {
+        log_vpn_server_error(TCP_SOCKET_ERROR);
+        // freeaddrinfo(bind_address); TODO: verificare se serve fare free della struct
+        return TCP_SOCKET_ERROR;
     }
-    else
-        printf("Socket successfully created..\n");
+
+    printf("Socket successfully created..\n");
     bzero(&servaddr, sizeof(servaddr));
  
     // assign IP, PORT
@@ -470,12 +389,73 @@ int main(int argc, char const *argv[]) {
     }
     else
         printf("connected to the server..\n");
- 
-    // function for chat
-    func(sockfd);
- 
-    // close the socket
-    close(sockfd);
+
+    tcp_socket = &sockfd;
+
+             
+
+    return ret_val;
+}
+
+int create_udp_socket(char const *host, char *const port, SOCKET *udp_socket) {
+
+    /* A UDP socket does not need to set itself to a listen state.
+    *  Just up to bind. 
+    */
+    return up_to_bind(0, host, port, udp_socket);
+}
+
+int start_clear_doge_vpn() {
+
+    int ret_val = 0;
+    char buff[1000];
+    int n;
+    // SSL initialization.
+    SSL_CTX *ctx = NULL;
+    ret_val = init_ssl(&ctx);
+    if (ret_val) return ret_val;
+
+    // Init set of sockets for further selects.
+    fd_set master;
+    FD_ZERO(&master);
+
+    // Init tcp socket.
+    SOCKET tcp_socket;
+    ret_val = create_tcp_socket(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tcp_socket);
+
+    if (ret_val) return ret_val;
+    
+    
+    for (;;) {
+        bzero(buff, sizeof(buff));
+        printf("Enter the string : ");
+        n = 0;
+        while ((buff[n++] = getchar()) != '\n')
+            ;
+        write(tcp_socket, buff, sizeof(buff));
+        bzero(buff, sizeof(buff));
+
+        read(tcp_socket, buff, sizeof(buff));
+        printf("From Server : %s", buff);
+        if ((strncmp(buff, "exit", 4)) == 0) {
+            printf("Client Exit...\n");
+            break;
+        }
+    }
+
+    printf("Closing listening socket...\n");
+    CLOSE_SOCKET(tcp_socket);
+
+	return 0;
+}
+
+
+
+int main(int argc, char const *argv[]) {
+    
+    start_clear_doge_vpn();
+    
+    
     return 0;
 	//return start_doge_vpn();
 }

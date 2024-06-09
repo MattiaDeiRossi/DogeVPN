@@ -1,5 +1,5 @@
 all: 
-	g++ -o vpnclient vpnclient.c
+	g++ vpnclient.c -lssl -lcrypto -o vpnclient 
 
 clean: 
 	rm vpnclient

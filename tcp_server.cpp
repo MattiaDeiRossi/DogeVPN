@@ -192,17 +192,13 @@ int init_ssl(SSL_CTX **ctx_pointer) {
     SSL_load_error_strings();
 
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
-    if (!ctx) {
-        log_vpn_server_error(INIT_SSL_ERROR);
-        return INIT_SSL_ERROR;
-    }
+    if (!ctx) return INIT_SSL_ERROR;
 
     int load_certificate = SSL_CTX_use_certificate_file(ctx, "cert.pem" , SSL_FILETYPE_PEM);
     int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM);
 
     if (!load_certificate || !load_private_key) {
         ERR_print_errors_fp(stderr);
-        log_vpn_server_error(SSL_CERTIFICATE_ERROR);
         SSL_CTX_free(ctx);
         return SSL_CERTIFICATE_ERROR;
     }
@@ -229,7 +225,6 @@ socket_t extract_socket(socket_holder *holder) {
     case UDP_SERVER_SOCKET:
         return (holder->data).uss->socket;
     default:
-        log_vpn_server_error(ILLEGAL_STATE);
         exit(ILLEGAL_STATE);
     }
 
@@ -248,15 +243,12 @@ int create_tcs(
     struct sockaddr_storage client_address;
     socklen_t client_len = sizeof(client_address);
     socket_t client_socket = accept(tcp_socket, (struct sockaddr*) &client_address, &client_len);
-    if (!IS_VALID_SOCKET(client_socket)) {
-        log_vpn_server_error(TCP_ACCEPT_ERROR);
-        return TCP_ACCEPT_ERROR;
-    }
+    if (!IS_VALID_SOCKET(client_socket)) return TCP_ACCEPT_ERROR;
+    
 
     // Creating an SSL object.
     SSL *ssl = SSL_new(ctx);
     if (!ssl) {
-        log_vpn_server_error(SSL_CREATION_ERROR);
         close_socket(client_socket);
         return SSL_CREATION_ERROR;
     }
@@ -273,7 +265,6 @@ int create_tcs(
 
         // Loggin errors.
         ERR_print_errors_fp(stderr);
-        log_vpn_server_error(SSL_ACCEPT_ERROR);
 
         // Cleaning up SSL resources and the useless client socket.  
         ssl_free(ssl);
@@ -284,11 +275,6 @@ int create_tcs(
 
     tcp_client_socket *ret_data = (tcp_client_socket *) malloc(sizeof(tcp_client_socket));
     if (!ret_data) {
-
-        // Logging error.
-        log_vpn_server_error(OUT_OF_MEMORY);
-
-        // Cleaning up.
         ssl_free(ssl);
         close_socket(client_socket);
 
@@ -372,7 +358,6 @@ int up_to_bind(int is_tcp, char const *host, char const *port, socket_t *ret_soc
 
     if (!IS_VALID_SOCKET(socket_listen)) {
         int socket_error = is_tcp ? TCP_SOCKET_ERROR : UDP_SOCKET_ERROR;
-        log_vpn_server_error(socket_error);
         freeaddrinfo(bind_address);
         return socket_error;
     }
@@ -380,16 +365,9 @@ int up_to_bind(int is_tcp, char const *host, char const *port, socket_t *ret_soc
     printf("*** Binding %s socket ***\n", is_tcp ? "TCP" : "UDP");
 
     if (bind(socket_listen, bind_address->ai_addr, bind_address->ai_addrlen)) {
-
         int bind_error = is_tcp ? TCP_BIND_ERROR : UDP_BIND_ERROR;
-
-        // Logging error.
-        log_vpn_server_error(bind_error);
-
-        // Closing socket since bind did not succeed.
         close_socket(socket_listen);
         freeaddrinfo(bind_address);
-
         return bind_error;
     }
 
@@ -421,14 +399,12 @@ int create_tss(
     *  If connections become queued up, then the operating system will reject new connections.
     */
     if (listen(socket, max_cnts) < 0) {
-        log_vpn_server_error(TCP_LISTEN_ERROR);
         close_socket(socket);
         return TCP_LISTEN_ERROR;
     }
 
     tcp_server_socket *ret_data = (tcp_server_socket *) malloc(sizeof(tcp_server_socket));
     if (!ret_data) {
-        log_vpn_server_error(OUT_OF_MEMORY);
         close_socket(socket);
         return OUT_OF_MEMORY;
     }
@@ -462,7 +438,6 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
 
     udp_server_socket *uss = (udp_server_socket *) malloc(sizeof(udp_server_socket));
     if (!uss) {
-        log_vpn_server_error(OUT_OF_MEMORY);
         close_socket(socket);
         return OUT_OF_MEMORY;
     }
@@ -496,7 +471,6 @@ void socket_data_free(socket_type type, socket_data data) {
         uss_free(data.uss);
         break;
     default:
-        log_vpn_server_error(ILLEGAL_STATE);
         exit(ILLEGAL_STATE);
     }
 }
@@ -507,13 +481,8 @@ int create_sh(socket_type type, socket_data data, socket_holder **sh) {
 
     socket_holder *holder = (socket_holder *) malloc(sizeof(socket_holder));
     if (!holder) {
-
         ret_val = OUT_OF_MEMORY;
-
-        // Logging error and releasinf resources.
-        log_vpn_server_error(ret_val);
         socket_data_free(type, data);
-
         return ret_val;
     }
 
@@ -632,8 +601,6 @@ void ssl_context_free(SSL_CTX *ctx) {
     if (ctx != NULL) SSL_CTX_free(ctx);
 }
 
-
-// TODO free memory in case of error.
 int start_doge_vpn() {
 
     int ret_val = 0;

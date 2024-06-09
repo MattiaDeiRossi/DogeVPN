@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-// *** Start C++ utilities ***
+// *** Start C++ utilities - replace with C Map ***
 #include <map>
 // *** End C++ utilities ***
 
@@ -39,6 +39,7 @@
 #define UDP_SOCKET_ERROR 19
 #define UDP_BIND_ERROR 20
 #define ILLEGAL_STATE 21
+#define SELECT_ERROR 22
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
@@ -51,11 +52,6 @@
 #define UDP_HOST 0
 #define UDP_PORT "9090"
 // *** Start UDP constant definitions ***
-
-// *** Start macros ***
-#define IS_VALID_SOCKET(s) ((s) >= 0)
-#define GET_SOCKET_ERRNO() (errno)
-// *** End macros ***
 
 // *** Start constants ***
 #define TRUE 1
@@ -97,6 +93,13 @@ typedef struct {
 } socket_holder;
 // *** End type definitions ***
 
+int get_errno() {
+    return errno;
+}
+
+int invalid_socket(socket_t socket) {
+    return socket < 0;
+}
 
 void close_socket(socket_t socket) {
     close(socket);
@@ -115,28 +118,28 @@ void log_vpn_server_error(int error_number) {
         fprintf(
             stderr, 
             "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case TCP_BIND_ERROR:
         fprintf(
             stderr, 
             "TCP server cannot be bound. Call to bind() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case TCP_LISTEN_ERROR:
         fprintf(
             stderr, 
             "TCP cannot listen. Call to listen() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case TCP_ACCEPT_ERROR:
         fprintf(
             stderr, 
             "TCP cannot accept. Call to accept() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case SSL_CREATION_ERROR:
@@ -155,18 +158,25 @@ void log_vpn_server_error(int error_number) {
         fprintf(
             stderr, 
             "UDP server cannot be created. Call to socket() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case UDP_BIND_ERROR:
         fprintf(
             stderr, 
             "UDP server cannot be bound. Call to bind() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
+            get_errno()
         );
         break;
     case ILLEGAL_STATE:
         fprintf(stderr, "Program reached an illegal state and should be aborted.\n");
+        break;
+    case SELECT_ERROR:
+        fprintf(
+            stderr, 
+            "Call to select() failed with error=%d.\n", 
+            get_errno()
+        );
         break;
       default:
         fprintf(stderr, "Some error occured.\n");
@@ -243,7 +253,7 @@ int create_tcs(
     struct sockaddr_storage client_address;
     socklen_t client_len = sizeof(client_address);
     socket_t client_socket = accept(tcp_socket, (struct sockaddr*) &client_address, &client_len);
-    if (!IS_VALID_SOCKET(client_socket)) return TCP_ACCEPT_ERROR;
+    if (invalid_socket(client_socket)) return TCP_ACCEPT_ERROR;
     
 
     // Creating an SSL object.
@@ -307,15 +317,6 @@ void tcs_free(tcp_client_socket *tcs) {
     free(tcs);
 }
 
-void add_update_sockets(fd_set *master, socket_t *max_socket, socket_t new_socket) {
-
-    // Just updating the socket set and mantaining the max_socket.
-    FD_SET(new_socket, master);
-    if (new_socket > *max_socket) {
-        *max_socket = new_socket;
-    }
-}
-
 void clear_socket_resource(fd_set *master, socket_t socket_to_clean) {
 
     FD_CLR(socket_to_clean, master);
@@ -356,7 +357,7 @@ int up_to_bind(int is_tcp, char const *host, char const *port, socket_t *ret_soc
         bind_address->ai_protocol
     );
 
-    if (!IS_VALID_SOCKET(socket_listen)) {
+    if (invalid_socket(socket_listen)) {
         int socket_error = is_tcp ? TCP_SOCKET_ERROR : UDP_SOCKET_ERROR;
         freeaddrinfo(bind_address);
         return socket_error;
@@ -575,8 +576,8 @@ int create_tcs_sh(
     return ret_val;
 }
 
-void register_socket_data(
-    std::map<socket_t, socket_holder*> map, 
+void map_set_max_add(
+    std::map<socket_t, socket_holder*>& map, 
     fd_set *set,
     socket_holder *holder,
     socket_t *max_socket
@@ -601,6 +602,70 @@ void ssl_context_free(SSL_CTX *ctx) {
     if (ctx != NULL) SSL_CTX_free(ctx);
 }
 
+void map_set_max_free(
+    std::map<socket_t, socket_holder*>& map, 
+    fd_set *master_set,
+    socket_t *max_socket
+) {
+
+    for (auto iter = map.begin(); iter != map.end(); ++iter) {
+
+        // Getting key and value.
+        socket_t socket = iter->first;
+        socket_holder *holder = iter->second;
+
+        // Removing socket from the master set and freeing the holder.
+        FD_CLR(socket, master_set);
+        socket_holder_free(holder);
+    }
+
+    // Max socket returns to be zero.
+    *max_socket = 0;
+}
+
+int map_check_socket(
+    socket_t socket,
+    socket_type type,
+    std::map<socket_t, socket_holder*>& map
+) {
+
+    socket_holder *holder = map.at(socket);
+
+    if (holder == NULL) return 0;
+    if (holder->type == type) return 1;
+    return 0;
+}
+
+int map_is_tss(socket_t socket, std::map<socket_t, socket_holder*>& map) {
+    return map_check_socket(socket, TCP_SERVER_SOCKET, map);
+}
+
+int map_is_uss(socket_t socket, std::map<socket_t, socket_holder*>& map) {
+    return map_check_socket(socket, UDP_SERVER_SOCKET, map);
+}
+
+int map_is_tcs(socket_t socket, std::map<socket_t, socket_holder*>& map) {
+    return map_check_socket(socket, TCP_CLIENT_SOCKET, map);
+}
+
+int handle_new_tcp_client(
+    socket_t tcp_server_socket,
+    SSL_CTX *ctx,
+    std::map<socket_t, socket_holder*>& map, 
+    fd_set *master_set,
+    socket_t *max_socket
+) {
+
+    int ret_val = 0;
+
+    socket_holder *tcs_holder;
+    ret_val = create_tcs_sh(tcp_server_socket, ctx, &tcs_holder);
+    if (ret_val) return ret_val;
+    map_set_max_add(map, master_set, tcs_holder, max_socket);
+
+    return ret_val;
+}
+
 int start_doge_vpn() {
 
     int ret_val = 0;
@@ -623,12 +688,12 @@ int start_doge_vpn() {
     // Initialization of the tcp server socket.
     ret_val = create_tss_sh(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tss_holder);
     if (ret_val) goto error_handler;
-    register_socket_data(sh_map, &master, tss_holder, &max_socket);
+    map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 
     // Initialization of the udp server socket.
     ret_val = create_uss_sh(UDP_HOST, UDP_PORT, &uss_holder);
     if (ret_val) goto error_handler;
-    register_socket_data(sh_map, &master, uss_holder, &max_socket);
+    map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 
     while(TRUE) {
 
@@ -637,29 +702,29 @@ int start_doge_vpn() {
         reads = master;
 
         if (select(max_socket+1, &reads, 0, 0, 0) < 0) {
-            fprintf(stderr, "select() failed. (%d)\n", GET_SOCKET_ERRNO());
-            exit(1);
+            ret_val = SELECT_ERROR;
+            goto error_handler;
         }
 
         socket_t i;
         for(i = 0; i <= max_socket; ++i) {
 
-            // Loop through the each possible socket and see wheter it was flagged by select. If
-            // it is set FD_ISSET returns true so accept and revc won't block on a ready socket.
+            /* Loop through the each possible socket and see wheter it was flagged by select. 
+            *  If it is set FD_ISSET returns true so accept and revc won't block on a ready socket.
+            */
             if (FD_ISSET(i, &reads)) {
 
-                if (i == extract_socket(tss_holder)) {
+                if (map_is_tss(i, sh_map)) {
 
                     // Handling incoming TCP connections.
-                    socket_holder *tcs_holder;
-                    int client_error = create_tcs_sh(i, ctx, &tcs_holder);
-                    if (!client_error) {
-                        register_socket_data(sh_map, &master, tcs_holder, &max_socket);
-                    } else {
-                        // This can happen so there is no need to abort the entire rocess.
-                        log_vpn_server_error(client_error);
-                    }
-                } else {
+                    int tcp_client_err = handle_new_tcp_client(i, ctx, sh_map, &master, &max_socket);
+                    if (tcp_client_err) log_vpn_server_error(tcp_client_err);
+
+                } else if (map_is_uss(i, sh_map)) {
+
+                    // Udp server has some data to read...
+
+                } else if (map_is_tcs(i, sh_map)) {
 
                     // For now just serving the client with whatever data it sends.
                     char read[1024];
@@ -693,9 +758,8 @@ error_handler:
 
     // Cleaning up resources.
     ssl_context_free(ctx);
+    map_set_max_free(sh_map, &master, &max_socket);
 
-    socket_holder_free(tss_holder);
-    socket_holder_free(tss_holder);
     return ret_val;
 }
 

@@ -26,15 +26,17 @@
 // ***  Start error definitions ***
 #define INIT_SSL_ERROR 10
 #define TCP_SOCKET_ERROR 11
-#define TCP_BIND_ERROR 12
-#define TCP_LISTEN_ERROR 13
+#define TCP_CONNECT_ERROR 12
 #define TCP_ACCEPT_ERROR 14
+#define TCP_SEND_ERROR 22
 #define SSL_CREATION_ERROR 15
 #define SSL_ACCEPT_ERROR 16
 #define SSL_CERTIFICATE_ERROR 17
 #define OUT_OF_MEMORY 18
+#define WRONG_CREDENTIALS 21
 #define UDP_SOCKET_ERROR 19
 #define UDP_BIND_ERROR 20
+#define TCP_READ_ERROR 23
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
@@ -74,6 +76,7 @@ typedef enum {
 
 typedef int SOCKET;
 
+
 typedef struct {
 
     SOCKET socket_server;
@@ -112,7 +115,7 @@ void close_tcp_connection_with_server(tcp_server_socket *data) {
     free(data);
 }*/
 
-void log_vpn_server_error(int error_number) {
+void log_vpn_client_error(int error_number) {
 
     switch (error_number) {
       case INIT_SSL_ERROR:
@@ -128,17 +131,17 @@ void log_vpn_server_error(int error_number) {
             GET_SOCKET_ERRNO()
         );
         break;
-    case TCP_BIND_ERROR:
+    case TCP_CONNECT_ERROR:
         fprintf(
             stderr, 
-            "TCP server cannot be bound. Call to bind() failed with error=%d.\n", 
+            "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
             GET_SOCKET_ERRNO()
         );
         break;
-    case TCP_LISTEN_ERROR:
+    case TCP_SEND_ERROR:
         fprintf(
             stderr, 
-            "TCP cannot listen. Call to listen() failed with error=%d.\n", 
+            "TCP cannot send. Call to send() failed with error=%d.\n", 
             GET_SOCKET_ERRNO()
         );
         break;
@@ -146,6 +149,20 @@ void log_vpn_server_error(int error_number) {
         fprintf(
             stderr, 
             "TCP cannot accept. Call to accept() failed with error=%d.\n", 
+            GET_SOCKET_ERRNO()
+        );
+        break;
+    case TCP_READ_ERROR:
+        fprintf(
+            stderr, 
+            "TCP cannot read. Call to read() failed with error=%d.\n", 
+            GET_SOCKET_ERRNO()
+        );
+        break;
+    case WRONG_CREDENTIALS:
+        fprintf(
+            stderr, 
+            "Wrong credentials. Authentication failed with error=%d.\n", 
             GET_SOCKET_ERRNO()
         );
         break;
@@ -191,14 +208,14 @@ int accept_tls_server(SOCKET tcp_socket, SSL_CTX *ctx, tcp_server_socket **data)
     socklen_t server_len = sizeof(server_address);
     SOCKET socket_server = accept(tcp_socket, (struct sockaddr*) &server_address, &server_len);
     if (!IS_VALID_SOCKET(socket_server)) {
-        log_vpn_server_error(TCP_ACCEPT_ERROR);
+        log_vpn_client_error(TCP_ACCEPT_ERROR);
         return TCP_ACCEPT_ERROR;
     }
 
     // Creating an SSL object.
     SSL *ssl = SSL_new(ctx);
     if (!ssl) {
-        log_vpn_server_error(SSL_CREATION_ERROR);
+        log_vpn_client_error(SSL_CREATION_ERROR);
         CLOSE_SOCKET(socket_server);
         return SSL_CREATION_ERROR;
     }
@@ -209,7 +226,7 @@ int accept_tls_server(SOCKET tcp_socket, SSL_CTX *ctx, tcp_server_socket **data)
 
         // Loggin errors.
         ERR_print_errors_fp(stderr);
-        log_vpn_server_error(SSL_ACCEPT_ERROR);
+        log_vpn_client_error(SSL_ACCEPT_ERROR);
 
         // Cleaning up SSL resources and the useless socket_server.  
         SSL_shutdown(ssl);
@@ -224,7 +241,7 @@ int accept_tls_server(SOCKET tcp_socket, SSL_CTX *ctx, tcp_server_socket **data)
     // Allocating a tcp_server_socket object.
     tcp_server_socket *ret_data = (tcp_server_socket *) malloc(sizeof(tcp_server_socket));
     if (!ret_data) {
-        log_vpn_server_error(OUT_OF_MEMORY);
+        log_vpn_client_error(OUT_OF_MEMORY);
         return OUT_OF_MEMORY;
     }
 
@@ -277,7 +294,7 @@ int init_ssl(SSL_CTX **ctx_pointer) {
 
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     if (!ctx) {
-        log_vpn_server_error(INIT_SSL_ERROR);
+        log_vpn_client_error(INIT_SSL_ERROR);
         return INIT_SSL_ERROR;
     }
 
@@ -319,7 +336,7 @@ int up_to_bind(int is_tcp, char const *host, char *const port, SOCKET *ret_socke
 
     if (!IS_VALID_SOCKET(socket_listen)) {
         int socket_error = is_tcp ? TCP_SOCKET_ERROR : UDP_SOCKET_ERROR;
-        log_vpn_server_error(socket_error);
+        log_vpn_client_error(socket_error);
         freeaddrinfo(bind_address);
         return socket_error;
     }
@@ -335,8 +352,8 @@ int up_to_bind(int is_tcp, char const *host, char *const port, SOCKET *ret_socke
     
 
     if (connect(socket_listen, (SA*)&servaddr, sizeof(servaddr))){
-        int bind_error = is_tcp ? TCP_BIND_ERROR : UDP_BIND_ERROR;
-        log_vpn_server_error(bind_error);
+        int bind_error = UDP_BIND_ERROR;
+        log_vpn_client_error(bind_error);
         freeaddrinfo(bind_address);
         return bind_error;
     }
@@ -349,26 +366,17 @@ int up_to_bind(int is_tcp, char const *host, char *const port, SOCKET *ret_socke
     return 0;
 }
 
-int create_tcp_socket(
-    char const *host, char *const port, unsigned int max_cnts, SOCKET *tcp_socket
-) {
+int create_tcp_socket(SOCKET *tcp_socket) {
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
     int ret_val = 0;
     
-    //ret_val = up_to_bind(1, host, port, tcp_socket);
-    if (ret_val) return ret_val;
-
-    /* Listen put the socket in a state where it listens for new connections.
-    *  The max_connections parameter tells how many connections it is allowed to queue up. 
-    *  If connections become queued up, then the operating system will reject new connections.
-    */
     
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (!IS_VALID_SOCKET(sockfd)) {
-        log_vpn_server_error(TCP_SOCKET_ERROR);
+        log_vpn_client_error(TCP_SOCKET_ERROR);
         // freeaddrinfo(bind_address); TODO: verificare se serve fare free della struct
         return TCP_SOCKET_ERROR;
     }
@@ -382,18 +390,17 @@ int create_tcp_socket(
     servaddr.sin_port = htons(8080);
  
     // connect the client socket to server socket
-    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))
-        != 0) {
-        printf("connection with the server failed...\n");
-        exit(0);
+    ret_val = connect(sockfd, (SA*)&servaddr, sizeof(servaddr));
+    if (!IS_VALID_SOCKET(ret_val)) {
+        log_vpn_client_error(TCP_CONNECT_ERROR);
+        // freeaddrinfo(bind_address); TODO: verificare se serve fare free della struct
+        return TCP_CONNECT_ERROR;
     }
-    else
-        printf("connected to the server..\n");
+    printf("connected to the server..\n");
+    
 
-    tcp_socket = &sockfd;
-
-             
-
+    *tcp_socket = sockfd;
+ 
     return ret_val;
 }
 
@@ -405,11 +412,52 @@ int create_udp_socket(char const *host, char *const port, SOCKET *udp_socket) {
     return up_to_bind(0, host, port, udp_socket);
 }
 
+int send_credentials(SOCKET *tcp_socket){
+    int ret_val = 0;
+    char username[50] = "simome";
+    char password[50] = "el_rubio_sgualmuzzo";
+    char auth_credentials[102];
+    char symm_key[100] = "";
+
+
+    strcpy(auth_credentials, username);
+    strcat(auth_credentials, ":"); //separatore -> valutare con i ragazzoni del server quale separatore usare
+    strcat(auth_credentials, password);
+    strcat(auth_credentials, "\0");
+
+    ret_val = send(*tcp_socket, auth_credentials, strlen(auth_credentials), 0);
+    if (!IS_VALID_SOCKET(ret_val)) {
+        int socket_error = TCP_SEND_ERROR;
+        log_vpn_client_error(socket_error);
+        return socket_error;
+    }
+    printf("Credentials sent correctly..\n");
+    bzero(symm_key, sizeof(symm_key));
+    
+    ret_val = read(*tcp_socket, symm_key, sizeof(symm_key));
+    if (!IS_VALID_SOCKET(ret_val)) {
+        int socket_error = TCP_READ_ERROR;
+        log_vpn_client_error(socket_error);
+        return socket_error;
+    }
+    
+    
+    if((strncmp(symm_key, "Wrong Credentials!", 18)) == 0){ //Define with server boys what's the error given due to wrong credentials
+        int socket_error = WRONG_CREDENTIALS;
+        log_vpn_client_error(socket_error);
+        return socket_error;
+    }
+    
+    printf("Key received: %s\n", symm_key);
+
+    return ret_val;
+}
+
+
 int start_clear_doge_vpn() {
 
     int ret_val = 0;
-    char buff[1000];
-    int n;
+
     // SSL initialization.
     SSL_CTX *ctx = NULL;
     ret_val = init_ssl(&ctx);
@@ -419,30 +467,26 @@ int start_clear_doge_vpn() {
     fd_set master;
     FD_ZERO(&master);
 
-    // Init tcp socket.
+    // Init tcp socket and credentials comunication.
     SOCKET tcp_socket;
-    ret_val = create_tcp_socket(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tcp_socket);
+    ret_val = create_tcp_socket(&tcp_socket);
 
     if (ret_val) return ret_val;
     
-    
-    for (;;) {
-        bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
-        n = 0;
-        while ((buff[n++] = getchar()) != '\n')
-            ;
-        write(tcp_socket, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
 
-        read(tcp_socket, buff, sizeof(buff));
-        printf("From Server : %s", buff);
-        if ((strncmp(buff, "exit", 4)) == 0) {
-            printf("Client Exit...\n");
-            break;
-        }
+    do{
+        ret_val = send_credentials(&tcp_socket);
+        
     }
+    while(ret_val == WRONG_CREDENTIALS);
+    
 
+
+
+    //Start UDP traffic with symmetric key previsously provided
+
+
+    
     printf("Closing listening socket...\n");
     CLOSE_SOCKET(tcp_socket);
 
@@ -453,11 +497,8 @@ int start_clear_doge_vpn() {
 
 int main(int argc, char const *argv[]) {
     
-    start_clear_doge_vpn();
+    return start_clear_doge_vpn();
     
-    
-    return 0;
-	//return start_doge_vpn();
 }
 
 // A TUN interface should be created to perfrom tunnelling properly.

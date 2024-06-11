@@ -180,11 +180,11 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     }   
 
     *tcp_socket = sockfd;
- 
+    
     return ret_val;
 }
 
-int send_credential(SOCKET *tcp_socket, char const* user, char const* pwd){
+int send_credential(SOCKET *tcp_socket, char const* user, char const* pwd, SSL* ssl_session){
     int ret_val = 0;
     int size = strlen(user) + strlen(pwd) + 1;
     char *auth_credential = (char *)malloc(sizeof(char) * size);
@@ -196,14 +196,14 @@ int send_credential(SOCKET *tcp_socket, char const* user, char const* pwd){
     strcat(auth_credential, "\0");
 
     printf("*** Send authentication parameters ***\n");
-    if (!send(*tcp_socket, auth_credential, strlen(auth_credential), 0)) {
+    if (!SSL_write(ssl_session, auth_credential, strlen(auth_credential))) {
         log_vpn_client_error(TCP_SEND_ERROR);
         return TCP_SEND_ERROR;
     }
 
     bzero(symmetric_key, sizeof(symmetric_key));
     printf("*** Read authentication's response ***\n");
-    if (!read(*tcp_socket, symmetric_key, sizeof(symmetric_key))) {
+    if (!SSL_read(ssl_session, symmetric_key, sizeof(symmetric_key))) {
         log_vpn_client_error(TCP_READ_ERROR);
         return TCP_READ_ERROR;
     }
@@ -244,7 +244,7 @@ int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET sock, SSL** ssl_session){
         return TCP_SSL_SEXT_ERROR;
     }
 
-
+    printf("Using cipher: %s\n", SSL_get_cipher(ssl));
 
     *ssl_session = ssl;
 
@@ -270,7 +270,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
     if (ret_val) return ret_val;
 
-    ret_val = send_credential(&tcp_socket, user, pwd);
+    ret_val = send_credential(&tcp_socket, user, pwd, ssl_session);
     if (ret_val) return ret_val;
 
     return ret_val;
@@ -278,7 +278,8 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
 
 
-int main(int argc, char const *argv[]) {  
-    return start_doge_vpn(argv[1], argv[2]);
-    
+int main(int argc, char const *argv[]) {
+    if(argc == 3){
+        return start_doge_vpn(argv[1], argv[2]);
+    }
 }

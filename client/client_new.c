@@ -32,6 +32,9 @@
 #define TCP_SEND_ERROR 2002
 #define TCP_READ_ERROR 2003
 #define WRONG_CREDENTIAL 4000
+#define UDP_SOCKET_ERROR 5000
+#define UDP_CONNECT_ERROR 5001
+
 
 // ***  End error definitions ***
 
@@ -43,6 +46,7 @@
 
 // *** Start UDP constant definitions ***
 #define UDP_HOST "127.0.0.1"
+#define UDP_HOST_SGUALMUZZO "0.0.0.0"
 #define UDP_PORT "9090"
 // *** Start UDP constant definitions ***
 
@@ -82,6 +86,20 @@ void log_vpn_client_error(int error_number) {
             fprintf(
                 stderr, 
                 "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );        
+            break;
+        case UDP_SOCKET_ERROR:
+            fprintf(
+                stderr, 
+                "UDP server cannot be created. Call to socket() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case UDP_CONNECT_ERROR:
+            fprintf(
+                stderr, 
+                "UDP server cannot connect. Call to connect() failed with error=%d.\n", 
                 GET_SOCKET_ERRNO()
             );        
             break;
@@ -184,7 +202,44 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     return ret_val;
 }
 
-int send_credential(SOCKET *tcp_socket, char const* user, char const* pwd, SSL* ssl_session){
+
+int create_udp_socket(SOCKET *udp_socket){
+    int sockfd;
+    struct sockaddr_in servaddr;
+    int ret_val = 0;
+    
+    printf("*** Setting up UDP address info ***\n");
+    // socket create and verification
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (!IS_VALID_SOCKET(sockfd)) {
+        log_vpn_client_error(UDP_SOCKET_ERROR);
+        return UDP_SOCKET_ERROR;
+    }
+
+    printf("*** Creating UDP socket ***\n");
+    bzero(&servaddr, sizeof(servaddr));
+ 
+    // assign IP, PORT
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(UDP_HOST_SGUALMUZZO);
+    servaddr.sin_port = htons(UDP_PORT);
+    
+    printf("*** Connecting UDP socket ***\n");
+
+    // connect the client socket to server socket
+    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
+        log_vpn_client_error(UDP_CONNECT_ERROR);
+        return UDP_CONNECT_ERROR;
+    }   
+
+    *udp_socket = sockfd;
+    
+    return ret_val;
+}
+
+
+int send_credentials(char const* user, char const* pwd, SSL* ssl_session){
     int ret_val = 0;
     int size = strlen(user) + strlen(pwd) + 1;
     char *auth_credential = (char *)malloc(sizeof(char) * size);
@@ -252,15 +307,26 @@ int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET sock, SSL** ssl_session){
 }
 
 
+void free_tcp_ssl(SOCKET tcp_socket, SSL* ssl_session, SSL_CTX* ctx){
+
+    SSL_shutdown(ssl_session);
+    SSL_free(ssl_session);
+    SSL_CTX_free(ctx);
+    CLOSE_SOCKET(tcp_socket);
+
+}
+
+
 int start_doge_vpn(char const* user, char const* pwd) {
     int ret_val = 0;
 
-    // SSL initialization.
+
+    /* ------- START SSL session to exchange symmetric key  ------- */
+
+    
     SSL_CTX *ctx = NULL;
     ret_val = init_ssl(&ctx);
     if (ret_val) return ret_val;
-
-
 
     SOCKET tcp_socket;
     ret_val = create_tcp_socket(&tcp_socket);
@@ -270,8 +336,25 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
     if (ret_val) return ret_val;
 
-    ret_val = send_credential(&tcp_socket, user, pwd, ssl_session);
+    ret_val = send_credentials(user, pwd, ssl_session);
     if (ret_val) return ret_val;
+
+    free_tcp_ssl(tcp_socket, ssl_session, ctx);
+
+    /* ------- END SSL session to exchange symmetric key      ------- */
+
+
+
+    /* ------- START UDP session encrypted with symmetric key ------- */
+
+    SOCKET udp_socket;
+    ret_val = create_udp_socket(&udp_socket);
+    if (ret_val) return ret_val;
+
+
+    //TODO create TUN interface and encrypt traffic
+
+    /* ------- END UDP session encrypted with symmetric key ------- */
 
     return ret_val;
 }

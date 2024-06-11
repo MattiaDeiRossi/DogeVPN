@@ -40,6 +40,7 @@
 #define UDP_BIND_ERROR 20
 #define ILLEGAL_STATE 21
 #define SELECT_ERROR 22
+#define UNEXPECTED_DISCONNECT 23
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
@@ -178,6 +179,13 @@ void log_vpn_server_error(int error_number) {
             get_errno()
         );
         break;
+    case UNEXPECTED_DISCONNECT:
+        fprintf(
+            stderr, 
+            "Call to select() failed with error=%d.\n", 
+            get_errno()
+        );
+        break;
       default:
         fprintf(stderr, "Some error occured.\n");
     }
@@ -255,7 +263,6 @@ int create_tcs(
     socket_t client_socket = accept(tcp_socket, (struct sockaddr*) &client_address, &client_len);
     if (invalid_socket(client_socket)) return TCP_ACCEPT_ERROR;
     
-
     // Creating an SSL object.
     SSL *ssl = SSL_new(ctx);
     if (!ssl) {
@@ -666,6 +673,29 @@ int handle_new_tcp_client(
     return ret_val;
 }
 
+int handle_credentials_from_client(socket_holder *holder) {
+
+    int ret_val = 0;
+
+    // This is something that should never happen.
+    if (holder->type != TCP_CLIENT_SOCKET) exit(ILLEGAL_STATE);
+
+    tcp_client_socket *tcs = holder->data.tcs;
+
+    char credentials[1024];
+    int bytes_read = SSL_read(tcs->ssl, credentials, sizeof(credentials));
+
+    if (bytes_read < 1) {
+        ret_val = UNEXPECTED_DISCONNECT;
+        return ret_val;
+    }
+
+    char const *key = "this_is_a_super_secret_key";
+    SSL_write(tcs->ssl, key, strlen(key));
+
+    return 0;
+}
+
 int start_doge_vpn() {
 
     int ret_val = 0;
@@ -706,6 +736,7 @@ int start_doge_vpn() {
             goto error_handler;
         }
 
+        // Instead of looping like so, the map can be used instead.
         socket_t i;
         for(i = 0; i <= max_socket; ++i) {
 
@@ -726,7 +757,10 @@ int start_doge_vpn() {
 
                 } else if (map_is_tcs(i, sh_map)) {
 
-                    // For now just serving the client with whatever data it sends.
+                    int client_data_error = handle_credentials_from_client(sh_map.at(i));
+                    if (client_data_error) log_vpn_server_error(client_data_error);
+
+                    /* For now just serving the client with whatever data it sends.
                     char read[1024];
                     int bytes_received = recv(i, read, 1024, 0);
 
@@ -742,7 +776,7 @@ int start_doge_vpn() {
                     int j;
                     for (j = 0; j < bytes_received; ++j)
                         read[j] = toupper(read[j]);
-                    send(i, read, bytes_received, 0);
+                    send(i, read, bytes_received, 0); */
                 }
 
             }

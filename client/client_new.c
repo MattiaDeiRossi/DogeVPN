@@ -323,7 +323,6 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
     /* ------- START SSL session to exchange symmetric key  ------- */
 
-    
     SSL_CTX *ctx = NULL;
     ret_val = init_ssl(&ctx);
     if (ret_val) return ret_val;
@@ -353,6 +352,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
 
     //TODO create TUN interface and encrypt traffic
+    //Knowledge about TUN interfaces:  https://lxd.me/a-simple-vpn-tunnel-with-tun-device-deno-and-some-basic-concepts
 
     /* ------- END UDP session encrypted with symmetric key ------- */
 

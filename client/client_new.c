@@ -25,15 +25,19 @@
 
 // ***  Start error definitions ***
 #define INIT_SSL_ERROR 1000
+#define TCP_SSL_NEW_ERROR 1001
+#define TCP_SSL_SEXT_ERROR 1002
 #define TCP_SOCKET_ERROR 2000
 #define TCP_CONNECT_ERROR 2001
 #define TCP_SEND_ERROR 2002
 #define TCP_READ_ERROR 2003
 #define WRONG_CREDENTIAL 4000
+
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
 #define TCP_HOST "127.0.0.1"
+#define TCP_HOST_SGUALMUZZO "0.0.0.0"
 #define TCP_PORT 8080
 // *** End TCP constant definitions ***
 
@@ -101,6 +105,19 @@ void log_vpn_client_error(int error_number) {
                 "Wrong credentials. Authentication failed\n"
             );
             break;
+        case TCP_SSL_NEW_ERROR:
+            fprintf(
+                stderr, 
+                "Client cannot start since a valid SSL context cannot be created. Call to SSL_new() failed.\n"
+            );
+            break;
+        case TCP_SSL_SEXT_ERROR:
+            fprintf(
+                stderr, 
+                "Client cannot start since a valid SSL context cannot be created. Call to SSL_sext() failed.\n"
+            );
+            break;
+        
         default:
             fprintf(stderr, "Some error occured.\n");
     }
@@ -151,7 +168,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
  
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(TCP_HOST);
+    servaddr.sin_addr.s_addr = inet_addr(TCP_HOST_SGUALMUZZO);
     servaddr.sin_port = htons(TCP_PORT);
     
     printf("*** Connecting TCP socket ***\n");
@@ -200,6 +217,41 @@ int send_credential(SOCKET *tcp_socket, char const* user, char const* pwd){
     return ret_val;
 }
 
+int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET sock, SSL** ssl_session){
+    int ret_val = 1;
+
+    //Create new SSL session
+    SSL* ssl = SSL_new(ctx);
+    if (!ssl) {
+        log_vpn_client_error(TCP_SSL_NEW_ERROR);
+        return TCP_SSL_NEW_ERROR;
+    }
+
+    //Set remote hostname to SSL session
+    ret_val = SSL_set_tlsext_host_name(ssl, TCP_HOST_SGUALMUZZO);
+    if (ret_val == 0) {
+        log_vpn_client_error(TCP_SSL_SEXT_ERROR);
+        return TCP_SSL_SEXT_ERROR;
+    }
+
+    //Bind TCP socket with SSL session
+    SSL_set_fd(ssl, sock);
+
+    //Start TLS handshake
+    ret_val = SSL_connect(ssl);
+    if (ret_val == -1) {
+        log_vpn_client_error(TCP_SSL_SEXT_ERROR);
+        return TCP_SSL_SEXT_ERROR;
+    }
+
+
+
+    *ssl_session = ssl;
+
+    return 0;
+}
+
+
 int start_doge_vpn(char const* user, char const* pwd) {
     int ret_val = 0;
 
@@ -208,8 +260,14 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = init_ssl(&ctx);
     if (ret_val) return ret_val;
 
+
+
     SOCKET tcp_socket;
     ret_val = create_tcp_socket(&tcp_socket);
+    if (ret_val) return ret_val;
+
+    SSL* ssl_session;
+    ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
     if (ret_val) return ret_val;
 
     ret_val = send_credential(&tcp_socket, user, pwd);

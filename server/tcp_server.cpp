@@ -24,6 +24,7 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 // *** End SSL headers ***
 
 // ***  Start error definitions ***
@@ -41,6 +42,10 @@
 #define ILLEGAL_STATE 21
 #define SELECT_ERROR 22
 #define UNEXPECTED_DISCONNECT 23
+#define UNEXPECTED_SOCKET_TO_DELETE 24
+#define PWD_TOO_SHORT 25
+#define RAND_NOT_SUPPORTED 26
+#define RAND_FAILURE 27
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
@@ -56,10 +61,17 @@
 
 // *** Start constants ***
 #define TRUE 1
+#define USR_PWD_SEPARATOR '.'
+#define MESSAGE_SEPARATOR '.'
+#define MINIMUM_PWD_LEN 16
+#define KEY_LEN 16
+#define ID_LEN 24
+#define MAX_KEY_MESSAGE_LEN 64
 // *** End constants ***
 
 // *** Start type definitions ***
 typedef int socket_t;
+typedef int user_id;
 
 typedef enum {
   TCP_SERVER_SOCKET,
@@ -92,7 +104,19 @@ typedef struct {
     socket_data data;
     socket_type type;
 } socket_holder;
+
+typedef struct {
+    char data[256];
+    char username[256];
+    char password[256];
+} client_credentials;
+
+typedef struct {
+    char key[KEY_LEN];
+} client_udp_connection_info;
 // *** End type definitions ***
+
+// TODO return instead of exit.
 
 int get_errno() {
     return errno;
@@ -180,11 +204,19 @@ void log_vpn_server_error(int error_number) {
         );
         break;
     case UNEXPECTED_DISCONNECT:
-        fprintf(
-            stderr, 
-            "Call to select() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "Client disconnect unexpectedly.\n");
+        break;
+    case UNEXPECTED_SOCKET_TO_DELETE:
+        fprintf(stderr, "A potential connection cannot be close since socket is of wrong type.\n");
+        break;
+    case PWD_TOO_SHORT:
+        fprintf(stderr, "Client does not have a valid password: too short.\n");
+        break;
+    case RAND_NOT_SUPPORTED:
+        fprintf(stderr, "RAND_bytes() not supported by the current RAND method.\n");
+        break;
+    case RAND_FAILURE:
+        fprintf(stderr, "RAND_bytes() reported a failure (%ld).\n", ERR_get_error());
         break;
       default:
         fprintf(stderr, "Some error occured.\n");
@@ -249,6 +281,13 @@ socket_t extract_socket(socket_holder *holder) {
     return -1;
 }
 
+/* Probably a thread approach would be better since SSL_accept is I/O blocking.
+*  When handling a new client there is no need to just create the client socket and return.
+*  A dedicated process should handle the entire process of data exchange without relying on select in the main loop.
+*  After a timeout or some error the client socket can be freed along with the thread.
+*  This will simplify the whole logic and the thread should create all the data without accessing shared memory. 
+*  The only problem could be future portability on diffrent operating systems.
+*/
 int create_tcs(
     socket_t tcp_socket,
     SSL_CTX *ctx, 
@@ -626,33 +665,61 @@ void map_set_max_free(
         socket_holder_free(holder);
     }
 
-    // Max socket returns to be zero.
+    /* Clearing the map.
+    *  Zeroing the max_socket.
+    */
+    map.clear();
     *max_socket = 0;
 }
 
-int map_check_socket(
-    socket_t socket,
-    socket_type type,
-    std::map<socket_t, socket_holder*>& map
+// TODO Assumptions ...
+int map_set_max_delete_client(
+    socket_holder *holder,
+    std::map<socket_t, socket_holder*>& map, 
+    fd_set *master_set,
+    socket_t *max_socket
 ) {
 
-    socket_holder *holder = map.at(socket);
+    int ret_val = 0;
+    tcp_client_socket *tcs = holder->data.tcs;
+    socket_t socket = tcs->socket;
 
+    // Updating the max_socket value.
+    if (socket == *max_socket) {
+
+        // This is possible since the because the map in C++ is in increasing order of keys by default.
+        auto pair = ++map.rbegin();
+        socket_t max_socket_from_map = pair->first;
+        *max_socket = max_socket_from_map;
+    }
+
+    /* Removing socket from the master set.
+    *  Freeing the holder.
+    *  Deleting freed holder reference from the map.
+    */
+    FD_CLR(socket, master_set);
+    socket_holder_free(holder);
+    map.erase(socket);
+
+    return ret_val;
+}
+
+int map_check_socket(socket_holder *holder, socket_type type) {
     if (holder == NULL) return 0;
     if (holder->type == type) return 1;
     return 0;
 }
 
-int map_is_tss(socket_t socket, std::map<socket_t, socket_holder*>& map) {
-    return map_check_socket(socket, TCP_SERVER_SOCKET, map);
+int map_is_tss(socket_holder *holder) {
+    return map_check_socket(holder, TCP_SERVER_SOCKET);
 }
 
-int map_is_uss(socket_t socket, std::map<socket_t, socket_holder*>& map) {
-    return map_check_socket(socket, UDP_SERVER_SOCKET, map);
+int map_is_uss(socket_holder *holder) {
+    return map_check_socket(holder, UDP_SERVER_SOCKET);
 }
 
-int map_is_tcs(socket_t socket, std::map<socket_t, socket_holder*>& map) {
-    return map_check_socket(socket, TCP_CLIENT_SOCKET, map);
+int map_is_tcs(socket_holder *holder) {
+    return map_check_socket(holder, TCP_CLIENT_SOCKET);
 }
 
 int handle_new_tcp_client(
@@ -673,29 +740,150 @@ int handle_new_tcp_client(
     return ret_val;
 }
 
-int handle_credentials_from_client(socket_holder *holder) {
+int ssl_read_client_credentials(SSL *ssl, client_credentials *credentials) {
 
     int ret_val = 0;
 
-    // This is something that should never happen.
-    if (holder->type != TCP_CLIENT_SOCKET) exit(ILLEGAL_STATE);
+    client_credentials cc;
+    memset(&cc, 0, sizeof(cc));
 
-    tcp_client_socket *tcs = holder->data.tcs;
-
-    char credentials[1024];
-    int bytes_read = SSL_read(tcs->ssl, credentials, sizeof(credentials));
-
-    if (bytes_read < 1) {
+    /* The assumption here is that all the data comes from a single read.
+    *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
+    *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
+    */
+    int size = sizeof(cc.data);
+    int read_error = SSL_read(ssl, cc.data, size) < 1;
+    if (read_error) {
         ret_val = UNEXPECTED_DISCONNECT;
         return ret_val;
     }
 
-    char const *key = "this_is_a_super_secret_key";
-    SSL_write(tcs->ssl, key, strlen(key));
+    int reading_credentials = 1;
+    char *usr_p = cc.username;
+    char *pwd_p = cc.password;
+
+    for (int i = 0; i < size; ++i) {
+        
+        char bdata = cc.data[i];
+        
+        if (reading_credentials) {
+
+            // While reading credentilas alway checking if the separator is the current byte.
+            if (bdata == USR_PWD_SEPARATOR) {
+                reading_credentials = 0;
+            } else {
+                *usr_p = bdata;
+                usr_p++;
+            }
+        } else {
+
+            // From now on the data that is being read represents the password.
+            *pwd_p = bdata;
+            pwd_p++;
+        }
+    }
+
+    *credentials = cc;
+    return ret_val;
+}
+
+int handle_credentials_from_client(
+    socket_holder *holder,
+    std::map<socket_t, socket_holder*>& map, 
+    fd_set *master_set,
+    socket_t *max_socket
+) {
+
+    int ret_val = 0;
+
+    // This is something that should never happen.
+    if (holder == NULL) exit(ILLEGAL_STATE);
+    if (holder->type != TCP_CLIENT_SOCKET) exit(ILLEGAL_STATE);
+
+    tcp_client_socket *tcs = holder->data.tcs;
+    client_credentials credentials;
+    ret_val = ssl_read_client_credentials(tcs->ssl, &credentials);
+    if (ret_val) {
+        map_set_max_delete_client(holder, map, master_set, max_socket);
+        return ret_val;
+    }
+
+    /* DogeVPN requires a minimum length of bytes for the password.
+    *  If the minimum length is not respected, than the database does not even gets accessed.
+    */
+    int pwd_len = strlen(credentials.password);
+    if (pwd_len < MINIMUM_PWD_LEN) {
+        ret_val = PWD_TOO_SHORT;
+        map_set_max_delete_client(holder, map, master_set, max_socket);
+        return ret_val;
+    }
+
+    // TODO: database fetching.
+    user_id db_user_id = 42;
+    char id_buf[ID_LEN];
+    char *id_p = id_buf;
+    memset(id_buf, 0, ID_LEN);
+    sprintf(id_buf, "%d", db_user_id);
+
+    // Generating a key to be shared with the client by using the OpenSSL library.
+    unsigned char rand_buf[KEY_LEN];
+    memset(rand_buf, 0, KEY_LEN);
+    int rand_value = RAND_bytes(rand_buf, KEY_LEN);
+    if (rand_value != 1) {
+
+        if (rand_value == -1) {
+            ret_val = RAND_NOT_SUPPORTED;
+        } else {
+            ret_val = RAND_FAILURE;
+        }
+
+        map_set_max_delete_client(holder, map, master_set, max_socket);
+        return ret_val;
+    }
+
+    char key[KEY_LEN];
+    memset(key, 0, KEY_LEN);
+    memcpy(key, rand_buf, KEY_LEN);
+
+    /* Composing the final message.
+    *  It has the following form:
+    *   - The first part is the key that will be used to encrypt and decrypt the data over UDP
+    *   - There is a separator in the middle
+    *   - The last part is the user id that it will be later on used to fetch the key that must be used
+    */
+    char message[MAX_KEY_MESSAGE_LEN];
+    memset(message, 0, MAX_KEY_MESSAGE_LEN);
+    char *msg_p = message;
+
+    // Copying the key to the message holder.
+    for (int i = 0; i < KEY_LEN; ++i) {
+        *msg_p = key[i];
+        msg_p++;
+    }
+
+    // Adding the separator to the message.
+    *msg_p = MESSAGE_SEPARATOR;
+    msg_p++;
+
+    // Adding the final part of the message that is the user id.
+    while(*id_p) {
+        *msg_p = *id_p;
+        msg_p++;
+        id_p++;
+    }
+
+    // Writing data into socket. TODO: check error.
+    SSL_write(tcs->ssl, message, strlen(message));
+
+    /* Releasing client resources since they are not needed anymore.
+    *  TODO: The id must be saved somewhere.
+    */
+    map_set_max_delete_client(holder, map, master_set, max_socket);
 
     return 0;
 }
 
+// TODO check [size].
 int start_doge_vpn() {
 
     int ret_val = 0;
@@ -736,47 +924,35 @@ int start_doge_vpn() {
             goto error_handler;
         }
 
-        // Instead of looping like so, the map can be used instead.
-        socket_t i;
-        for(i = 0; i <= max_socket; ++i) {
+        // Iterating all the registered sockets.
+        for (auto iter = sh_map.begin(); iter != sh_map.end(); ++iter) {
 
-            /* Loop through the each possible socket and see wheter it was flagged by select. 
-            *  If it is set FD_ISSET returns true so accept and revc won't block on a ready socket.
-            */
-            if (FD_ISSET(i, &reads)) {
+            // Getting key and value.
+            socket_t socket = iter->first;
+            socket_holder *holder = iter->second;
 
-                if (map_is_tss(i, sh_map)) {
+            // Getting key and value.
+           if (FD_ISSET(socket, &reads)) {
+
+                if (map_is_tss(holder)) {
 
                     // Handling incoming TCP connections.
-                    int tcp_client_err = handle_new_tcp_client(i, ctx, sh_map, &master, &max_socket);
+                    int tcp_client_err = handle_new_tcp_client(socket, ctx, sh_map, &master, &max_socket);
                     if (tcp_client_err) log_vpn_server_error(tcp_client_err);
 
-                } else if (map_is_uss(i, sh_map)) {
+                } else if (map_is_uss(holder)) {
 
                     // Udp server has some data to read...
 
-                } else if (map_is_tcs(i, sh_map)) {
+                } else if (map_is_tcs(holder)) {
 
-                    int client_data_error = handle_credentials_from_client(sh_map.at(i));
+                    /* This part should be handled as soon as the tcp server was able to generate a client socket.
+                    *  The whole logic should live inside a thread for improving performance and simplify the logic.
+                    *  The only socket in the set should be the tcp and udp server socket.
+                    *  This will remove the max_socket handling since select would be on tcp and udp socket only.
+                    */
+                    int client_data_error = handle_credentials_from_client(holder, sh_map, &master, &max_socket);
                     if (client_data_error) log_vpn_server_error(client_data_error);
-
-                    /* For now just serving the client with whatever data it sends.
-                    char read[1024];
-                    int bytes_received = recv(i, read, 1024, 0);
-
-                    // When receiving a non-positive number, the client has disconnected.
-                    // Cleaning up is mandatory.
-                    if (bytes_received < 1) {
-
-                        // This remove the socket from the master set.
-                        clear_socket_resource(&master, i);
-                        continue;
-                    }
-
-                    int j;
-                    for (j = 0; j < bytes_received; ++j)
-                        read[j] = toupper(read[j]);
-                    send(i, read, bytes_received, 0); */
                 }
 
             }

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MONGO_HPP
+#define MONGO_HPP
 
 #include <cstdint>
 #include <iostream>
@@ -16,6 +17,11 @@
 #include <mongocxx/uri.hpp>
 #include <mongocxx/exception/bulk_write_exception.hpp>
 
+#include "socket.h"
+#include "openssl.h"
+#include "data_structures.h"
+#include "defines.h"
+
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_array;
 using bsoncxx::builder::basic::make_document;
@@ -29,8 +35,6 @@ private:
   mongocxx::database db_;
   mongocxx::collection collection_;
   std::string salt_;
-
-  void generate_salt(size_t length);
   std::string to_hex_string(size_t hash_value);
 
 public:
@@ -41,9 +45,9 @@ public:
   std::string get_salt();
 
   void add_user(const std::string id, const std::string username, const std::string password);
-  bool is_present(const std::string username, const std::string hashed_password);
-  bool is_present(const std::string username);
+  user_id is_present(const std::string username, const std::string password);
   void delete_user();
   void get_users();
 };
 
+#endif

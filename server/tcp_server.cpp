@@ -1,120 +1,14 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include <ctype.h>
-
-// *** Start C++ utilities - replace with C Map ***
 #include <map>
-// *** End C++ utilities ***
 
-/* In order to generate a self signed certificate:
-*   - openssl req -x509 -newkey rsa:2048 -nodes -sha256 -keyout key.pem -out cert.pem -days 365
-*  *** Start SSL headers ***
-*/
-#include <openssl/crypto.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-// *** End SSL headers ***
-
-// ***  Start error definitions ***
-#define INIT_SSL_ERROR 10
-#define TCP_SOCKET_ERROR 11
-#define TCP_BIND_ERROR 12
-#define TCP_LISTEN_ERROR 13
-#define TCP_ACCEPT_ERROR 14
-#define SSL_CREATION_ERROR 15
-#define SSL_ACCEPT_ERROR 16
-#define SSL_CERTIFICATE_ERROR 17
-#define OUT_OF_MEMORY 18
-#define UDP_SOCKET_ERROR 19
-#define UDP_BIND_ERROR 20
-#define ILLEGAL_STATE 21
-#define SELECT_ERROR 22
-#define UNEXPECTED_DISCONNECT 23
-#define UNEXPECTED_SOCKET_TO_DELETE 24
-#define PWD_TOO_SHORT 25
-#define RAND_NOT_SUPPORTED 26
-#define RAND_FAILURE 27
-// ***  End error definitions ***
-
-// *** Start TCP constant definitions ***
-#define MAX_TCP_CONNECTIONS 10
-#define TCP_HOST 0
-#define TCP_PORT "8080"
-// *** End TCP constant definitions ***
-
-// *** Start UDP constant definitions ***
-#define UDP_HOST 0
-#define UDP_PORT "9090"
-// *** Start UDP constant definitions ***
-
-// *** Start constants ***
-#define TRUE 1
-#define USR_PWD_SEPARATOR '.'
-#define MESSAGE_SEPARATOR '.'
-#define MINIMUM_PWD_LEN 16
-#define KEY_LEN 16
-#define ID_LEN 24
-#define MAX_KEY_MESSAGE_LEN 64
-// *** End constants ***
-
-// *** Start type definitions ***
-typedef int socket_t;
-typedef int user_id;
-
-typedef enum {
-  TCP_SERVER_SOCKET,
-  TCP_CLIENT_SOCKET,
-  UDP_SERVER_SOCKET
-} socket_type;
-
-typedef struct {
-    socket_t socket;
-    socklen_t client_len;
-    struct sockaddr_storage client_address;
-    SSL *ssl;    
-} tcp_client_socket;
-
-typedef struct {
-    socket_t socket;
-} tcp_server_socket;
-
-typedef struct {
-    socket_t socket;
-} udp_server_socket;
-
-typedef union {
-    tcp_client_socket *tcs;
-    tcp_server_socket *tss;
-    udp_server_socket *uss;
-} socket_data;
-
-typedef struct {
-    socket_data data;
-    socket_type type;
-} socket_holder;
-
-typedef struct {
-    char data[256];
-    char username[256];
-    char password[256];
-} client_credentials;
-
-typedef struct {
-    char key[KEY_LEN];
-} client_udp_connection_info;
-// *** End type definitions ***
+#include "include/socket.h"
+#include "include/openssl.h"
+#include "include/defines.h"
+#include "include/data_structures.h"
 
 // TODO return instead of exit.
 

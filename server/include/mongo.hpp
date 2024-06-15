@@ -1,14 +1,6 @@
 #ifndef MONGO_HPP
 #define MONGO_HPP
 
-#include <cstdint>
-#include <iostream>
-#include <vector>
-#include <cassert>
-#include <functional>
-#include <random>
-#include <sstream>
-
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/json.hpp>
 #include <mongocxx/client.hpp>
@@ -17,6 +9,7 @@
 #include <mongocxx/uri.hpp>
 #include <mongocxx/exception/bulk_write_exception.hpp>
 
+#include "standards.h"
 #include "socket.h"
 #include "openssl.h"
 #include "data_structures.h"

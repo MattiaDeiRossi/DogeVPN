@@ -1,14 +1,10 @@
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <map>
-
-#include "include/socket.h"
-#include "include/openssl.h"
-#include "include/defines.h"
-#include "include/data_structures.h"
+#include "standards.h"
+#include "socket.h"
+#include "openssl.h"
+#include "defines.h"
+#include "data_structures.h"
+#include "encryption.h"
+#include "mongo.hpp"
 
 // TODO return instead of exit.
 
@@ -138,8 +134,8 @@ int init_ssl(SSL_CTX **ctx_pointer) {
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     if (!ctx) return INIT_SSL_ERROR;
 
-    int load_certificate = SSL_CTX_use_certificate_file(ctx, "cert.pem" , SSL_FILETYPE_PEM);
-    int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM);
+    int load_certificate = SSL_CTX_use_certificate_file(ctx, "../certs/cert.pem" , SSL_FILETYPE_PEM);
+    int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "../certs/key.pem", SSL_FILETYPE_PEM);
 
     if (!load_certificate || !load_private_key) {
         ERR_print_errors_fp(stderr);
@@ -868,6 +864,47 @@ error_handler:
 }
 
 int main(int argc, char const *argv[]) {
+
+    mongo mongo("mongodb://user:pwd@10.5.0.5:27017/vpndb");
+    mongo.add_user("0", "user1", "psw");
+    mongo.get_users(); // print users
+
+    std::cout<< mongo.is_present("user1", "psw") << std::endl;
+
+        /* A 256 bit key */
+    unsigned char key[32] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+                              0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
+                              0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33,
+                              0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31 };
+
+    /* A 128 bit IV */
+    unsigned char iv[16] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+                             0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 };
+
+    /* Message to be encrypted */
+    unsigned char *plaintext =
+        (unsigned char *)"012345678912345-012345678912345-ciao";
+
+    /* Buffer for ciphertext. Ensure the buffer is long enough for the
+     * ciphertext which may be longer than the plaintext, depending on the
+     * algorithm and mode.
+     */
+    size_t ciphertext_len = ((strlen ((char *)plaintext)/32) + 1) * 32;
+    unsigned char *ciphertext = (unsigned char *)malloc(ciphertext_len);
+    memset(ciphertext, 0, ciphertext_len);
+
+    std::cout << "TEST PLAINTEXT: " << plaintext << std::endl;
+
+    encryption::encrypt(plaintext, strlen ((char *)plaintext), key, iv, ciphertext);
+    std::cout << "TEST ENCRYPTION: " << ciphertext << std::endl;
+
+
+    unsigned char descrypted[128];
+    encryption::decrypt(ciphertext,  strlen((char *) ciphertext), key, iv, descrypted);
+    std::cout << "TEST DECRYPTION: " << descrypted << std::endl;
+
+    free(ciphertext);
+
 	return start_doge_vpn();
 }
 

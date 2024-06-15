@@ -1,0 +1,39 @@
+services:
+
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: example
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: vpndb
+    networks:
+      vpn_net:
+        ipv4_address: 10.5.0.5
+    ports:
+    - "27017:27017"
+    volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+  vpnserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: server
+    environment:
+      - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+    networks:
+      vpn_net:
+        ipv4_address: 10.5.0.6
+    ports:
+    - "8080:8080"
+    command: ./build/main 'clear_mode'
+
+networks:
+  vpn_net:
+    driver: bridge
+    ipam:
+     config:
+      - subnet: 10.5.0.0/24
+        gateway: 10.5.0.1

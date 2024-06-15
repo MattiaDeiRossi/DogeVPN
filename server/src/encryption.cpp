@@ -1,13 +1,14 @@
 #include "encryption.h"
 
-namespace encryption{
+namespace encryption
+{
 
     void handleErrors(void)
     {
         ERR_print_errors_fp(stderr);
         abort();
     }
-    
+
     int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *ciphertext)
     {
@@ -76,6 +77,29 @@ namespace encryption{
         EVP_CIPHER_CTX_free(ctx);
 
         return plaintext_len;
+    }
+
+    packet encrypt(packet pkt, encryption_data enc_data)
+    {
+        size_t ciphertext_len = ((strlen((char *)pkt.msg) / KEY_LEN) + 1) * KEY_LEN;
+        unsigned char *ciphertext = (unsigned char *)malloc(ciphertext_len);
+        memset(ciphertext, 0, ciphertext_len);
+
+        int len = encryption::encrypt(pkt.msg, pkt.len, enc_data.key, enc_data.iv, ciphertext);
+        return packet(ciphertext, len);
+
+    }
+    packet decrypt(packet encrypted_pkt, encryption_data enc_data)
+    {
+        unsigned char *plaintext = (unsigned char *)malloc(encrypted_pkt.len);
+        memset(plaintext, 0, encrypted_pkt.len);
+
+        int len = encryption::decrypt(encrypted_pkt.msg, encrypted_pkt.len, enc_data.key, enc_data.iv, plaintext);
+        return packet(plaintext, len);
+    }
+
+    void packet_free(packet pkt){
+        free(pkt.msg);
     }
 
 

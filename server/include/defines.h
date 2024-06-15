@@ -38,7 +38,8 @@
 #define USR_PWD_SEPARATOR '.'
 #define MESSAGE_SEPARATOR '.'
 #define MINIMUM_PWD_LEN 16
-#define KEY_LEN 16
+#define KEY_LEN 32
+#define IV_LEN 16
 #define ID_LEN 24
 #define MAX_KEY_MESSAGE_LEN 64
 // *** End constants ***

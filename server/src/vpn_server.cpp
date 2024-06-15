@@ -871,7 +871,7 @@ int main(int argc, char const *argv[]) {
 
     std::cout<< mongo.is_present("user1", "psw") << std::endl;
 
-        /* A 256 bit key */
+    /* A 256 bit key */
     unsigned char key[32] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
                               0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
                               0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33,
@@ -889,21 +889,19 @@ int main(int argc, char const *argv[]) {
      * ciphertext which may be longer than the plaintext, depending on the
      * algorithm and mode.
      */
-    size_t ciphertext_len = ((strlen ((char *)plaintext)/32) + 1) * 32;
-    unsigned char *ciphertext = (unsigned char *)malloc(ciphertext_len);
-    memset(ciphertext, 0, ciphertext_len);
+    packet packet(plaintext, strlen((char*)plaintext));
+    encryption_data enc_data(key, iv);
+    std::cout << "TEST ORIGINAL: " << packet.msg << ", "<< packet.len << std::endl;
 
-    std::cout << "TEST PLAINTEXT: " << plaintext << std::endl;
+    auto encrypted_pkt = encryption::encrypt(packet, enc_data);
+    std::cout << "TEST ENCRYPTION: " << encrypted_pkt.msg <<  ", "<< encrypted_pkt.len << std::endl;
 
-    encryption::encrypt(plaintext, strlen ((char *)plaintext), key, iv, ciphertext);
-    std::cout << "TEST ENCRYPTION: " << ciphertext << std::endl;
+    auto original_pkt = encryption::decrypt(encrypted_pkt, enc_data);
+    std::cout << "TEST DECRYPTION: " << original_pkt.msg <<  ", "<< original_pkt.len << std::endl;
 
-
-    unsigned char descrypted[128];
-    encryption::decrypt(ciphertext,  strlen((char *) ciphertext), key, iv, descrypted);
-    std::cout << "TEST DECRYPTION: " << descrypted << std::endl;
-
-    free(ciphertext);
+    encryption::packet_free(packet);
+    encryption::packet_free(encrypted_pkt);
+    encryption::packet_free(original_pkt);
 
 	return start_doge_vpn();
 }

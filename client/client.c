@@ -1,5 +1,5 @@
-// Compile with gcc client.c -lssl -lcrypto -o client
-
+// Compile with gcc aes.c client.c -lssl -lcrypto -o client
+//https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,6 +12,14 @@
 #include <time.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
 #include "aes.h"
 
 // *** Start SSL headers ***
@@ -38,7 +46,12 @@
 #define UDP_CONNECT_ERROR 3001
 #define UDP_SEND_ERROR 3002
 #define UDP_READ_ERROR 3003
-#define WRONG_CREDENTIAL 4000
+#define TUN_OPEN_DEV 4000
+#define TUN_TUNSETIFF 4001
+#define TUN_SEND_ERROR 4002
+#define TUN_READ_ERROR 4003
+#define MAX_FD_ERROR 5000
+#define WRONG_CREDENTIAL 7000
 
 
 // ***  End error definitions ***
@@ -55,6 +68,7 @@
 
 // *** Start Tun constant definitions ***
 #define SERVER_HOST "10.5.0.6"
+#define MTU 1400
 // *** End Tun constant definitions ***
 
 
@@ -152,17 +166,48 @@ void log_vpn_client_error(int error_number) {
         case UDP_SEND_ERROR:
             fprintf(
                 stderr, 
-                "TCP cannot send. Call to send() failed with error=%d.\n", 
+                "UDP cannot send. Call to send() failed with error=%d.\n", 
                 GET_SOCKET_ERRNO()
             );
             break;
         case UDP_READ_ERROR:
             fprintf(
                 stderr, 
-                "TCP cannot send. Call to read() failed with error=%d.\n", 
+                "UDP cannot send. Call to read() failed with error=%d.\n", 
                 GET_SOCKET_ERRNO()
             );
             break;
+        case TUN_OPEN_DEV:
+            fprintf(
+                stderr, 
+                "Tun: Cannot open /dev/net/tun\n"
+            );
+            break;
+        case TUN_TUNSETIFF:
+            fprintf(
+                stderr, 
+                "Tun. Call to ioctl() failed\n"
+            );
+            break;
+        case TUN_SEND_ERROR:
+            fprintf(
+                stderr, 
+                "Tun cannot send. Call to send() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case TUN_READ_ERROR:
+            fprintf(
+                stderr, 
+                "Tun cannot send. Call to read() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+        case MAX_FD_ERROR:
+            fprintf(
+                stderr, 
+                "FD. Max select failed\n"
+            );
+            break;        
         case WRONG_CREDENTIAL:
             fprintf(
                 stderr, 
@@ -384,35 +429,52 @@ int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
     return ret_val;
 }
 
-/*int tun_alloc() {
-  struct ifreq ifr;
-  int fd, e;
+int tun_alloc(SOCKET *tun_fd) {
+    int ret_val = 0;
+    struct ifreq ifr;
+    int fd, e;
 
-  if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
-    perror("Cannot open /dev/net/tun");
-    return fd;
+    if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
+        log_vpn_client_error(TUN_OPEN_DEV);
+        return TUN_OPEN_DEV;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+    strncpy(ifr.ifr_name, "tun0", IFNAMSIZ);
+
+    if ((e = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0) {
+        log_vpn_client_error(TUN_TUNSETIFF);
+        return TUN_TUNSETIFF;
+    }
+
+    *tun_fd = fd;
+
+    return ret_val;
+}
+
+static void run(char *cmd) {
+  printf("Execute `%s`\n", cmd);
+  if (system(cmd)) {
+    perror(cmd);
+    exit(1);
   }
+}
 
-  memset(&ifr, 0, sizeof(ifr));
-
-  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-  strncpy(ifr.ifr_name, "tun0", IFNAMSIZ);
-
-  if ((e = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0) {
-    perror("ioctl[TUNSETIFF]");
-    close(fd);
-    return e;
-  }
-
-  return fd;
-}*/
+void ifconfig() {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.2/16 mtu %d up", MTU);
+    run(cmd);
+}
 
 void setup_route_table() {
+    
     run("iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE");
     run("iptables -I FORWARD 1 -i tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT");
     run("iptables -I FORWARD 1 -o tun0 -j ACCEPT");
     char cmd[1024];
-    snprintf(cmd, sizeof(cmd), "ip route add %s via $(ip route show 0/0 | sed -e 's/.* via \([^ ]*\).*/\1/')", SERVER_HOST);
+    snprintf(cmd, sizeof(cmd), "ip route add %s via $(ip route show 0/0 | sed -e 's/.* via \\([^ ]*\\).*/\\1/')", SERVER_HOST);
     run(cmd);
     run("ip route add 0/1 dev tun0");
     run("ip route add 128/1 dev tun0");
@@ -429,57 +491,9 @@ void cleanup_route_table() {
     run("ip route del 128/1");
 }
 
-/*void tun_read_write(SOCKET *udp_socket, unsigned char* secret_key) {
-    char tun_buf[MTU], udp_buf[MTU];
-    bzero(tun_buf, MTU);
-    bzero(udp_buf, MTU);
-
-    while (TRUE) {
-        fd_set readset;
-        FD_ZERO(&readset);
-        FD_SET(tun_fd, &readset);
-        FD_SET(udp_fd, &readset);
-        int max_fd = max(tun_fd, udp_fd) + 1;
-
-        if (-1 == select(max_fd, &readset, NULL, NULL, NULL)) {
-            perror("select error");
-            break;
-        }
-
-        int r;
-        if (FD_ISSET(tun_fd, &readset)) {
-            r = read(tun_fd, tun_buf, MTU);
-            if (r < 0) {
-                perror("read from tun_fd error");
-                break;
-            }
-
-            encrypt(tun_buf, udp_buf, r);
-
-            r = sendto(udp_socket, udp_buf, r, 0, (const struct sockaddr *)&client_addr, client_addrlen);
-            if (r < 0) {
-                perror("sendto udp_fd error");
-                break;
-            }
-        }
-
-        if (FD_ISSET(udp_fd, &readset)) {
-            r = recvfrom(udp_fd, udp_buf, MTU, 0, (struct sockaddr *)&client_addr, &client_addrlen);
-            if (r < 0) {
-                perror("recvfrom udp_fd error");
-                break;
-            }
-
-            decrypt(udp_buf, tun_buf, r);
-
-            r = write(tun_fd, tun_buf, r);
-            if (r < 0) {
-                perror("write tun_fd error");
-                break;
-            }
-        }
-    
-}*/
+static int max(int a, int b) {
+  return a > b ? a : b;
+}
 
 int start_doge_vpn(char const* user, char const* pwd) {
     int ret_val = 0;
@@ -510,7 +524,69 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = create_udp_socket(&udp_socket);
     if (ret_val) return ret_val;
 
-    udp_exchange_data(&udp_socket, secret_key);
+    SOCKET tun_fd;
+    ret_val = tun_alloc(&tun_fd);
+    if (ret_val) return ret_val;
+    ifconfig();
+    setup_route_table();
+
+    char tun_buf[MTU], udp_buf[MTU];
+    bzero(tun_buf, MTU);
+    bzero(udp_buf, MTU);
+
+    while (TRUE) {
+        fd_set readset;
+        FD_ZERO(&readset);
+        FD_SET(tun_fd, &readset);
+        FD_SET(udp_socket, &readset);
+
+        int max_fd = max(tun_fd, udp_socket) + 1;
+
+        if (-1 == select(max_fd, &readset, NULL, NULL, NULL)) {
+            log_vpn_client_error(MAX_FD_ERROR);
+            return MAX_FD_ERROR;
+            break;
+        }
+        
+        int r;
+        if (FD_ISSET(tun_fd, &readset)) {
+            printf("*** Read from tun interface ***\n");
+            if(read(tun_fd, tun_buf, MTU) <0) {
+                log_vpn_client_error(TUN_SEND_ERROR);
+                return TUN_SEND_ERROR;
+                break;
+            }
+
+            int len_e = encrypt(tun_buf, strlen(tun_buf), secret_key, udp_buf);
+            udp_buf[len_e] = 0;
+
+            printf("*** Send UDP message ***\n");
+            if (!send(udp_socket, udp_buf, strlen(udp_buf), 0)) {
+                log_vpn_client_error(UDP_SEND_ERROR);
+                return UDP_SEND_ERROR;
+            }
+        }
+
+        if (FD_ISSET(udp_socket, &readset)) {
+            printf("*** Read UDP message ***\n");
+            if (!read(udp_socket, udp_buf, MTU)) {
+                log_vpn_client_error(UDP_READ_ERROR);
+                return UDP_READ_ERROR;
+            }
+
+            int len_d = decrypt(udp_buf, strlen(udp_buf), secret_key, tun_buf);
+            tun_buf[len_d] = 0;
+
+            printf("*** Send with tun interface ***\n");
+            if (write(tun_fd, tun_buf, r) < 0) {
+                log_vpn_client_error(TUN_SEND_ERROR);
+                return TUN_SEND_ERROR;                
+                break;
+            }
+        }
+    }
+
+    cleanup_route_table();
 
     return ret_val;
 }

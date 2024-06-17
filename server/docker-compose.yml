@@ -17,6 +17,7 @@ services:
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
 
   vpnserver:
+    tty: true
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,7 +29,7 @@ services:
         ipv4_address: 10.5.0.6
     ports:
     - "8080:8080"
-    command: ./build/main 'clear_mode'
+    command: ./build/vpnserver
 
 networks:
   vpn_net:

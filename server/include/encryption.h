@@ -1,7 +1,7 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
-#include "openssl.h"
+#include "standards.h"
 #include "data_structures.h"
 
 namespace encryption
@@ -15,10 +15,11 @@ namespace encryption
     int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *plaintext);
 
-    packet encrypt(packet pkt, encryption_data enc_data);
+    int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt);
+
     packet decrypt(packet encrypted_pkt, encryption_data enc_data);
 
-    void packet_free(packet pkt);
+    int getShaSum(const unsigned char *string, unsigned char *output);
 }
 
 #endif

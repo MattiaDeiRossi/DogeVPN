@@ -10,8 +10,6 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 
 #include "standards.h"
-#include "socket.h"
-#include "openssl.h"
 #include "data_structures.h"
 #include "defines.h"
 

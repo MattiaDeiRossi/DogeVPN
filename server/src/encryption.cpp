@@ -79,28 +79,75 @@ namespace encryption
         return plaintext_len;
     }
 
-    packet encrypt(packet pkt, encryption_data enc_data)
+    int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt)
     {
-        size_t ciphertext_len = ((strlen((char *)pkt.msg) / KEY_LEN) + 1) * KEY_LEN;
-        unsigned char *ciphertext = (unsigned char *)malloc(ciphertext_len);
-        memset(ciphertext, 0, ciphertext_len);
+        
+        int ret_val = 0;
 
-        int len = encryption::encrypt(pkt.msg, pkt.len, enc_data.key, enc_data.iv, ciphertext);
-        return packet(ciphertext, len);
+        /* Checking the length for returning an error in case of an UDP packet too large.
+        *  Abusing plus one just for lazyness and safetyness, ignoring modules.
+        */
+        size_t ciphertext_len = ((pkt.length / KEY_LEN) + 1) * KEY_LEN;
+        if (ciphertext_len > UDP_THEORETICAL_LIMIT) {
+            ret_val = UDP_PACKET_TOO_LARGE;
+            return ret_val;
+        }
 
+        packet encrypted_pkt;
+        encrypted_pkt.length = encryption::encrypt(
+            pkt.message, pkt.length, 
+            enc_data.key, enc_data.iv, 
+            encrypted_pkt.message
+        );
+
+        *enc_pkt = encrypted_pkt;
+        return ret_val;
     }
+
     packet decrypt(packet encrypted_pkt, encryption_data enc_data)
     {
-        unsigned char *plaintext = (unsigned char *)malloc(encrypted_pkt.len);
-        memset(plaintext, 0, encrypted_pkt.len);
 
-        int len = encryption::decrypt(encrypted_pkt.msg, encrypted_pkt.len, enc_data.key, enc_data.iv, plaintext);
-        return packet(plaintext, len);
+        packet pkt;
+        pkt.length = encryption::decrypt(
+            encrypted_pkt.message, encrypted_pkt.length, 
+            enc_data.key, enc_data.iv, 
+            pkt.message
+        );
+
+        return pkt;
     }
 
-    void packet_free(packet pkt){
-        free(pkt.msg);
+    int getShaSum(const unsigned char *string, unsigned char *output)
+    {
+
+        EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();
+        unsigned char mdVal[EVP_MAX_MD_SIZE];
+        unsigned int mdLen, i;
+
+        if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL))
+        {
+            // printf("Message digest initialization failed.\n");
+            EVP_MD_CTX_free(mdCtx);
+            return -1;
+        }
+
+        // Hashes cnt bytes of data at d into the digest context mdCtx
+        if (!EVP_DigestUpdate(mdCtx, string, strlen((const char *)string)))
+        {
+            // printf("Message digest update failed.\n");
+            EVP_MD_CTX_free(mdCtx);
+            return -1;
+        }
+
+        if (!EVP_DigestFinal_ex(mdCtx, mdVal, &mdLen))
+        {
+            // printf("Message digest finalization failed.\n");
+            EVP_MD_CTX_free(mdCtx);
+            return -1;
+        }
+
+        EVP_MD_CTX_free(mdCtx);
+        memcpy(output, mdVal, EVP_MAX_MD_SIZE);
+        return 0;
     }
-
-
 }

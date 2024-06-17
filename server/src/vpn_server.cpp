@@ -1,10 +1,7 @@
 #include "standards.h"
-#include "socket.h"
-#include "openssl.h"
 #include "defines.h"
 #include "data_structures.h"
 #include "encryption.h"
-#include "mongo.hpp"
 
 // TODO return instead of exit.
 
@@ -24,38 +21,19 @@ void log_vpn_server_error(int error_number) {
 
     switch (error_number) {
       case INIT_SSL_ERROR:
-        fprintf(
-            stderr, 
-            "Server cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n"
-        );
+        fprintf(stderr, "Server cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n");
         break;
     case TCP_SOCKET_ERROR:
-        fprintf(
-            stderr, 
-            "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "TCP server cannot be created. Call to socket() failed.\n");
         break;
     case TCP_BIND_ERROR:
-        fprintf(
-            stderr, 
-            "TCP server cannot be bound. Call to bind() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "TCP server cannot be bound. Call to bind() failed.\n");
         break;
     case TCP_LISTEN_ERROR:
-        fprintf(
-            stderr, 
-            "TCP cannot listen. Call to listen() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "TCP cannot listen. Call to listen() failed.\n");
         break;
     case TCP_ACCEPT_ERROR:
-        fprintf(
-            stderr, 
-            "TCP cannot accept. Call to accept() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "TCP cannot accept. Call to accept() failed.\n");
         break;
     case SSL_CREATION_ERROR:
         fprintf(stderr, "An SSL object cannot be created. Call to SSL_new() failed.\n");
@@ -70,28 +48,16 @@ void log_vpn_server_error(int error_number) {
         fprintf(stderr, "Out of memory.\n");
         break;
     case UDP_SOCKET_ERROR:
-        fprintf(
-            stderr, 
-            "UDP server cannot be created. Call to socket() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "UDP server cannot be created. Call to socket() failed.\n");
         break;
     case UDP_BIND_ERROR:
-        fprintf(
-            stderr, 
-            "UDP server cannot be bound. Call to bind() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "UDP server cannot be bound. Call to bind() failed.\n");
         break;
     case ILLEGAL_STATE:
         fprintf(stderr, "Program reached an illegal state and should be aborted.\n");
         break;
     case SELECT_ERROR:
-        fprintf(
-            stderr, 
-            "Call to select() failed with error=%d.\n", 
-            get_errno()
-        );
+        fprintf(stderr, "Call to select() failed.\n");
         break;
     case UNEXPECTED_DISCONNECT:
         fprintf(stderr, "Client disconnect unexpectedly.\n");
@@ -106,7 +72,16 @@ void log_vpn_server_error(int error_number) {
         fprintf(stderr, "RAND_bytes() not supported by the current RAND method.\n");
         break;
     case RAND_FAILURE:
-        fprintf(stderr, "RAND_bytes() reported a failure (%ld).\n", ERR_get_error());
+        fprintf(stderr, "RAND_bytes() reported a failure.\n");
+        break;
+    case SSL_WRITE_ERROR:
+        fprintf(stderr, "SSL_write() reported a failure.\n");
+        break;
+    case UDP_READ_ERROR:
+        fprintf(stderr, "recvfrom() reported a failure.\n");
+        break;
+    case INVALID_CLIENT_ID:
+        fprintf(stderr, "The client id cannot be extracted from the UDP packet.\n");
         break;
       default:
         fprintf(stderr, "Some error occured.\n");
@@ -134,8 +109,8 @@ int init_ssl(SSL_CTX **ctx_pointer) {
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     if (!ctx) return INIT_SSL_ERROR;
 
-    int load_certificate = SSL_CTX_use_certificate_file(ctx, "../certs/cert.pem" , SSL_FILETYPE_PEM);
-    int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "../certs/key.pem", SSL_FILETYPE_PEM);
+    int load_certificate = SSL_CTX_use_certificate_file(ctx, "cert.pem" , SSL_FILETYPE_PEM);
+    int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM);
 
     if (!load_certificate || !load_private_key) {
         ERR_print_errors_fp(stderr);
@@ -223,7 +198,6 @@ int create_tcs(
     if (!ret_data) {
         ssl_free(ssl);
         close_socket(client_socket);
-
         return OUT_OF_MEMORY;
     }
 
@@ -630,31 +604,96 @@ int handle_new_tcp_client(
     return ret_val;
 }
 
-int ssl_read_client_credentials(SSL *ssl, client_credentials *credentials) {
+void uc_map_update(
+    user_id id,
+    std::map<int, udp_client_info*>& map,
+    std::shared_mutex& mutex,
+    udp_client_info *new_info
+) {
 
-    int ret_val = 0;
+    std::unique_lock lock(mutex);
 
-    client_credentials cc;
-    memset(&cc, 0, sizeof(cc));
+    udp_client_info *info = map.at(id);
+    if (info) {
+        free(info);
+        map.erase(id);
+    }
+
+    if (new_info) {
+        map[id] = new_info;
+    }
+}
+
+/* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
+*  When handling a new client there is no need to just create the client socket and return.
+*  A dedicated process should handle the process of data exchange without relying on select in the main loop.
+*  After a timeout or some error the client socket can be freed along with the thread.
+*  This will simplify the whole logic.
+*/
+void handle_tcp_client_key_exchange(
+    socket_t client_socket,
+    struct sockaddr_storage client_address,
+    socklen_t client_len,
+    SSL_CTX *ctx,
+    std::map<int, udp_client_info*>& map, 
+    std::shared_mutex& mutex
+) {
+    
+    // Creating an SSL object.
+    SSL *ssl = SSL_new(ctx);
+    if (!ssl) {
+        log_vpn_server_error(SSL_CREATION_ERROR);
+        close_socket(client_socket);
+        return;
+    }
+
+    /* Associating the ssl object with the client socket.
+    *  Now the ssl object is bound to a socket that cna be used to communicate over TLS.
+    */
+    SSL_set_fd(ssl, client_socket);
+
+    /* A call to SSL_accept() can fail for many reasons. 
+    *  For example if the connected client does not trust our certificate.
+    *  Or the client and the server cannot agree on a cipher suite. 
+    *  This must be taking into account a the server should continue listening to incoming connections.
+    */
+    if (SSL_accept(ssl) != 1) {
+        log_vpn_server_error(SSL_ACCEPT_ERROR);
+        ERR_print_errors_fp(stderr);
+        ssl_free(ssl);
+        close_socket(client_socket);
+        return;
+    }
+
+    // Logging client ip address and the established cipher.
+    char buffer[256];
+    struct sockaddr *cl_address = (struct sockaddr*) &client_address;
+    getnameinfo(cl_address, client_len, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
+    printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
+
+    client_credentials credentials;
+    memset(&credentials, 0, sizeof(credentials));
 
     /* The assumption here is that all the data comes from a single read.
     *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
     *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
     */
-    int size = sizeof(cc.data);
-    int read_error = SSL_read(ssl, cc.data, size) < 1;
+    int size = sizeof(credentials.data);
+    int read_error = SSL_read(ssl, credentials.data, size) < 1;
     if (read_error) {
-        ret_val = UNEXPECTED_DISCONNECT;
-        return ret_val;
+        log_vpn_server_error(UNEXPECTED_DISCONNECT);
+        ssl_free(ssl);
+        close_socket(client_socket);
+        return;
     }
 
     int reading_credentials = 1;
-    char *usr_p = cc.username;
-    char *pwd_p = cc.password;
+    char *usr_p = credentials.username;
+    char *pwd_p = credentials.password;
 
     for (int i = 0; i < size; ++i) {
         
-        char bdata = cc.data[i];
+        char bdata = credentials.data[i];
         
         if (reading_credentials) {
 
@@ -673,67 +712,38 @@ int ssl_read_client_credentials(SSL *ssl, client_credentials *credentials) {
         }
     }
 
-    *credentials = cc;
-    return ret_val;
-}
-
-int handle_credentials_from_client(
-    socket_holder *holder,
-    std::map<socket_t, socket_holder*>& map, 
-    fd_set *master_set,
-    socket_t *max_socket
-) {
-
-    int ret_val = 0;
-
-    // This is something that should never happen.
-    if (holder == NULL) exit(ILLEGAL_STATE);
-    if (holder->type != TCP_CLIENT_SOCKET) exit(ILLEGAL_STATE);
-
-    tcp_client_socket *tcs = holder->data.tcs;
-    client_credentials credentials;
-    ret_val = ssl_read_client_credentials(tcs->ssl, &credentials);
-    if (ret_val) {
-        map_set_max_delete_client(holder, map, master_set, max_socket);
-        return ret_val;
-    }
-
     /* DogeVPN requires a minimum length of bytes for the password.
     *  If the minimum length is not respected, than the database does not even gets accessed.
     */
     int pwd_len = strlen(credentials.password);
     if (pwd_len < MINIMUM_PWD_LEN) {
-        ret_val = PWD_TOO_SHORT;
-        map_set_max_delete_client(holder, map, master_set, max_socket);
-        return ret_val;
+        log_vpn_server_error(PWD_TOO_SHORT);
+        ssl_free(ssl);
+        close_socket(client_socket);
+        return;
     }
 
-    // TODO: database fetching.
-    user_id db_user_id = 42;
+    /* The user id is an important property for communicating over UDP.
+    *  Once the id is fetched, it must be saved in memory.
+    *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
+    */
+    user_id db_user_id = 42; // TODO
     char id_buf[ID_LEN];
-    char *id_p = id_buf;
     memset(id_buf, 0, ID_LEN);
     sprintf(id_buf, "%d", db_user_id);
 
-    // Generating a key to be shared with the client by using the OpenSSL library.
+    /* Generating a key by using the OpenSSL library.
+    *  It will be shared with the client to communicate over UDP.
+    */
     unsigned char rand_buf[KEY_LEN];
     memset(rand_buf, 0, KEY_LEN);
     int rand_value = RAND_bytes(rand_buf, KEY_LEN);
     if (rand_value != 1) {
-
-        if (rand_value == -1) {
-            ret_val = RAND_NOT_SUPPORTED;
-        } else {
-            ret_val = RAND_FAILURE;
-        }
-
-        map_set_max_delete_client(holder, map, master_set, max_socket);
-        return ret_val;
+        log_vpn_server_error(rand_value == -1 ? RAND_NOT_SUPPORTED : RAND_FAILURE);
+        ssl_free(ssl);
+        close_socket(client_socket);
+        return;
     }
-
-    char key[KEY_LEN];
-    memset(key, 0, KEY_LEN);
-    memcpy(key, rand_buf, KEY_LEN);
 
     /* Composing the final message.
     *  It has the following form:
@@ -745,35 +755,288 @@ int handle_credentials_from_client(
     memset(message, 0, MAX_KEY_MESSAGE_LEN);
     char *msg_p = message;
 
-    // Copying the key to the message holder.
+    /* Copying the key.
+    *  It will be the first part of the message (256 bit).
+    */
     for (int i = 0; i < KEY_LEN; ++i) {
-        *msg_p = key[i];
+        *msg_p = rand_buf[i];
         msg_p++;
     }
 
-    // Adding the separator to the message.
+    /* The separator within the message.
+    *  After it the user id will be present.
+    */
     *msg_p = MESSAGE_SEPARATOR;
     msg_p++;
 
-    // Adding the final part of the message that is the user id.
+    /* Adding the final part of the message that is the user id.
+    *  It will be used to retrieve teh correct symmetric key for the UDP client.
+    */
+    char *id_p = id_buf;
     while(*id_p) {
         *msg_p = *id_p;
         msg_p++;
         id_p++;
     }
 
-    // Writing data into socket. TODO: check error.
-    SSL_write(tcs->ssl, message, strlen(message));
+    udp_client_info *info = (udp_client_info*) malloc(sizeof(udp_client_info));
+    if (!info) {
+        log_vpn_server_error(OUT_OF_MEMORY);
+        ssl_free(ssl);
+        close_socket(client_socket);
+        return;
+    }
 
-    /* Releasing client resources since they are not needed anymore.
-    *  TODO: The id must be saved somewhere.
+    /* Updating the info map.
+    *  Mutex is needed to protect shared memory.
     */
-    map_set_max_delete_client(holder, map, master_set, max_socket);
+    uc_map_update(db_user_id, map, mutex, info);
 
-    return 0;
+    /* Errors can be different.
+    *  A more resilient approach would be call SSL_get_error() to find out if it's retryable.
+    */
+    if (SSL_write(ssl, message, strlen(message)) <= 0) {
+
+        log_vpn_server_error(SSL_WRITE_ERROR);
+
+        uc_map_update(db_user_id, map, mutex, NULL);
+        ssl_free(ssl);
+        close_socket(client_socket);
+
+        return;
+    }
+
+    /* After the key has been exchanged the TCP connection gets closed.
+    *  A better approach would be to keep the connection alive and use it to perform specific operations:
+    *   - For example establish a new key after a while
+    *   - Release UDP resources before the TCP connection goes away
+    */
+    ssl_free(ssl);
+    close_socket(client_socket);
 }
 
-// TODO check [size].
+void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex) {
+    std::unique_lock lock(mutex);
+    for (auto iter = map.begin(); iter != map.end(); ++iter) free(iter->second);
+    map.clear();
+}
+
+int extract_id(packet pkt, user_id *id_value) {
+
+    int ret_val = 0;
+    int current_index = pkt.length - 1;
+
+    /* Setting up the buffer for extracting the id.
+    *  Adding 1 is needed to avoid non null terminated string.
+    */
+    char id_buff[ID_LEN_PLUS_ONE];
+    memset(id_buff, 0, ID_LEN_PLUS_ONE);
+
+    int j = 0;
+    for (int i = current_index; i >= 0; --i) {
+        
+        /* Id has a specific length.
+        *  When dealing with longer id, an error is returned.
+        */
+        if (j == ID_LEN_PLUS_ONE) {
+            ret_val = INVALID_CLIENT_ID;
+            return ret_val;
+        }
+        
+        char bdata = pkt.message[i];
+        if (bdata == '.') {
+            current_index = i - 1;
+            break;
+        }
+
+        if (!isdigit(bdata)) {
+            ret_val = INVALID_CLIENT_ID;
+            return ret_val;
+        };
+
+        id_buff[j++] = bdata;
+    }
+
+    /* Sanity check.
+    *  Id must not be empty.
+    */
+    if (j == 0) {
+        ret_val = INVALID_CLIENT_ID;
+        return ret_val;
+    }
+
+    /* Id has been read in reverse.
+    *  In order to extract it correctly, a reverse operation is applied. 
+    */
+    char *str = id_buff;
+    int len = strlen(id_buff);
+    char* start = str;
+    char* end = str + len - 1;
+    while (start < end) {
+        char temp = *start;
+        *start = *end;
+        *end = temp;
+        start++;
+        end--;
+    }
+
+    /* Id extracted.
+    *  Converting the string to a valid integer.
+    */
+    int id_num;
+    sscanf(id_buff, "%d", &id_num);
+
+    /* Extracting the IV vector.
+    *  After the id, the IV vector must be present.
+    */
+    char iv_data[IV_LEN];
+    j = 0;
+    for (int i = current_index; i >= 0; --i) {
+        
+        /* IV has a specific length.
+        *  When dealing with longer IVs, an error is returned.
+        */
+        if (j == IV_LEN) {
+            ret_val = INVALID_IV;
+            return ret_val;
+        }
+        
+        char bdata = pkt.message[i];
+        if (bdata == '.') {
+            current_index = i - 1;
+            break;
+        }
+
+        iv_data[j++] = bdata;
+    }
+
+    /* IV has a specific length.
+    *  When dealing with smaller IVs, an error is returned.
+    */
+    if (j != IV_LEN) {
+        ret_val = INVALID_IV;
+        return ret_val;
+    }
+
+    /* Extracting the hash of the message.
+    *  After the IV vector, the hash must be present.
+    */
+    char hash[SHA_256_BYTES];
+    j = 0;
+    for (int i = current_index; i >= 0; --i) {
+        
+        /* IV has a specific length.
+        *  When dealing with longer IVs, an error is returned.
+        */
+        if (j == SHA_256_BYTES) {
+            ret_val = INVALID_HASH;
+            return ret_val;
+        }
+        
+        char bdata = pkt.message[i];
+        if (bdata == '.') {
+            current_index = i - 1;
+            break;
+        }
+
+        hash[j++] = bdata;
+    }
+
+    /* Hash has a specific length.
+    *  When dealing with smaller hashes, an error is returned.
+    */
+    if (j != SHA_256_BYTES) {
+        ret_val = INVALID_HASH;
+        return ret_val;
+    }
+
+
+
+    *id_value = id_num;
+
+    return ret_val;
+}
+
+/* Errors should be notified to the client peer.
+*  This should be done by using the initial TCP connection. 
+*  This version does not include any error notification.
+*/
+int handle_incoming_udp_packet(
+    socket_t udp_socket, 
+    std::map<int, udp_client_info*>& map, 
+    std::shared_mutex& mutex
+) {
+
+    int ret_val = 0;
+    struct sockaddr_storage client_address;
+    socklen_t client_len = sizeof(client_address);
+
+    /* Using the theoretical limit of an UDP packet.
+    *  Instead of setting the MSG_PEEK flag, on safe bet is made on how much data to allocate.
+    */
+    packet pkt;
+    memset(&pkt, 0, sizeof(packet));
+    pkt.length = recvfrom(
+        udp_socket, pkt.message,
+        sizeof(pkt.message), 0,
+        (struct sockaddr *) &client_address, &client_len
+    );
+
+    /* The value of zero is not considered an error.
+    *  A connection can be closed by the other peer.
+    */
+    if (pkt.length == 0) {
+        printf("UDP connection closed by a peer.\n");
+        return ret_val;
+    }
+
+    /* A negative value should never happen.
+    *  In this case no actions are perfromed, just returning the error.
+    */
+    if (pkt.length < 0) {
+        ret_val = UDP_READ_ERROR;
+        return ret_val;
+    }
+
+    char address_buffer[128];
+    char service_buffer[128];
+    getnameinfo(
+        (struct sockaddr*) &client_address, client_len,
+        address_buffer, sizeof(address_buffer), 
+        service_buffer, sizeof(service_buffer),
+        NI_NUMERICHOST | NI_NUMERICSERV
+    );
+
+    printf("Received %ld bytes from %s:%s\n", pkt.length, address_buffer, service_buffer);
+
+    /* Now the main logic of must happen:
+    *   1. Extract the id from the packet
+    *   2. Check the presence of the id within the shared map
+    *   3. Get the connection info to verify some UDP connection property
+    *   4. Decrypt the packet
+    *   5. Forward it to the TUN interface
+    *  There can be different scenarios for which packets must be rejected.
+    */
+
+    /* Step 1.
+    *  Extract the client id.
+    */
+    user_id id;
+    ret_val = extract_id(pkt, &id);
+    if (ret_val) return ret_val;
+
+    /* Step 2 and 3.
+    *  Check the presence of the id.
+    *  Extract the key property.
+    */
+    char key[KEY_LEN];
+    // ret_val = extract_key(packet, map, mutex, key, KEY_LEN);
+    if (ret_val) return ret_val;
+
+
+    return ret_val;
+}
+
 int start_doge_vpn() {
 
     int ret_val = 0;
@@ -784,6 +1047,9 @@ int start_doge_vpn() {
     socket_holder *uss_holder = NULL;
 
     std::map<socket_t, socket_holder*> sh_map;
+    std::map<user_id, udp_client_info*> uc_map;
+    std::shared_mutex uc_map_mutex;
+
     fd_set master;
 
     // SSL initialization.
@@ -814,37 +1080,55 @@ int start_doge_vpn() {
             goto error_handler;
         }
 
-        // Iterating all the registered sockets.
-        for (auto iter = sh_map.begin(); iter != sh_map.end(); ++iter) {
+        for (socket_t socket = 0; socket <= max_socket; ++socket) {
 
-            // Getting key and value.
-            socket_t socket = iter->first;
-            socket_holder *holder = iter->second;
-
-            // Getting key and value.
            if (FD_ISSET(socket, &reads)) {
 
-                if (map_is_tss(holder)) {
+                if (socket == extract_socket(tss_holder)) {
 
-                    // Handling incoming TCP connections.
-                    int tcp_client_err = handle_new_tcp_client(socket, ctx, sh_map, &master, &max_socket);
-                    if (tcp_client_err) log_vpn_server_error(tcp_client_err);
-
-                } else if (map_is_uss(holder)) {
-
-                    // Udp server has some data to read...
-
-                } else if (map_is_tcs(holder)) {
-
-                    /* This part should be handled as soon as the tcp server was able to generate a client socket.
-                    *  The whole logic should live inside a thread for improving performance and simplify the logic.
-                    *  The only socket in the set should be the tcp and udp server socket.
-                    *  This will remove the max_socket handling since select would be on tcp and udp socket only.
+                    /* The TCP socket is ready to accept a new client.
+                    *  By calling accept, a new client socket will be created.
+                    *  Calling accept won't block the main thread since a call to select was made.
                     */
-                    int client_data_error = handle_credentials_from_client(holder, sh_map, &master, &max_socket);
-                    if (client_data_error) log_vpn_server_error(client_data_error);
-                }
+                    struct sockaddr_storage client_address;
+                    socklen_t client_len = sizeof(client_address);
+                    socket_t client_socket = accept(socket, (struct sockaddr*) &client_address, &client_len);
 
+                    if (invalid_socket(client_socket)) {
+
+                        /* Calling accept failed.
+                        *  This could fail when the connections reach the maximum allowed number.
+                        */
+                        log_vpn_server_error(TCP_ACCEPT_ERROR);
+                    } else {
+
+                        /* Why do we need to start a new thread when handling a new client?
+                        *  SSL operations may block on a slow client.
+                        *  Instead of blocking the entire server we may want to block only one therad.
+                        *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
+                        */
+                        std::thread th(
+                            handle_tcp_client_key_exchange, 
+                            socket,
+                            client_address,
+                            client_len,
+                            ctx, 
+                            std::ref(uc_map), 
+                            std::ref(uc_map_mutex)
+                        );
+
+                        th.detach();
+                    }
+                } else if (socket == extract_socket(uss_holder)) {
+
+                    int some_error = handle_incoming_udp_packet(socket, uc_map, uc_map_mutex);
+                    if (some_error) log_vpn_server_error(some_error);
+                } else {
+
+                    /* This section should handle specific client packets by using the TCP connection.
+                    *  The TCP connection should be kept in order to perform reliable actions.
+                    */
+                }
             }
         }
     }
@@ -859,51 +1143,51 @@ error_handler:
     // Cleaning up resources.
     ssl_context_free(ctx);
     map_set_max_free(sh_map, &master, &max_socket);
+    map_uc_free(uc_map, uc_map_mutex);
 
     return ret_val;
 }
 
+void test_enc_dec() {
+
+    encryption_data ed;
+
+    for (int i = 0; i < KEY_LEN; ++i)
+    {
+        ed.key[i] = 42;
+    }
+
+    for (int i = 0; i < IV_LEN; ++i)
+    {
+        ed.iv[i] = 10;
+    }
+
+    packet pkt;
+    pkt.message[0] = 'h';
+    pkt.message[1] = 'e';
+    pkt.length = 2;
+
+    packet enc_pkt;
+    memset(&enc_pkt, 0, sizeof(packet));
+    encryption::encrypt(pkt, ed, &enc_pkt);
+
+    printf("data=%s\nlen=%ld", enc_pkt.message, enc_pkt.length);
+
+    packet dec_pkt;
+    memset(&dec_pkt, 0, sizeof(packet));
+    dec_pkt = encryption::decrypt(enc_pkt, ed);
+    printf("%s", dec_pkt.message);
+
+    unsigned char buffer[64];
+    encryption::getShaSum((const unsigned char*)"hg", buffer);
+
+}
+
 int main(int argc, char const *argv[]) {
 
-    mongo mongo("mongodb://user:pwd@10.5.0.5:27017/vpndb");
-    mongo.add_user("0", "user1", "psw");
-    mongo.get_users(); // print users
-
-    std::cout<< mongo.is_present("user1", "psw") << std::endl;
-
-    /* A 256 bit key */
-    unsigned char key[32] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-                              0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
-                              0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33,
-                              0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31 };
-
-    /* A 128 bit IV */
-    unsigned char iv[16] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-                             0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 };
-
-    /* Message to be encrypted */
-    unsigned char *plaintext =
-        (unsigned char *)"012345678912345-012345678912345-ciao";
-
-    /* Buffer for ciphertext. Ensure the buffer is long enough for the
-     * ciphertext which may be longer than the plaintext, depending on the
-     * algorithm and mode.
-     */
-    packet packet(plaintext, strlen((char*)plaintext));
-    encryption_data enc_data(key, iv);
-    std::cout << "TEST ORIGINAL: " << packet.msg << ", "<< packet.len << std::endl;
-
-    auto encrypted_pkt = encryption::encrypt(packet, enc_data);
-    std::cout << "TEST ENCRYPTION: " << encrypted_pkt.msg <<  ", "<< encrypted_pkt.len << std::endl;
-
-    auto original_pkt = encryption::decrypt(encrypted_pkt, enc_data);
-    std::cout << "TEST DECRYPTION: " << original_pkt.msg <<  ", "<< original_pkt.len << std::endl;
-
-    encryption::packet_free(packet);
-    encryption::packet_free(encrypted_pkt);
-    encryption::packet_free(original_pkt);
-
-	return start_doge_vpn();
+    test_enc_dec();
+    return 0;
+	//return start_doge_vpn();
 }
 
 // A TUN interface should be created to perfrom tunnelling properly.

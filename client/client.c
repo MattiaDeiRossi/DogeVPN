@@ -1,5 +1,5 @@
-// Compile with gcc client.c -lssl -lcrypto -o client
-
+// Compile with gcc aes.c client.c -lssl -lcrypto -o client
+//https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,6 +12,15 @@
 #include <time.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
+#include "aes.h"
 
 // *** Start SSL headers ***
 // In order to generate a self signed certificate:
@@ -24,32 +33,44 @@
 // *** End SSL headers ***
 
 // ***  Start error definitions ***
-#define INIT_SSL_ERROR 10
-#define TCP_SOCKET_ERROR 11
-#define TCP_CONNECT_ERROR 12
-#define TCP_ACCEPT_ERROR 14
-#define TCP_SEND_ERROR 22
-#define SSL_CREATION_ERROR 15
-#define SSL_ACCEPT_ERROR 16
-#define SSL_CERTIFICATE_ERROR 17
-#define OUT_OF_MEMORY 18
-#define WRONG_CREDENTIALS 21
-#define UDP_SOCKET_ERROR 19
-#define UDP_BIND_ERROR 20
-#define TCP_READ_ERROR 23
+#define SSL_INIT_ERROR 1000
+#define SSL_NEW_ERROR 1001
+#define SSL_TLSEXT_HOST_NAME_ERROR 1002
+#define SSL_SET_FD_ERROR 1003
+#define TCP_SSL_CONNECT_ERROR 1004
+#define TCP_SOCKET_ERROR 2000
+#define TCP_CONNECT_ERROR 2001
+#define TCP_SEND_ERROR 2002
+#define TCP_READ_ERROR 2003
+#define UDP_SOCKET_ERROR 3000
+#define UDP_CONNECT_ERROR 3001
+#define UDP_SEND_ERROR 3002
+#define UDP_READ_ERROR 3003
+#define TUN_OPEN_DEV 4000
+#define TUN_TUNSETIFF 4001
+#define TUN_SEND_ERROR 4002
+#define TUN_READ_ERROR 4003
+#define MAX_FD_ERROR 5000
+#define WRONG_CREDENTIAL 7000
+
+
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***
-#define MAX_TCP_CONNECTIONS 10
-#define TCP_HOST 0
-#define TCP_PORT "60000"
-#define TCP_PORT_SERVER "8080"
+#define TCP_HOST "0.0.0.0"
+#define TCP_PORT 8080
 // *** End TCP constant definitions ***
 
 // *** Start UDP constant definitions ***
-#define UDP_HOST 0
-#define UDP_PORT "9090"
-// *** Start UDP constant definitions ***
+#define UDP_HOST "127.0.0.1"
+#define UDP_PORT 19090
+// *** End UDP constant definitions ***
+
+// *** Start Tun constant definitions ***
+#define SERVER_HOST "10.5.0.6"
+#define MTU 1400
+// *** End Tun constant definitions ***
+
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -60,220 +81,144 @@
 
 // *** Start constants ***
 #define TRUE 1
+#define AUTH_FAILED "AuthFailed"
 // *** End constants ***
 
 #define SA struct sockaddr
 
-// *** Start type definitions ***
-
-
-typedef enum {
-  TCP_SERVER_SOCKET,
-  TCP_server_SOCKET,
-  UDP_SERVER_SOCKET,
-  UDP_server_SOCKET,
-} SOCKET_TYPE;
-
 typedef int SOCKET;
-
-
-typedef struct {
-
-    SOCKET socket_server;
-    socklen_t server_len;
-    struct sockaddr_storage server_address;
-} server_socket;
-
-typedef struct {
-
-    SOCKET socket_server;
-    socklen_t server_len;
-    struct sockaddr_storage server_address;
-    SSL *ssl;    
-} tcp_server_socket;
-
-typedef struct {
-
-    SOCKET socket_server;
-    socklen_t server_len;
-    struct sockaddr_storage server_address;
-} udp_server_socket;
-
-typedef struct {
-
-    SOCKET socket_server;
-    SOCKET_TYPE socket_type;
-} socket_holder;
-// *** Start type definitions ***
-
-/*
-void close_tcp_connection_with_server(tcp_server_socket *data) {
-
-    SSL_shutdown(data->ssl);
-    CLOSE_SOCKET(data->socket_server);
-    SSL_free(data->ssl);
-    free(data);
-}*/
 
 void log_vpn_client_error(int error_number) {
 
     switch (error_number) {
-      case INIT_SSL_ERROR:
-        fprintf(
-            stderr, 
-            "Server cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n"
-        );
-        break;
-    case TCP_SOCKET_ERROR:
-        fprintf(
-            stderr, 
-            "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case TCP_CONNECT_ERROR:
-        fprintf(
-            stderr, 
-            "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case TCP_SEND_ERROR:
-        fprintf(
-            stderr, 
-            "TCP cannot send. Call to send() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case TCP_ACCEPT_ERROR:
-        fprintf(
-            stderr, 
-            "TCP cannot accept. Call to accept() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case TCP_READ_ERROR:
-        fprintf(
-            stderr, 
-            "TCP cannot read. Call to read() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case WRONG_CREDENTIALS:
-        fprintf(
-            stderr, 
-            "Wrong credentials. Authentication failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case SSL_CREATION_ERROR:
-        fprintf(stderr, "An SSL object cannot be created. Call to SSL_new() failed.\n");
-        break;
-    case SSL_ACCEPT_ERROR:
-        fprintf(stderr, "A valid SSL connection cannot be accepted. Call to SSL_accept() failed.\n");
-        break;
-    case SSL_CERTIFICATE_ERROR:
-        fprintf(stderr, "A valid certificate cannot be found. Call to SSL_CTX_use_certificate_file() failed.\n");
-        break;
-    case OUT_OF_MEMORY:
-        fprintf(stderr, "Out of memory.\n");
-        break;
-    case UDP_SOCKET_ERROR:
-        fprintf(
-            stderr, 
-            "UDP server cannot be created. Call to socket() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-    case UDP_BIND_ERROR:
-        fprintf(
-            stderr, 
-            "UDP server cannot be bound. Call to bind() failed with error=%d.\n", 
-            GET_SOCKET_ERRNO()
-        );
-        break;
-      default:
-        fprintf(stderr, "Some error occured.\n");
+        case SSL_INIT_ERROR:
+            fprintf(
+                stderr, 
+                "Client cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n"
+            );
+            break;
+        case SSL_NEW_ERROR:
+            fprintf(
+                stderr, 
+                "Call to SSL_new() failed.\n"
+            );
+            break;
+        case SSL_TLSEXT_HOST_NAME_ERROR:
+            fprintf(
+                stderr, 
+                "Call to SSL_set_tlsext_host_name() failed.\n"
+            );
+            break;
+        case SSL_SET_FD_ERROR:
+            fprintf(
+                stderr, 
+                "Call to SSL_set_fd() failed.\n"
+            );
+            break;
+        case TCP_SSL_CONNECT_ERROR:
+            fprintf(
+                stderr, 
+                "Call to SSL_connect() failed.\n"
+            );
+            break;
+        case TCP_SOCKET_ERROR:
+            fprintf(
+                stderr, 
+                "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case TCP_CONNECT_ERROR:
+            fprintf(
+                stderr, 
+                "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );        
+            break;
+        case TCP_SEND_ERROR:
+            fprintf(
+                stderr, 
+                "TCP cannot send. Call to send() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case TCP_READ_ERROR:
+            fprintf(
+                stderr, 
+                "TCP cannot send. Call to read() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case UDP_SOCKET_ERROR:
+            fprintf(
+                stderr, 
+                "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case UDP_CONNECT_ERROR:
+            fprintf(
+                stderr, 
+                "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );        
+            break;
+        case UDP_SEND_ERROR:
+            fprintf(
+                stderr, 
+                "UDP cannot send. Call to send() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case UDP_READ_ERROR:
+            fprintf(
+                stderr, 
+                "UDP cannot send. Call to read() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case TUN_OPEN_DEV:
+            fprintf(
+                stderr, 
+                "Tun: Cannot open /dev/net/tun\n"
+            );
+            break;
+        case TUN_TUNSETIFF:
+            fprintf(
+                stderr, 
+                "Tun. Call to ioctl() failed\n"
+            );
+            break;
+        case TUN_SEND_ERROR:
+            fprintf(
+                stderr, 
+                "Tun cannot send. Call to send() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+            break;
+        case TUN_READ_ERROR:
+            fprintf(
+                stderr, 
+                "Tun cannot send. Call to read() failed with error=%d.\n", 
+                GET_SOCKET_ERRNO()
+            );
+        case MAX_FD_ERROR:
+            fprintf(
+                stderr, 
+                "FD. Max select failed\n"
+            );
+            break;        
+        case WRONG_CREDENTIAL:
+            fprintf(
+                stderr, 
+                "Wrong credentials. Authentication failed\n"
+            );
+            break;
+        
+        
+        default:
+            fprintf(stderr, "Some error occured.\n");
     }
-}
-
-// A call to SSL_accept() can fail for many reasons. For example if the connected client does
-// not trust our certificate, or the client and the server cannot agree on a cipher
-// suite. This must be taking into account a the server should continue listening to incoming
-// connections.
-int accept_tls_server(SOCKET tcp_socket, SSL_CTX *ctx, tcp_server_socket **data) {
-
-    // Classic accept phase.
-    struct sockaddr_storage server_address;
-    socklen_t server_len = sizeof(server_address);
-    SOCKET socket_server = accept(tcp_socket, (struct sockaddr*) &server_address, &server_len);
-    if (!IS_VALID_SOCKET(socket_server)) {
-        log_vpn_client_error(TCP_ACCEPT_ERROR);
-        return TCP_ACCEPT_ERROR;
-    }
-
-    // Creating an SSL object.
-    SSL *ssl = SSL_new(ctx);
-    if (!ssl) {
-        log_vpn_client_error(SSL_CREATION_ERROR);
-        CLOSE_SOCKET(socket_server);
-        return SSL_CREATION_ERROR;
-    }
-
-    // Associating the ssl object with the socket_server.
-    SSL_set_fd(ssl, socket_server);
-    if (SSL_accept(ssl) != 1) {
-
-        // Loggin errors.
-        ERR_print_errors_fp(stderr);
-        log_vpn_client_error(SSL_ACCEPT_ERROR);
-
-        // Cleaning up SSL resources and the useless socket_server.  
-        SSL_shutdown(ssl);
-        CLOSE_SOCKET(socket_server);
-        SSL_free(ssl);
-
-        // No need to preallocate data if it is not necessary.
-        *data = NULL;
-        return SSL_ACCEPT_ERROR;
-    }
-
-    // Allocating a tcp_server_socket object.
-    tcp_server_socket *ret_data = (tcp_server_socket *) malloc(sizeof(tcp_server_socket));
-    if (!ret_data) {
-        log_vpn_client_error(OUT_OF_MEMORY);
-        return OUT_OF_MEMORY;
-    }
-
-    // Logging client ip address and the established cipher.
-    char buffer[256];
-    struct sockaddr *sr_address = (struct sockaddr*)&server_address;
-    getnameinfo(sr_address, server_len, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
-    printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
-
-    // Setting up the client object.
-    ret_data->socket_server = socket_server;
-    ret_data->server_len = server_len;
-    ret_data->server_address = server_address;
-    ret_data->ssl = ssl;
-    *data = ret_data;
-
-    return 0;
-}
-
-void add_update_sockets(fd_set *master, SOCKET *max_socket, SOCKET new_socket) {
-
-    // Just updating the socket set and mantain the max_socket.
-    FD_SET(new_socket, master);
-    if (new_socket > *max_socket) {
-        *max_socket = new_socket;
-    }
-}
-
-void clear_socket_resource(fd_set *master, SOCKET socket_to_clean) {
-
-    FD_CLR(socket_to_clean, master);
-    CLOSE_SOCKET(socket_to_clean);
 }
 
 // Function to call whenever a SSL contect is needed. 
@@ -292,86 +237,22 @@ int init_ssl(SSL_CTX **ctx_pointer) {
     SSL_load_error_strings();
 
 
-    SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
     if (!ctx) {
-        log_vpn_client_error(INIT_SSL_ERROR);
-        return INIT_SSL_ERROR;
+        log_vpn_client_error(SSL_INIT_ERROR);
+        return SSL_INIT_ERROR;
     }
 
     *ctx_pointer = ctx;
     return 0;
 }
 
-/* A TCP server and a UDP server share some common logic when creating a socket.
-*  In particular, both of them should typically perfrom the following operations:
-*   - getaddrinfo()
-*   - socket()
-*   - bind() 
-*/
-int up_to_bind(int is_tcp, char const *host, char *const port, SOCKET *ret_socket) {
-    struct sockaddr_in servaddr;    
-    
-    printf("*** Setting up %s address info ***\n", is_tcp ? "TCP" : "UDP");
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(struct addrinfo));
-
-    /* 1. AF_INET:      Looking for IPv4 address
-    *  2. SOCK_STREAM:  Going to use TCP
-    *  3. AI_PASSIVE:   Will listen to any available interface
-    */
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    // The variable bind_address will hold the return information from getaddrinfo.
-    struct addrinfo *bind_address;
-    getaddrinfo(host, port, &hints, &bind_address);
-
-    printf("*** Creating %s socket ***\n", is_tcp ? "TCP" : "UDP");
-    SOCKET socket_listen = socket(
-        bind_address->ai_family, 
-        bind_address->ai_socktype,
-        bind_address->ai_protocol
-    );
-
-    if (!IS_VALID_SOCKET(socket_listen)) {
-        int socket_error = is_tcp ? TCP_SOCKET_ERROR : UDP_SOCKET_ERROR;
-        log_vpn_client_error(socket_error);
-        freeaddrinfo(bind_address);
-        return socket_error;
-    }
-
-    bzero(&servaddr, sizeof(servaddr));
- 
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    servaddr.sin_port = htons(8080);
-
-    printf("*** Binding %s socket ***\n", is_tcp ? "TCP" : "UDP");
-    
-
-    if (connect(socket_listen, (SA*)&servaddr, sizeof(servaddr))){
-        int bind_error = UDP_BIND_ERROR;
-        log_vpn_client_error(bind_error);
-        freeaddrinfo(bind_address);
-        return bind_error;
-    }
-
-    // Addres infos are no longer needed.
-    freeaddrinfo(bind_address);
-
-    // Returning correctly created socket.
-    *ret_socket = socket_listen;
-    return 0;
-}
-
 int create_tcp_socket(SOCKET *tcp_socket) {
-    int sockfd, connfd;
-    struct sockaddr_in servaddr, cli;
+    int sockfd;
+    struct sockaddr_in servaddr;
     int ret_val = 0;
     
-    
+    printf("*** Setting up TCP address info ***\n");
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -380,128 +261,338 @@ int create_tcp_socket(SOCKET *tcp_socket) {
         return TCP_SOCKET_ERROR;
     }
 
-    printf("Socket successfully created..\n");
+    printf("*** Creating TCP socket ***\n");
     bzero(&servaddr, sizeof(servaddr));
  
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    servaddr.sin_port = htons(8080);
- 
+    servaddr.sin_addr.s_addr = inet_addr(TCP_HOST);
+    servaddr.sin_port = htons(TCP_PORT);
+    
+    printf("*** Connecting TCP socket ***\n");
+
     // connect the client socket to server socket
-    ret_val = connect(sockfd, (SA*)&servaddr, sizeof(servaddr));
-    if (!IS_VALID_SOCKET(ret_val)) {
+    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
         log_vpn_client_error(TCP_CONNECT_ERROR);
         return TCP_CONNECT_ERROR;
-    }
-    printf("connected to the server..\n");
+    }   
 
     *tcp_socket = sockfd;
  
     return ret_val;
 }
 
-int create_udp_socket(char const *host, char *const port, SOCKET *udp_socket) {
-
-    /* A UDP socket does not need to set itself to a listen state.
-    *  Just up to bind. 
-    */
-    return up_to_bind(0, host, port, udp_socket);
+void free_tcp_ssl(SSL_CTX* ctx, SOCKET tcp_socket, SSL* ssl_session) {
+    printf("*** SSL shutdown ***\n");
+    SSL_shutdown(ssl_session);
+    printf("*** SSL free ***\n");
+    SSL_free(ssl_session);
+    printf("*** SSL Context free ***\n");
+    SSL_CTX_free(ctx);
+    printf("*** Close socket ***\n");
+    CLOSE_SOCKET(tcp_socket);
 }
 
-int send_credentials(SOCKET *tcp_socket){
+int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET tcp_socket, SSL** ssl_session){
     int ret_val = 0;
-    char username[50] = "simome";
-    char password[50] = "el_rubio_sgualmuzzo";
-    char auth_credentials[102];
-    char symm_key[100] = "";
 
+    printf("*** Creating SSL ***\n");
+    SSL* ssl = SSL_new(ctx);
+    if (!ssl) {
+        log_vpn_client_error(SSL_NEW_ERROR);
+        return SSL_NEW_ERROR;
+    }
 
-    strcpy(auth_credentials, username);
-    strcat(auth_credentials, ":"); //assicurarsi che username non possa avere :
-    strcat(auth_credentials, password);
-    strcat(auth_credentials, "\0");
+    printf("*** Setting tlsext hostname  ***\n");
+    if (SSL_set_tlsext_host_name(ssl, TCP_HOST) == 0) {
+        log_vpn_client_error(SSL_TLSEXT_HOST_NAME_ERROR);
+        return SSL_TLSEXT_HOST_NAME_ERROR;
+    }
 
-    ret_val = send(*tcp_socket, auth_credentials, strlen(auth_credentials), 0);
-    if (!IS_VALID_SOCKET(ret_val)) {
-        int socket_error = TCP_SEND_ERROR;
-        log_vpn_client_error(socket_error);
-        return socket_error;
+    printf("*** Binding TCP socket with SSL session  ***\n");
+    if (!SSL_set_fd(ssl, tcp_socket)) {
+        log_vpn_client_error(SSL_SET_FD_ERROR);
+        return SSL_SET_FD_ERROR;
     }
-    printf("Credentials sent correctly..\n");
-    bzero(symm_key, sizeof(symm_key));
-    
-    ret_val = read(*tcp_socket, symm_key, sizeof(symm_key));
-    if (!IS_VALID_SOCKET(ret_val)) {
-        int socket_error = TCP_READ_ERROR;
-        log_vpn_client_error(socket_error);
-        return socket_error;
+
+    printf("*** Conneting SSL  ***\n");
+    if (SSL_connect(ssl) == -1) {
+        log_vpn_client_error(TCP_SSL_CONNECT_ERROR);
+        return TCP_SSL_CONNECT_ERROR;
+    }
+
+    *ssl_session = ssl;
+
+    return ret_val;    
+}
+
+int send_credential(SSL* ssl_session, char const* user, char const* pwd, char* secret_key){
+    int ret_val = 0;
+    int size = strlen(user) + strlen(pwd) + 1;
+    char *auth_credential = (char *)malloc(sizeof(char) * size);
+    char symmetric_key[256];
+
+    strcpy(auth_credential, user);
+    strcat(auth_credential, ":");
+    strcat(auth_credential, pwd);
+    strcat(auth_credential, "\0");
+
+    printf("*** Send authentication parameters ***\n");
+    if (!SSL_write(ssl_session, auth_credential, strlen(auth_credential))) {
+        log_vpn_client_error(TCP_SEND_ERROR);
+        return TCP_SEND_ERROR;
+    }
+
+    bzero(symmetric_key, sizeof(symmetric_key));
+    printf("*** Read authentication's response ***\n");
+    if (!SSL_read(ssl_session, symmetric_key, sizeof(symmetric_key))) {
+        log_vpn_client_error(TCP_READ_ERROR);
+        return TCP_READ_ERROR;
     }
     
+    if((strncmp(symmetric_key, AUTH_FAILED, strlen(AUTH_FAILED))) == 0) { 
+        log_vpn_client_error(WRONG_CREDENTIAL);
+        return WRONG_CREDENTIAL;
+    }    
     
-    if((strncmp(symm_key, "Wrong Credentials!", 18)) == 0){ //Define with server boys what's the error given due to wrong credentials
-        int socket_error = WRONG_CREDENTIALS;
-        log_vpn_client_error(socket_error);
-        return socket_error;
-    }
-    
-    printf("Key received: %s\n", symm_key);
+    strcpy(secret_key, symmetric_key);
 
     return ret_val;
 }
 
-
-int start_clear_doge_vpn() {
-
+int create_udp_socket(SOCKET *udp_socket) {
+    int sockfd;
+    struct sockaddr_in servaddr;
     int ret_val = 0;
+    
+    printf("*** Setting up UDP address info ***\n");
+    // socket create and verification
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (!IS_VALID_SOCKET(sockfd)) {
+        log_vpn_client_error(UDP_SOCKET_ERROR);
+        return UDP_SOCKET_ERROR;
+    }
+
+    printf("*** Creating UDP socket ***\n");
+    bzero(&servaddr, sizeof(servaddr));
+ 
+    // assign IP, PORT
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(UDP_HOST);
+    servaddr.sin_port = htons(UDP_PORT);
+    
+    printf("*** Connecting UDP socket ***\n");
+
+    // connect the client socket to server socket
+    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
+        log_vpn_client_error(UDP_CONNECT_ERROR);
+        return UDP_CONNECT_ERROR;
+    }   
+
+    *udp_socket = sockfd;
+ 
+    return ret_val;
+}
+
+int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
+    int ret_val = 0;
+
+    unsigned char* crypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
+    unsigned char* decrypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
+    bzero(crypted_message, sizeof(crypted_message));
+    bzero(decrypted_message, sizeof(decrypted_message));
+    unsigned char* send_message = "CIAO";
+
+    int len_e = encrypt(send_message, strlen(send_message), secret_key, crypted_message);
+    crypted_message[len_e] = 0;
+
+    printf("*** Send UDP message ***\n");
+    if (!send(*udp_socket, crypted_message, strlen(crypted_message), 0)) {
+        log_vpn_client_error(UDP_SEND_ERROR);
+        return UDP_SEND_ERROR;
+    }
+
+    unsigned char* read_message = (unsigned char *)malloc(sizeof(char) * 1500);
+
+    bzero(read_message, sizeof(read_message));
+    printf("*** Read udp message ***\n");
+    if (!read(*udp_socket, read_message, sizeof(read_message))) {
+        log_vpn_client_error(UDP_READ_ERROR);
+        return UDP_READ_ERROR;
+    }
+
+    int len_d = decrypt(read_message, strlen(read_message), secret_key, decrypted_message);
+    decrypted_message[len_d] = 0;
+    printf("Data received decrypted: %s\n", decrypted_message);
+
+    return ret_val;
+}
+
+int tun_alloc(SOCKET *tun_fd) {
+    int ret_val = 0;
+    struct ifreq ifr;
+    int fd, e;
+
+    if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
+        log_vpn_client_error(TUN_OPEN_DEV);
+        return TUN_OPEN_DEV;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+    strncpy(ifr.ifr_name, "tun0", IFNAMSIZ);
+
+    if ((e = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0) {
+        log_vpn_client_error(TUN_TUNSETIFF);
+        return TUN_TUNSETIFF;
+    }
+
+    *tun_fd = fd;
+
+    return ret_val;
+}
+
+static void run(char *cmd) {
+  printf("Execute `%s`\n", cmd);
+  if (system(cmd)) {
+    perror(cmd);
+    exit(1);
+  }
+}
+
+void ifconfig() {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "ifconfig tun0 10.8.0.2/16 mtu %d up", MTU);
+    run(cmd);
+}
+
+void setup_route_table() {
+    
+    run("iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE");
+    run("iptables -I FORWARD 1 -i tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+    run("iptables -I FORWARD 1 -o tun0 -j ACCEPT");
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "ip route add %s via $(ip route show 0/0 | sed -e 's/.* via \\([^ ]*\\).*/\\1/')", SERVER_HOST);
+    run(cmd);
+    run("ip route add 0/1 dev tun0");
+    run("ip route add 128/1 dev tun0");
+}
+
+void cleanup_route_table() {    
+    run("iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE");
+    run("iptables -D FORWARD -i tun0 -m state --state RELATED,ESTABLISHED -j ACCEPT");
+    run("iptables -D FORWARD -o tun0 -j ACCEPT");
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "ip route del %s", SERVER_HOST);
+    run(cmd);
+    run("ip route del 0/1");
+    run("ip route del 128/1");
+}
+
+static int max(int a, int b) {
+  return a > b ? a : b;
+}
+
+int start_doge_vpn(char const* user, char const* pwd) {
+    int ret_val = 0;
+    unsigned char* secret_key = (unsigned char *)malloc(sizeof(char) * 256);  
 
     // SSL initialization.
     SSL_CTX *ctx = NULL;
     ret_val = init_ssl(&ctx);
     if (ret_val) return ret_val;
 
-
-    // Init tcp socket and credentials comunication.
     SOCKET tcp_socket;
     ret_val = create_tcp_socket(&tcp_socket);
-
     if (ret_val) return ret_val;
-    
 
-    do{
-        ret_val = send_credentials(&tcp_socket);
+    SSL* ssl_session;
+    ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
+    if (ret_val) return ret_val;
+
+    
+    ret_val = send_credential(ssl_session, user, pwd, secret_key);
+    if (ret_val) return ret_val;
+
+    printf("Key received: %s\n", secret_key);
+
+    free_tcp_ssl(ctx, tcp_socket, ssl_session);
+
+    SOCKET udp_socket;
+    ret_val = create_udp_socket(&udp_socket);
+    if (ret_val) return ret_val;
+
+    SOCKET tun_fd;
+    ret_val = tun_alloc(&tun_fd);
+    if (ret_val) return ret_val;
+    ifconfig();
+    setup_route_table();
+
+    char tun_buf[MTU], udp_buf[MTU];
+    bzero(tun_buf, MTU);
+    bzero(udp_buf, MTU);
+
+    while (TRUE) {
+        fd_set readset;
+        FD_ZERO(&readset);
+        FD_SET(tun_fd, &readset);
+        FD_SET(udp_socket, &readset);
+
+        int max_fd = max(tun_fd, udp_socket) + 1;
+
+        if (-1 == select(max_fd, &readset, NULL, NULL, NULL)) {
+            log_vpn_client_error(MAX_FD_ERROR);
+            return MAX_FD_ERROR;
+            break;
+        }
         
+        int r;
+        if (FD_ISSET(tun_fd, &readset)) {
+            printf("*** Read from tun interface ***\n");
+            if(read(tun_fd, tun_buf, MTU) <0) {
+                log_vpn_client_error(TUN_SEND_ERROR);
+                return TUN_SEND_ERROR;
+                break;
+            }
+
+            int len_e = encrypt(tun_buf, strlen(tun_buf), secret_key, udp_buf);
+            udp_buf[len_e] = 0;
+
+            printf("*** Send UDP message ***\n");
+            if (!send(udp_socket, udp_buf, strlen(udp_buf), 0)) {
+                log_vpn_client_error(UDP_SEND_ERROR);
+                return UDP_SEND_ERROR;
+            }
+        }
+
+        if (FD_ISSET(udp_socket, &readset)) {
+            printf("*** Read UDP message ***\n");
+            if (!read(udp_socket, udp_buf, MTU)) {
+                log_vpn_client_error(UDP_READ_ERROR);
+                return UDP_READ_ERROR;
+            }
+
+            int len_d = decrypt(udp_buf, strlen(udp_buf), secret_key, tun_buf);
+            tun_buf[len_d] = 0;
+
+            printf("*** Send with tun interface ***\n");
+            if (write(tun_fd, tun_buf, r) < 0) {
+                log_vpn_client_error(TUN_SEND_ERROR);
+                return TUN_SEND_ERROR;                
+                break;
+            }
+        }
     }
-    while(ret_val == WRONG_CREDENTIALS);
-    
 
-    //Start UDP traffic with symmetric key previsously provided
+    cleanup_route_table();
 
-    
-    printf("Closing listening socket...\n");
-    CLOSE_SOCKET(tcp_socket);
-
-	return 0;
+    return ret_val;
 }
 
 
-int main(int argc, char const *argv[]) {
-    return start_clear_doge_vpn();
+
+int main(int argc, char const *argv[]) {  
+    return start_doge_vpn(argv[1], argv[2]);    
 }
-
-// A TUN interface should be created to perfrom tunnelling properly.
-
-/*  When accepting new connections from client we must carefully keep track of what kind
-*   of server_socket we are dealing with:
-*       - The new server_socket is of type UDP ($1)
-*       - The new server_socket is of type TCP ($2)
-*   If $1:
-*       - When dealing with a client udp socket, we must register all the related information
-*         for using it later on, that is reading client data to forward
-*       - The information to retrieve are server_id, server_ip, server_port:
-*           * server_id: needed to decrypt the data with the correct key
-*             (data should be encypted and authenticated). Two keys would be enough
-*   If $2:
-*       - Establish a TCP connection under TLS to exchange key materials for further usage under 
-*         UDP
-*/

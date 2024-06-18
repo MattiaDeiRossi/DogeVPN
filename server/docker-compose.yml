@@ -17,20 +17,23 @@ services:
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
 
   vpnserver:
-    tty: true
     build:
       context: .
       dockerfile: Dockerfile
+    tty: true
+    cap_add:
+      - ALL
+    sysctls:
+      - net.ipv4.ip_forward=1
     container_name: server
     environment:
       - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
     networks:
       external_network:
-        ipv4_address: 10.5.0.6
+        ipv4_address: 10.5.0.15
       internal_network:
-        ipv4_address: 192.168.0.6
-    ports:
-    - "8080:8080"
+        ipv4_address: 192.168.0.15
+
     command: ./build/vpnserver
 
 networks:
@@ -39,11 +42,11 @@ networks:
     ipam:
      config:
       - subnet: 10.5.0.0/24
-        gateway: 10.5.0.1
+        gateway: 10.5.0.15
 
   internal_network:
     driver: bridge
     ipam:
      config:
       - subnet: 192.168.0.0/24
-        gateway: 192.168.0.1
+        gateway: 192.168.0.15

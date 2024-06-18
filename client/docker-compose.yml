@@ -9,7 +9,7 @@ services:
     networks:
       external_network:
         ipv4_address: 10.5.0.7
-    # command: ./build/client
+    command: ./client
 
   vpnclient2:
     tty: true

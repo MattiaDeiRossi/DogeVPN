@@ -13,4 +13,4 @@ RUN apt install -y \
 # copy and build
 WORKDIR /client
 ADD . .
-# RUN make all
+RUN make all

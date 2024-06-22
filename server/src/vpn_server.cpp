@@ -190,14 +190,12 @@ int create_tcs(
 
         // Cleaning up SSL resources and the useless client socket.  
         ssl_free(ssl, client_socket);
-
         return SSL_ACCEPT_ERROR;
     }
 
     tcp_client_socket *ret_data = (tcp_client_socket *) malloc(sizeof(tcp_client_socket));
     if (!ret_data) {
         ssl_free(ssl, client_socket);
-        
         return OUT_OF_MEMORY;
     }
 
@@ -222,7 +220,7 @@ void tcs_free(tcp_client_socket *tcs) {
     // Sanity check.
     if (tcs == NULL) return;
 
-    ssl_free(tcs->ssl,tcs->socket);
+    ssl_free(tcs->ssl, tcs->socket);
     free(tcs);
 }
 
@@ -660,7 +658,6 @@ void handle_tcp_client_key_exchange(
         log_vpn_server_error(SSL_ACCEPT_ERROR);
         ERR_print_errors_fp(stderr);
         ssl_free(ssl, client_socket);
-        
         return;
     }
 
@@ -682,7 +679,6 @@ void handle_tcp_client_key_exchange(
     if (read_error) {
         log_vpn_server_error(UNEXPECTED_DISCONNECT);
         ssl_free(ssl, client_socket);
-        
         return;
     }
 
@@ -718,7 +714,6 @@ void handle_tcp_client_key_exchange(
     if (pwd_len < MINIMUM_PWD_LEN) {
         log_vpn_server_error(PWD_TOO_SHORT);
         ssl_free(ssl, client_socket);
-        
         return;
     }
 
@@ -740,7 +735,6 @@ void handle_tcp_client_key_exchange(
     if (rand_value != 1) {
         log_vpn_server_error(rand_value == -1 ? RAND_NOT_SUPPORTED : RAND_FAILURE);
         ssl_free(ssl, client_socket);
-        
         return;
     }
 
@@ -782,7 +776,6 @@ void handle_tcp_client_key_exchange(
     if (!info) {
         log_vpn_server_error(OUT_OF_MEMORY);
         ssl_free(ssl, client_socket);
-        
         return;
     }
 
@@ -800,8 +793,6 @@ void handle_tcp_client_key_exchange(
 
         uc_map_update(db_user_id, map, mutex, NULL);
         ssl_free(ssl, client_socket);
-        
-
         return;
     }
 
@@ -811,7 +802,6 @@ void handle_tcp_client_key_exchange(
     *   - Release UDP resources before the TCP connection goes away
     */
     ssl_free(ssl, client_socket);
-    
 }
 
 void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex) {
@@ -956,6 +946,18 @@ int extract_id(packet pkt, user_id *id_value) {
     return ret_val;
 }
 
+/* This function deals with extracting the information. 
+*  DogeVPN requires the payload to respect the following format:
+*   1.  First part of the payload is the original encrypted packet.
+*       The length is variable.
+*   2.  After the payload there is the hash of the message signed with the exchanged key.
+*       The main reason to exchange the hashed messsage is:
+*           - Avoiding that the user id leak allow everyone to send non-sense packet.
+*   3.  After the hashed part we have the IV
+*   4.  Then we have the user id:
+*           - This is needed to decrypt the message with correct key
+*/
+
 /* Errors should be notified to the client peer.
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
@@ -1009,7 +1011,7 @@ int handle_incoming_udp_packet(
     printf("Received %ld bytes from %s:%s\n", pkt.length, address_buffer, service_buffer);
 
     /* Now the main logic of must happen:
-    *   1. Extract the id from the packet
+    *   1. Extract the the packet and f
     *   2. Check the presence of the id within the shared map
     *   3. Get the connection info to verify some UDP connection property
     *   4. Decrypt the packet
@@ -1032,6 +1034,11 @@ int handle_incoming_udp_packet(
     // ret_val = extract_key(packet, map, mutex, key, KEY_LEN);
     if (ret_val) return ret_val;
 
+    /* Id extracted.
+    *  Converting the string to a valid integer.
+    *       int id_num;
+    *       sscanf(id_buff, "%d", &id_num);
+    */
 
     return ret_val;
 }
@@ -1050,12 +1057,6 @@ int start_doge_vpn() {
     std::shared_mutex uc_map_mutex;
 
     fd_set master;
-    
-    
-    // TODO Setup TUN
-
-
-    // TODO Setup TUN
 
     // SSL initialization.
     ret_val = init_ssl(&ctx);

@@ -1037,62 +1037,6 @@ int handle_incoming_udp_packet(
     return ret_val;
 }
 
-int handle_incoming_udp_packet2(
-    socket_t udp_socket, 
-    std::map<int, udp_client_info*>& map, 
-    std::shared_mutex& mutex
-) {
-
-    int ret_val = 0;
-    struct sockaddr_storage client_address;
-    socklen_t client_len = sizeof(client_address);
-
-    /* Using the theoretical limit of an UDP packet.
-    *  Instead of setting the MSG_PEEK flag, on safe bet is made on how much data to allocate.
-    */
-    packet pkt;
-    memset(&pkt, 0, sizeof(packet));
-    pkt.length = recvfrom(
-        udp_socket, pkt.message,
-        sizeof(pkt.message), 0,
-        (struct sockaddr *) &client_address, &client_len
-    );
-
-    /* The value of zero is not considered an error.
-    *  A connection can be closed by the other peer.
-    */
-    if (pkt.length == 0) {
-        printf("UDP connection closed by a peer.\n");
-        return ret_val;
-    }
-
-    /* A negative value should never happen.
-    *  In this case no actions are perfromed, just returning the error.
-    */
-    if (pkt.length < 0) {
-        ret_val = UDP_READ_ERROR;
-        return ret_val;
-    }
-
-    char address_buffer[128];
-    char service_buffer[128];
-    getnameinfo(
-        (struct sockaddr*) &client_address, client_len,
-        address_buffer, sizeof(address_buffer), 
-        service_buffer, sizeof(service_buffer),
-        NI_NUMERICHOST | NI_NUMERICSERV
-    );
-
-    printf("Received %ld bytes from %s:%s\n", pkt.length, address_buffer, service_buffer);
-
-    // main logic here
-
-
-
-    return ret_val;
-}
-
-
 int start_doge_vpn() {
 
     int ret_val = 0;
@@ -1108,6 +1052,10 @@ int start_doge_vpn() {
 
     fd_set master;
     
+    
+    // TODO Setup TUN
+
+
     // TODO Setup TUN
 
     // SSL initialization.
@@ -1167,7 +1115,7 @@ int start_doge_vpn() {
                         */
                         std::thread th(
                             handle_tcp_client_key_exchange, 
-                            socket,
+                            client_socket,
                             client_address,
                             client_len,
                             ctx, 
@@ -1178,7 +1126,7 @@ int start_doge_vpn() {
                         th.detach();
                     }
                 } else if (socket == extract_socket(uss_holder)) {
-                    // handle_incoming_udp_packet2
+
                     int some_error = handle_incoming_udp_packet(socket, uc_map, uc_map_mutex);
                     if (some_error) log_vpn_server_error(some_error);
                 } else {
@@ -1243,8 +1191,8 @@ void test_enc_dec() {
 
 int main(int argc, char const *argv[]) {
 
-    // test_enc_dec();
-    // return 0;
+   // test_enc_dec();
+//    return 0;
 	return start_doge_vpn();
 }
 

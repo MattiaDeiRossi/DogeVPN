@@ -122,10 +122,11 @@ int init_ssl(SSL_CTX **ctx_pointer) {
     return 0;
 }
 
-void ssl_free(SSL *ssl) {
+void ssl_free(SSL *ssl, socket_t socket) {
 
     // TODO: Add note of fast shutdown and truncation attack.
     SSL_shutdown(ssl);
+    close_socket(socket);
     SSL_free(ssl);
 } 
 
@@ -188,16 +189,15 @@ int create_tcs(
         ERR_print_errors_fp(stderr);
 
         // Cleaning up SSL resources and the useless client socket.  
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
 
         return SSL_ACCEPT_ERROR;
     }
 
     tcp_client_socket *ret_data = (tcp_client_socket *) malloc(sizeof(tcp_client_socket));
     if (!ret_data) {
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return OUT_OF_MEMORY;
     }
 
@@ -222,8 +222,7 @@ void tcs_free(tcp_client_socket *tcs) {
     // Sanity check.
     if (tcs == NULL) return;
 
-    ssl_free(tcs->ssl);
-    close_socket(tcs->socket);
+    ssl_free(tcs->ssl,tcs->socket);
     free(tcs);
 }
 
@@ -660,8 +659,8 @@ void handle_tcp_client_key_exchange(
     if (SSL_accept(ssl) != 1) {
         log_vpn_server_error(SSL_ACCEPT_ERROR);
         ERR_print_errors_fp(stderr);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return;
     }
 
@@ -682,8 +681,8 @@ void handle_tcp_client_key_exchange(
     int read_error = SSL_read(ssl, credentials.data, size) < 1;
     if (read_error) {
         log_vpn_server_error(UNEXPECTED_DISCONNECT);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return;
     }
 
@@ -718,8 +717,8 @@ void handle_tcp_client_key_exchange(
     int pwd_len = strlen(credentials.password);
     if (pwd_len < MINIMUM_PWD_LEN) {
         log_vpn_server_error(PWD_TOO_SHORT);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return;
     }
 
@@ -740,8 +739,8 @@ void handle_tcp_client_key_exchange(
     int rand_value = RAND_bytes(rand_buf, KEY_LEN);
     if (rand_value != 1) {
         log_vpn_server_error(rand_value == -1 ? RAND_NOT_SUPPORTED : RAND_FAILURE);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return;
     }
 
@@ -782,8 +781,8 @@ void handle_tcp_client_key_exchange(
     udp_client_info *info = (udp_client_info*) malloc(sizeof(udp_client_info));
     if (!info) {
         log_vpn_server_error(OUT_OF_MEMORY);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
         return;
     }
 
@@ -800,8 +799,8 @@ void handle_tcp_client_key_exchange(
         log_vpn_server_error(SSL_WRITE_ERROR);
 
         uc_map_update(db_user_id, map, mutex, NULL);
-        ssl_free(ssl);
-        close_socket(client_socket);
+        ssl_free(ssl, client_socket);
+        
 
         return;
     }
@@ -811,8 +810,8 @@ void handle_tcp_client_key_exchange(
     *   - For example establish a new key after a while
     *   - Release UDP resources before the TCP connection goes away
     */
-    ssl_free(ssl);
-    close_socket(client_socket);
+    ssl_free(ssl, client_socket);
+    
 }
 
 void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex) {

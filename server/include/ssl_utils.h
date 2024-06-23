@@ -7,7 +7,12 @@
 namespace ssl_utils
 {
 
-    int init_ssl(SSL_CTX **ctx_pointer, bool is_server);
+    int init_ssl(
+        SSL_CTX **ctx_pointer,
+        bool is_server,
+        const char *pub_cert_path,
+        const char *pri_cert_path
+    );
 }
 
 #endif

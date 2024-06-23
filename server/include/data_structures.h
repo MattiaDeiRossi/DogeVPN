@@ -10,7 +10,8 @@ typedef int user_id;
 typedef enum {
   TCP_SERVER_SOCKET,
   TCP_CLIENT_SOCKET,
-  UDP_SERVER_SOCKET
+  UDP_SERVER_SOCKET, 
+  TUN_SERVER_SOCKET,
 } socket_type;
 
 typedef struct {
@@ -28,10 +29,15 @@ typedef struct {
     socket_t socket;
 } udp_server_socket;
 
+typedef struct {
+    socket_t socket;
+} tun_server_socket;
+
 typedef union {
     tcp_client_socket *tcs;
     tcp_server_socket *tss;
     udp_server_socket *uss;
+    tun_server_socket *tun_ss;
 } socket_data;
 
 typedef struct {
@@ -63,7 +69,7 @@ typedef struct {
     unsigned char user_id[ID_LEN];
     unsigned char iv[IV_LEN];
     unsigned char hash[SHA_256_BYTES];
-    unsigned char message[MAX_MESSAGE_BYTES];
+    packet encrypted_packet;
 } vpn_client_packet_data;
 
 #endif

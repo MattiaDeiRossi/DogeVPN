@@ -26,6 +26,8 @@
 #define UDP_PACKET_TOO_LARGE 31
 #define INVALID_IV 32
 #define INVALID_HASH 33
+#define INVALID_MESSAGE 34
+#define USER_IS_NOT_PRESENT 35
 // ***  End error definitions ***
 
 // *** Start TCP constant definitions ***

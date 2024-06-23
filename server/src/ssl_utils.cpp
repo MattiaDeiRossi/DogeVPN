@@ -6,7 +6,12 @@ namespace ssl_utils
     /* Function to call whenever a SSL contect is needed. 
     *  It can be resued for all the connections.
     */
-    int init_ssl(SSL_CTX **ctx_pointer, bool is_server) {
+    int init_ssl(
+        SSL_CTX **ctx_pointer,
+        bool is_server,
+        const char *pub_cert_path,
+        const char *pri_cert_path
+    ) {
 
         // This is required to initialize the OpenSSL.
         SSL_library_init();
@@ -26,8 +31,8 @@ namespace ssl_utils
 
         if (is_server) {
 
-            int load_certificate = SSL_CTX_use_certificate_file(ctx, "cert.pem" , SSL_FILETYPE_PEM);
-            int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, "key.pem", SSL_FILETYPE_PEM);
+            int load_certificate = SSL_CTX_use_certificate_file(ctx, pub_cert_path , SSL_FILETYPE_PEM);
+            int load_private_key = SSL_CTX_use_PrivateKey_file(ctx, pri_cert_path, SSL_FILETYPE_PEM);
 
             if (!load_certificate || !load_private_key) {
                 ERR_print_errors_fp(stderr);

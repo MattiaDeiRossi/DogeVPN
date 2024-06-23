@@ -15,6 +15,8 @@ include_directories(include)
 
 add_library(mongo src/mongo.cpp)
 add_library(encryption src/encryption.cpp)
+add_library(socket_utils src/socket_utils.cpp)
+add_library(ssl_utils src/ssl_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 
@@ -36,6 +38,8 @@ target_link_libraries(vpnserver
   ssl
   encryption
   mongo
+  socket_utils
+  ssl_utils
 )
 
 # install(TARGETS 

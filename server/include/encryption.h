@@ -19,7 +19,11 @@ namespace encryption
 
     packet decrypt(packet encrypted_pkt, encryption_data enc_data);
 
-    int getShaSum(const unsigned char *string, unsigned char *output);
+    int getShaSum(packet message, unsigned char *output);
+
+    int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data);
+
+    int create_encrypted_packet(char *message, size_t length, encryption_data enc_data, packet *enc_pkt);
 }
 
 #endif

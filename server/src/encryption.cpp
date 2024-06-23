@@ -117,11 +117,12 @@ namespace encryption
         return pkt;
     }
 
-    int getShaSum(const unsigned char *string, unsigned char *output)
+    // Change output with typedef.
+    int getShaSum(packet pkt, unsigned char *output)
     {
 
         EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();
-        unsigned char mdVal[EVP_MAX_MD_SIZE];
+        unsigned char mdVal[SHA_256_BYTES];
         unsigned int mdLen, i;
 
         if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL))
@@ -132,7 +133,7 @@ namespace encryption
         }
 
         // Hashes cnt bytes of data at d into the digest context mdCtx
-        if (!EVP_DigestUpdate(mdCtx, string, strlen((const char *)string)))
+        if (!EVP_DigestUpdate(mdCtx, pkt.message, pkt.length))
         {
             // printf("Message digest update failed.\n");
             EVP_MD_CTX_free(mdCtx);
@@ -147,7 +148,49 @@ namespace encryption
         }
 
         EVP_MD_CTX_free(mdCtx);
-        memcpy(output, mdVal, EVP_MAX_MD_SIZE);
+        memcpy(output, mdVal, SHA_256_BYTES);
         return 0;
+    }
+
+    int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data) {
+
+        int ret_val = 0;
+
+        // Creating buffer.
+        unsigned char buffer[SHA_256_BYTES];
+        memset(buffer, 0, SHA_256_BYTES);
+
+        ret_val = getShaSum(decrypted_message, buffer);
+        if (ret_val == -1) return ret_val;
+
+        unsigned char decrypted_hash[SHA_256_BYTES];
+        memset(decrypted_hash, 0, SHA_256_BYTES);
+        decrypt(hash, SHA_256_BYTES, enc_data.key, enc_data.iv, decrypted_hash);
+
+        return strncmp((const char *) buffer, (const char *) decrypted_hash, SHA_256_BYTES) == 0 ? 0 : -1;
+    }
+
+    int create_encrypted_packet(char *message, size_t length, encryption_data enc_data, packet *enc_pkt) {
+
+        int ret_val = 0;
+
+        packet pkt;
+        memcpy(pkt.message, message, length);
+        pkt.length = length;
+
+        ret_val = encryption::encrypt(pkt, enc_data, enc_pkt);
+        if (ret_val) return ret_val;
+
+        size_t new_length = enc_pkt->length + IV_LEN;
+
+        if (new_length > UDP_THEORETICAL_LIMIT) {
+            ret_val = UDP_PACKET_TOO_LARGE;
+            return ret_val;
+        }
+
+        for (int i = 0; i < IV_LEN; ++i) enc_pkt->message[enc_pkt->length + i] = enc_data.iv[i];
+        enc_pkt->length = new_length;
+
+        return ret_val;
     }
 }

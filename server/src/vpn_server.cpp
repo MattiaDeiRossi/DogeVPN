@@ -4,6 +4,7 @@
 #include "encryption.h"
 #include "utils.h"
 #include "ssl_utils.h"
+#include "socket_utils.h"
 
 // TODO return instead of exit.
 
@@ -93,14 +94,6 @@ void log_vpn_server_error(int error_number) {
     }
 }
 
-void ssl_free(SSL *ssl, socket_t socket) {
-
-    // TODO: Add note of fast shutdown and truncation attack.
-    SSL_shutdown(ssl);
-    socket_utils::close_socket(socket);
-    SSL_free(ssl);
-} 
-
 socket_t extract_socket(socket_holder *holder) {
 
     socket_type type = holder->type;
@@ -162,13 +155,13 @@ int create_tcs(
         ERR_print_errors_fp(stderr);
 
         // Cleaning up SSL resources and the useless client socket.  
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return SSL_ACCEPT_ERROR;
     }
 
     tcp_client_socket *ret_data = (tcp_client_socket *) malloc(sizeof(tcp_client_socket));
     if (!ret_data) {
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return OUT_OF_MEMORY;
     }
 
@@ -193,7 +186,7 @@ void tcs_free(tcp_client_socket *tcs) {
     // Sanity check.
     if (tcs == NULL) return;
 
-    ssl_free(tcs->ssl, tcs->socket);
+    ssl_utils::free_ssl(tcs->ssl);
     free(tcs);
 }
 
@@ -653,50 +646,21 @@ void handle_tcp_client_key_exchange(
     std::map<int, udp_client_info*>& map, 
     std::shared_mutex& mutex
 ) {
-    
-    // Creating an SSL object.
-    SSL *ssl = SSL_new(ctx);
-    if (!ssl) {
-        log_vpn_server_error(SSL_CREATION_ERROR);
-        socket_utils::close_socket(client_socket);
-        return;
+
+    SSL *ssl;
+    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl) == -1) {
+        log_vpn_server_error(-1);
     }
 
-    /* Associating the ssl object with the client socket.
-    *  Now the ssl object is bound to a socket that cna be used to communicate over TLS.
-    */
-    SSL_set_fd(ssl, client_socket);
-
-    /* A call to SSL_accept() can fail for many reasons. 
-    *  For example if the connected client does not trust our certificate.
-    *  Or the client and the server cannot agree on a cipher suite. 
-    *  This must be taking into account a the server should continue listening to incoming connections.
-    */
-    if (SSL_accept(ssl) != 1) {
-        log_vpn_server_error(SSL_ACCEPT_ERROR);
-        ERR_print_errors_fp(stderr);
-        ssl_free(ssl, client_socket);
-        return;
-    }
-
-    // Logging client ip address and the established cipher.
-    char buffer[256];
-    struct sockaddr *cl_address = (struct sockaddr*) &client_address;
-    getnameinfo(cl_address, client_len, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
-    printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
+    ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
 
     client_credentials credentials;
     memset(&credentials, 0, sizeof(credentials));
 
-    /* The assumption here is that all the data comes from a single read.
-    *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
-    *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
-    */
     int size = sizeof(credentials.data);
-    int read_error = SSL_read(ssl, credentials.data, size) < 1;
+    int read_error = ssl_utils::read(ssl, credentials.data, size);
     if (read_error) {
         log_vpn_server_error(UNEXPECTED_DISCONNECT);
-        ssl_free(ssl, client_socket);
         return;
     }
 
@@ -731,7 +695,7 @@ void handle_tcp_client_key_exchange(
     int pwd_len = strlen(credentials.password);
     if (pwd_len < MINIMUM_PWD_LEN) {
         log_vpn_server_error(PWD_TOO_SHORT);
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return;
     }
 
@@ -752,7 +716,7 @@ void handle_tcp_client_key_exchange(
     int rand_value = RAND_bytes(rand_buf, KEY_LEN);
     if (rand_value != 1) {
         log_vpn_server_error(rand_value == -1 ? RAND_NOT_SUPPORTED : RAND_FAILURE);
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return;
     }
 
@@ -793,7 +757,7 @@ void handle_tcp_client_key_exchange(
     udp_client_info *info = (udp_client_info*) malloc(sizeof(udp_client_info));
     if (!info) {
         log_vpn_server_error(OUT_OF_MEMORY);
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return;
     }
 
@@ -810,7 +774,7 @@ void handle_tcp_client_key_exchange(
         log_vpn_server_error(SSL_WRITE_ERROR);
 
         uc_map_update(db_user_id, map, mutex, NULL);
-        ssl_free(ssl, client_socket);
+        ssl_utils::free_ssl(ssl);
         return;
     }
 
@@ -819,7 +783,7 @@ void handle_tcp_client_key_exchange(
     *   - For example establish a new key after a while
     *   - Release UDP resources before the TCP connection goes away
     */
-    ssl_free(ssl, client_socket);
+    ssl_utils::free_ssl(ssl);
 }
 
 void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex) {
@@ -907,91 +871,40 @@ int extract_vpn_client_packet_data(const packet *from, vpn_client_packet_data *r
     /* Id has been read in reverse.
     *  In order to extract it correctly, a reverse operation is applied. 
     */
-    char *str = (char *) ret_data->user_id;
-    int len = j;
-    char* start = str;
-    char* end = str + len - 1;
-    while (start < end) {
-        char temp = *start;
-        *start = *end;
-        *end = temp;
-        start++;
-        end--;
-    }
+    utils::reverse_string((char *) ret_data->user_id, j);
 
-    /* Extracting the IV vector.
-    *  After the id, the IV vector must be present.
-    */
-    j = 0;
-    while(current_index >= 0) {
+    // IV extraction.
+    if (utils::read_reverse(
+        ret_data->iv,
+        from->message,
+        IV_LEN,
+        from->length,
+        &current_index,
+        true
+    ) == -1) return INVALID_IV;
 
-        /* IV has a specific length.
-        *  Break the for as soon as the IV buffer is full.
-        */
-        if (j == IV_LEN) {
-            break;
-        }
+    // Hash extraction.
+    if (utils::read_reverse(
+        ret_data->hash,
+        from->message,
+        SHA_256_BYTES,
+        from->length,
+        &current_index,
+        true
+    ) == -1) return INVALID_HASH;
 
-        char bdata = from->message[current_index--];
-        ret_data->iv[j++] = bdata;
-    }
+    // Message extraction.
+    size_t packet_length = utils::read_reverse(
+        ret_data->encrypted_packet.message,
+        from->message,
+        MAX_MESSAGE_BYTES,
+        from->length,
+        &current_index,
+        false
+    );
 
-    /* IV has a specific length.
-    *  When dealing with smaller IVs, an error is returned.
-    */
-    if (j != IV_LEN) {
-        ret_val = INVALID_IV;
-        return ret_val;
-    }
-
-    /* Extracting the hash of the message.
-    *  After the IV vector, the hash must be present.
-    */
-    j = 0;
-    while(current_index >= 0) {
-        
-        /* Hash has a specific length.
-        *  Break the for as soon as the SHA_256 buffer is full.
-        */
-        if (j == SHA_256_BYTES) {
-            break;
-        }
-
-        char bdata = from->message[current_index--];
-        ret_data->hash[j++] = bdata;
-    }
-
-    /* Hash has a specific length.
-    *  When dealing with smaller hashes, an error is returned.
-    */
-    if (j != SHA_256_BYTES) {
-        ret_val = INVALID_HASH;
-        return ret_val;
-    }
-
-    j = 0;
-    while(current_index >= 0) {
-
-        /* The message is too long.
-        *  A very long message won't be accepted.
-        */
-        if (j == MAX_MESSAGE_BYTES) {
-            ret_val = INVALID_MESSAGE;
-            return ret_val;
-        }
-
-        char bdata = from->message[current_index--];
-        ret_data->encrypted_packet.message[j++] = bdata;
-    }
-
-    /* The length of the message is of variable length.
-    *  However a zero message is not accepted.
-    */
-    if (j == 0) {
-        ret_val = INVALID_MESSAGE;
-        return ret_val;
-    }
-    ret_data->encrypted_packet.length = j;
+    if (packet_length == -1) return INVALID_MESSAGE;
+    ret_data->encrypted_packet.length = packet_length;
 
     return ret_val;
 }
@@ -1093,6 +1006,7 @@ int start_doge_vpn() {
     SSL_CTX *ctx = NULL;
     socket_holder *tss_holder = NULL;
     socket_holder *uss_holder = NULL;
+    socket_holder *tun_ss_holder = NULL;
 
     std::map<socket_t, socket_holder*> sh_map;
     std::map<user_id, udp_client_info*> uc_map;
@@ -1101,9 +1015,9 @@ int start_doge_vpn() {
     fd_set master;
 
     // Initialization of the tun server socket.
-    //ret_val = create_tun_ss_sh(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tss_holder);
+    //ret_val = create_tun_ss_sh(&tun_ss_holder);
     //if (ret_val) goto error_handler;
-    //map_set_max_add(sh_map, &master, tss_holder, &max_socket);
+    //map_set_max_add(sh_map, &master, tun_ss_holder, &max_socket);
 
     // SSL initialization.
     ret_val = ssl_utils::init_ssl(&ctx, true, "certs/cert.pem", "certs/key.pem");
@@ -1184,7 +1098,7 @@ int start_doge_vpn() {
                     }
                 } else {
 
-                    // if (socket == extract_socket(tun_socket))
+                    // if (socket == extract_socket(tun_ss_holder))
 
                     /* This section should handle specific client packets by using the TCP connection.
                     *  The TCP connection should be kept in order to perform reliable actions.

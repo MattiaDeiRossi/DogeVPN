@@ -190,69 +190,6 @@ void tcs_free(tcp_client_socket *tcs) {
     free(tcs);
 }
 
-void clear_socket_resource(fd_set *master, socket_t socket_to_clean) {
-
-    FD_CLR(socket_to_clean, master);
-    socket_utils::close_socket(socket_to_clean);
-}
-
-/* A TCP server and a UDP server share some common logic when creating a socket.
-*  In particular, both of them should typically perfrom the following operations:
-*   - getaddrinfo()
-*   - socket()
-*   - bind() 
-*/
-int up_to_bind(int is_tcp, char const *host, char const *port, socket_t *ret_socket) {
-
-
-    printf("*** Setting up %s address info ***\n", is_tcp ? "TCP" : "UDP");
-
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(struct addrinfo));
-
-    /* 1. AF_INET:      Looking for IPv4 address
-    *  2. SOCK_STREAM:  Going to use TCP
-    *  3. AI_PASSIVE:   Will listen to any available interface
-    */
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    // The variable bind_address will hold the return information from getaddrinfo.
-    struct addrinfo *bind_address;
-    getaddrinfo(host, port, &hints, &bind_address);
-
-    printf("*** Creating %s socket ***\n", is_tcp ? "TCP" : "UDP");
-
-    socket_t socket_listen = socket(
-        bind_address->ai_family, 
-        bind_address->ai_socktype,
-        bind_address->ai_protocol
-    );
-
-    if (socket_utils::invalid_socket(socket_listen)) {
-        int socket_error = is_tcp ? TCP_SOCKET_ERROR : UDP_SOCKET_ERROR;
-        freeaddrinfo(bind_address);
-        return socket_error;
-    }
-
-    printf("*** Binding %s socket ***\n", is_tcp ? "TCP" : "UDP");
-
-    if (bind(socket_listen, bind_address->ai_addr, bind_address->ai_addrlen)) {
-        int bind_error = is_tcp ? TCP_BIND_ERROR : UDP_BIND_ERROR;
-        socket_utils::close_socket(socket_listen);
-        freeaddrinfo(bind_address);
-        return bind_error;
-    }
-
-    // Address infos are no longer needed.
-    freeaddrinfo(bind_address);
-
-    // Returning correctly created socket.
-    *ret_socket = socket_listen;
-    return 0;
-}
-
 int create_tss(
     char const *host, 
     char const *port, 
@@ -263,7 +200,7 @@ int create_tss(
     int ret_val = 0;
     
     socket_t socket;
-    ret_val = up_to_bind(1, host, port, &socket);
+    ret_val = socket_utils::bind_server_socket(true, host, port, &socket);
     if (ret_val) return ret_val;
 
     printf("*** Making TCP socket listening for connections ***\n");
@@ -307,7 +244,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     *  Just up to bind. 
     */
     socket_t socket;
-    ret_val = up_to_bind(0, host, port, &socket);
+    ret_val = socket_utils::bind_server_socket(false, host, port, &socket);
     if (ret_val) return ret_val;
 
     udp_server_socket *uss = (udp_server_socket *) malloc(sizeof(udp_server_socket));
@@ -1200,20 +1137,3 @@ int main() {
     //return 0;
 	return start_doge_vpn();
 }
-
-// A TUN interface should be created to perfrom tunnelling properly.
-
-/*  When accepting new connections from client we must carefully keep track of what kind
-*   of client_socket we are dealing with:
-*       - The new client_socket is of type UDP ($1)
-*       - The new client_socket is of type TCP ($2)
-*   If $1:
-*       - When dealing with a client udp socket, we must register all the related information
-*         for using it later on, that is reading client data to forward
-*       - The information to retrieve are client_id, client_ip, client_port:
-*           * client_id: needed to decrypt the data with the correct key
-*             (data should be encypted and authenticated). Two keys would be enough
-*   If $2:
-*       - Establish a TCP connection under TLS to exchange key materials for further usage under 
-*         UDP
-*/

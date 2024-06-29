@@ -27,7 +27,7 @@ namespace ssl_utils
         SSL_load_error_strings();
 
         SSL_CTX *ctx = SSL_CTX_new(is_server ? TLS_server_method(): TLS_client_method());
-        if (!ctx) return INIT_SSL_ERROR;
+        if (!ctx) return -1;
 
         if (is_server) {
 
@@ -37,11 +37,85 @@ namespace ssl_utils
             if (!load_certificate || !load_private_key) {
                 ERR_print_errors_fp(stderr);
                 SSL_CTX_free(ctx);
-                return SSL_CERTIFICATE_ERROR;
+                return -1;
             }
         }
 
         *ctx_pointer = ctx;
         return 0;
     }
+
+    void free_ssl(SSL *ssl) {
+
+        // Nothing can be done.
+        if (ssl == NULL) return;
+
+        // Review this piece of code.
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+
+        int socket = SSL_get_fd(ssl);
+        if (socket != -1) {
+            socket_utils::close_socket(socket);
+        }
+    }
+
+    int bind_ssl(SSL_CTX *ctx, socket_t socket, SSL **ssl_p) {
+    
+        // Creating an SSL object.
+        SSL *ssl = SSL_new(ctx);
+        if (ssl == NULL) {
+            free_ssl(ssl);
+            return -1;
+        }
+
+        /* Associating the ssl object with the client socket.
+        *  Now the ssl object is bound to a socket that can be used to communicate over TLS.
+        */
+        SSL_set_fd(ssl, socket);
+
+        /* A call to SSL_accept() can fail for many reasons. 
+        *  For example if the connected client does not trust our certificate.
+        *  Or the client and the server cannot agree on a cipher suite. 
+        *  This must be taking into account a the server should continue listening to incoming connections.
+        */
+        if (SSL_accept(ssl) != 1) {
+            ERR_print_errors_fp(stderr);
+            free_ssl(ssl);
+            return -1;
+        }
+
+        // Saving the SSL object just created.
+        *ssl_p = ssl;
+
+        return 0;
+    }
+
+    void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length) {
+
+        char buffer[512];
+        struct sockaddr *address = (struct sockaddr*) &storage;
+        getnameinfo(address, length, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
+
+        /* Logging client IP address.
+        *  Logging the established cipher.
+        */
+        printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
+    }
+
+    int read(SSL *ssl, char *buffer, size_t num) {
+
+        /* The assumption here is that all the data comes from a single read.
+        *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
+        *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
+        */
+        int bytes = SSL_read(ssl, buffer, num);
+        if (bytes < 1) {
+            ssl_utils::free_ssl(ssl);
+            return -1;
+        }
+
+        return 0;
+    }
+
 }

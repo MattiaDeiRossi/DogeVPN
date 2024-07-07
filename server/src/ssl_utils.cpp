@@ -115,7 +115,32 @@ namespace ssl_utils
             return -1;
         }
 
-        return 0;
+        return bytes;
+    }
+
+    int write(SSL *ssl, char *buffer, size_t num) {
+
+        /* Errors can be different.
+        *  A more resilient approach would be call SSL_get_error() to find out if it's retryable.
+        */
+        int bytes = SSL_write(ssl, buffer, num);
+        if (bytes < 1) {
+            ssl_utils::free_ssl(ssl);
+            return -1;
+        }
+
+        return bytes;
+    }
+
+    int generate_rand_32(unsigned char *buffer) {
+
+        /* Generating a key by using the OpenSSL library.
+        *  It will be 32 bytes long.
+        */
+        memset(buffer, 0, 32);
+        int rand_value = RAND_bytes(buffer, 32);
+        if (rand_value != 1) return -1;
+        else return 0;
     }
 
 }

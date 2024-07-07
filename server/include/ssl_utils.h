@@ -21,6 +21,10 @@ namespace ssl_utils
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length);
 
     int read(SSL *ssl, char *buffer, size_t num);
+
+    int write(SSL *ssl, char *buffer, size_t num);
+
+    int generate_rand_32(unsigned char *buffer);
 }
 
 #endif

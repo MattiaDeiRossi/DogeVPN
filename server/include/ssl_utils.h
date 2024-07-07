@@ -14,7 +14,7 @@ namespace ssl_utils
         const char *pri_cert_path
     );
 
-    void free_ssl(SSL *ssl);
+    void free_ssl(SSL *ssl, int *with_error);
 
     int bind_ssl(SSL_CTX *ctx, socket_t socket, SSL **ssl_p);
 

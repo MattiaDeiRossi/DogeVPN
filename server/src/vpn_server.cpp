@@ -33,7 +33,7 @@ void tcs_free(tcp_client_socket *tcs) {
     // Sanity check.
     if (tcs == NULL) return;
 
-    ssl_utils::free_ssl(tcs->ssl);
+    ssl_utils::free_ssl(tcs->ssl, NULL);
     free(tcs);
 }
 
@@ -407,7 +407,7 @@ void handle_tcp_client_key_exchange(
     client_credentials credentials;
     if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized");
-        ssl_utils::free_ssl(ssl);
+        ssl_utils::free_ssl(ssl, NULL);
         return;
     }
 
@@ -426,7 +426,7 @@ void handle_tcp_client_key_exchange(
     unsigned char rand_buf[32];
     if (ssl_utils::generate_rand_32(rand_buf) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: random bytes cannot be generated");
-        ssl_utils::free_ssl(ssl);
+        ssl_utils::free_ssl(ssl, NULL);
         return;
     }
 
@@ -446,7 +446,7 @@ void handle_tcp_client_key_exchange(
     udp_client_info *info;
     if (udp_client_info_utils::init((const char *) rand_buf, sizeof(rand_buf), &info) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: client info cannot be saved\n");
-        ssl_utils::free_ssl(ssl);
+        ssl_utils::free_ssl(ssl, NULL);
         return;
     }
 
@@ -463,7 +463,7 @@ void handle_tcp_client_key_exchange(
     *   - For example establish a new key after a while
     *   - Release UDP resources before the TCP connection goes away
     */
-    ssl_utils::free_ssl(ssl);
+    ssl_utils::free_ssl(ssl, NULL);
 }
 
 void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex) {

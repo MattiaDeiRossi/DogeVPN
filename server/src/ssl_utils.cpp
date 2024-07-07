@@ -45,13 +45,27 @@ namespace ssl_utils
         return 0;
     }
 
-    void free_ssl(SSL *ssl) {
+    void free_ssl(SSL *ssl, int *with_error) {
 
         // Nothing can be done.
         if (ssl == NULL) return;
 
-        // Review this piece of code.
-        SSL_shutdown(ssl);
+        /* SSL_shutdown() should not be called if a previous fatal error has occurred on a connection.
+        *  That is when SSL_get_error(3) has returned SSL_ERROR_SYSCALL or SSL_ERROR_SSL.
+        */
+        bool should_shutdown = true;
+        if (with_error != NULL) {
+            int error = SSL_get_error(ssl, *with_error);
+            should_shutdown = !(error == SSL_ERROR_SYSCALL || error == SSL_ERROR_SSL);
+        }
+
+        if (should_shutdown) {
+            int shutdown_completed = 0;
+            while (!shutdown_completed) {
+                shutdown_completed = SSL_shutdown(ssl);
+            }
+        }
+
         SSL_free(ssl);
 
         int socket = SSL_get_fd(ssl);
@@ -65,7 +79,7 @@ namespace ssl_utils
         // Creating an SSL object.
         SSL *ssl = SSL_new(ctx);
         if (ssl == NULL) {
-            free_ssl(ssl);
+            free_ssl(ssl, NULL);
             return -1;
         }
 
@@ -79,9 +93,10 @@ namespace ssl_utils
         *  Or the client and the server cannot agree on a cipher suite. 
         *  This must be taking into account a the server should continue listening to incoming connections.
         */
-        if (SSL_accept(ssl) != 1) {
+        int accept_result = SSL_accept(ssl);
+        if (accept_result != 1) {
             ERR_print_errors_fp(stderr);
-            free_ssl(ssl);
+            free_ssl(ssl, &accept_result);
             return -1;
         }
 
@@ -111,7 +126,7 @@ namespace ssl_utils
         */
         int bytes = SSL_read(ssl, buffer, num);
         if (bytes < 1) {
-            ssl_utils::free_ssl(ssl);
+            ssl_utils::free_ssl(ssl, &bytes);
             return -1;
         }
 
@@ -125,7 +140,7 @@ namespace ssl_utils
         */
         int bytes = SSL_write(ssl, buffer, num);
         if (bytes < 1) {
-            ssl_utils::free_ssl(ssl);
+            ssl_utils::free_ssl(ssl, &bytes);
             return -1;
         }
 

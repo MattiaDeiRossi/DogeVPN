@@ -46,13 +46,12 @@ typedef struct {
 } socket_holder;
 
 typedef struct {
-    char data[256];
     char username[256];
     char password[256];
 } client_credentials;
 
 typedef struct {
-    char key[KEY_LEN];
+    char key[32];
 } udp_client_info;
 
 typedef struct {

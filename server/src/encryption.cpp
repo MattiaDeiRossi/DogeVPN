@@ -123,7 +123,7 @@ namespace encryption
 
         EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();
         unsigned char mdVal[SHA_256_BYTES];
-        unsigned int mdLen, i;
+        unsigned int mdLen;
 
         if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL))
         {

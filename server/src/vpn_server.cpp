@@ -39,8 +39,7 @@ void tcs_free(tcp_client_socket *tcs) {
 
 int create_tss(
     char const *host, 
-    char const *port, 
-    unsigned int max_cnts, 
+    char const *port,
     tcp_server_socket **tcp_socket
 ) {
 
@@ -180,8 +179,7 @@ void socket_holder_free(socket_holder *sh) {
 
 int create_tss_sh(
     char const *host, 
-    char const *port, 
-    unsigned int max_cnts,
+    char const *port,
     socket_holder **sh
 ) {
 
@@ -189,7 +187,7 @@ int create_tss_sh(
 
     // Creating tcp server socket.
     tcp_server_socket *tss;
-    ret_val = create_tss(host, port, max_cnts, &tss);
+    ret_val = create_tss(host, port, &tss);
     if (ret_val) return ret_val;
 
     socket_holder *holder;
@@ -612,7 +610,7 @@ int start_doge_vpn() {
     FD_ZERO(&master);
 
     // Initialization of the tcp server socket.
-    ret_val = create_tss_sh("127.0.0.1", TCP_PORT, MAX_TCP_CONNECTIONS, &tss_holder);
+    ret_val = create_tss_sh("127.0.0.1", TCP_PORT, &tss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 

@@ -19,7 +19,7 @@ namespace client_credentials_utils {
 
 		memset(result, 0, sizeof(client_credentials));
 
-	    for (int i = 0; i < num; ++i) {
+	    for (size_t i = 0; i < num; ++i) {
 	        
 	        char bdata = data[i];
 	        

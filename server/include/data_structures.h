@@ -56,7 +56,7 @@ typedef struct {
 
 typedef struct {
     unsigned char message[UDP_THEORETICAL_LIMIT];
-    size_t length;
+    long int length;
 } packet;
 
 typedef struct {

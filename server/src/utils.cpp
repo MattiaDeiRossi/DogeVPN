@@ -65,7 +65,7 @@ namespace utils {
 	    /* Copying str_one.
 	    *  It will be the first part of the message.
 	    */
-	    for (int i = 0; i < n_one; ++i) {
+	    for (size_t i = 0; i < n_one; ++i) {
 	        *msg_p = str_one[i];
 	        msg_p++;
 	    }
@@ -79,7 +79,7 @@ namespace utils {
 	    /* Last part of the message.
 	    *  This is str_two.
 	    */
-	    for (int i = 0; i < n_two; ++i) {
+	    for (size_t i = 0; i < n_two; ++i) {
 	        *msg_p = str_two[i];
 	        msg_p++;
 	    }
@@ -93,7 +93,7 @@ namespace utils {
 
     	int steps = 0;
     	int line = 1;
-    	for (int i = 0; i < num; ++i) {
+    	for (size_t i = 0; i < num; ++i) {
 
     		if (steps_nl != 0 && steps == 0) {
     			printf("  %d:", line++);

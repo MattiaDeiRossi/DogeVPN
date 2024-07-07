@@ -73,7 +73,7 @@ namespace vpn_data_utils {
         ) == -1) return -1;
 
         // Message extraction.
-        size_t packet_length = utils::read_reverse(
+        int packet_length = utils::read_reverse(
             ret_data->encrypted_packet.message,
             from->message,
             MAX_MESSAGE_BYTES,

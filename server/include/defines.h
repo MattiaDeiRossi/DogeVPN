@@ -54,6 +54,7 @@
 #define IV_LEN 16
 #define SHA_256_BYTES 32
 #define MAX_MESSAGE_BYTES 65451
+#define CREDENTIALS_MESSAGE_MAX_LENGTH 256
 // *** End constants ***
 
 // *** Salt ***

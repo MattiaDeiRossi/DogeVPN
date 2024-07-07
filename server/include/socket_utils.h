@@ -2,6 +2,7 @@
 #define SOCKET_UTILS_H
 
 #include "standards.h"
+#include "utils.h"
 #include "data_structures.h"
 
 namespace socket_utils
@@ -18,6 +19,10 @@ namespace socket_utils
     *   - bind() 
     */
     int bind_server_socket(bool is_tcp, char const *host, char const *port, socket_t *ret_socket);
+
+    void log_start_server(bool is_tcp, char const *host, char const *port);
+
+    void log_client_address(struct sockaddr_storage address, socklen_t length);
 }
 
 #endif

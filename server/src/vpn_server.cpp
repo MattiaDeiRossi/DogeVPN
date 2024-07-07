@@ -494,7 +494,7 @@ int extract_vpn_client_packet_data(const packet *from, vpn_client_packet_data *r
 
     int res = vpn_data_utils::init_vpn_client_packet_data(from, ret_data);
     if (res == -1) {
-        fprintf(stderr, "Packet from client is malformed and data cannot be extracted");
+        utils::print_error("extract_vpn_client_packet_data: packet from client is malformed and data cannot be extracted\n");
         return -1;
     }
 
@@ -649,7 +649,7 @@ int start_doge_vpn() {
                         /* Calling accept failed.
                         *  This could fail when the connections reach the maximum allowed number.
                         */
-                        utils::print_error("start_doge_vpn: cannot accept new client");
+                        utils::print_error("start_doge_vpn: cannot accept new client\n");
                     } else {
 
                         /* Why do we need to start a new thread when handling a new client?

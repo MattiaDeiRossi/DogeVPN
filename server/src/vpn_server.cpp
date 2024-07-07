@@ -5,94 +5,9 @@
 #include "utils.h"
 #include "ssl_utils.h"
 #include "socket_utils.h"
-
-// TODO return instead of exit.
-
-void log_vpn_server_error(int error_number) {
-
-    switch (error_number) {
-      case INIT_SSL_ERROR:
-        fprintf(stderr, "Server cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n");
-        break;
-    case TCP_SOCKET_ERROR:
-        fprintf(stderr, "TCP server cannot be created. Call to socket() failed.\n");
-        break;
-    case TCP_BIND_ERROR:
-        fprintf(stderr, "TCP server cannot be bound. Call to bind() failed.\n");
-        break;
-    case TCP_LISTEN_ERROR:
-        fprintf(stderr, "TCP cannot listen. Call to listen() failed.\n");
-        break;
-    case TCP_ACCEPT_ERROR:
-        fprintf(stderr, "TCP cannot accept. Call to accept() failed.\n");
-        break;
-    case SSL_CREATION_ERROR:
-        fprintf(stderr, "An SSL object cannot be created. Call to SSL_new() failed.\n");
-        break;
-    case SSL_ACCEPT_ERROR:
-        fprintf(stderr, "A valid SSL connection cannot be accepted. Call to SSL_accept() failed.\n");
-        break;
-    case SSL_CERTIFICATE_ERROR:
-        fprintf(stderr, "A valid certificate cannot be found. Call to SSL_CTX_use_certificate_file() failed.\n");
-        break;
-    case OUT_OF_MEMORY:
-        fprintf(stderr, "Out of memory.\n");
-        break;
-    case UDP_SOCKET_ERROR:
-        fprintf(stderr, "UDP server cannot be created. Call to socket() failed.\n");
-        break;
-    case UDP_BIND_ERROR:
-        fprintf(stderr, "UDP server cannot be bound. Call to bind() failed.\n");
-        break;
-    case ILLEGAL_STATE:
-        fprintf(stderr, "Program reached an illegal state and should be aborted.\n");
-        break;
-    case SELECT_ERROR:
-        fprintf(stderr, "Call to select() failed.\n");
-        break;
-    case UNEXPECTED_DISCONNECT:
-        fprintf(stderr, "Client disconnect unexpectedly.\n");
-        break;
-    case UNEXPECTED_SOCKET_TO_DELETE:
-        fprintf(stderr, "A potential connection cannot be close since socket is of wrong type.\n");
-        break;
-    case PWD_TOO_SHORT:
-        fprintf(stderr, "Client does not have a valid password: too short.\n");
-        break;
-    case RAND_NOT_SUPPORTED:
-        fprintf(stderr, "RAND_bytes() not supported by the current RAND method.\n");
-        break;
-    case RAND_FAILURE:
-        fprintf(stderr, "RAND_bytes() reported a failure.\n");
-        break;
-    case SSL_WRITE_ERROR:
-        fprintf(stderr, "SSL_write() reported a failure.\n");
-        break;
-    case UDP_READ_ERROR:
-        fprintf(stderr, "recvfrom() reported a failure.\n");
-        break;
-    case INVALID_CLIENT_ID:
-        fprintf(stderr, "The client id cannot be extracted from the UDP packet.\n");
-        break;
-    case UDP_PACKET_TOO_LARGE:
-        fprintf(stderr, "UDP packet is too large.\n");
-        break;
-    case INVALID_IV:
-        fprintf(stderr, "IV vector is not of the correct size.\n");
-        break;
-    case INVALID_HASH:
-        fprintf(stderr, "The hash is not of the correct size.\n");
-        break;
-    case INVALID_MESSAGE:
-        fprintf(stderr, "Message is too long.\n");
-        break;
-    case USER_IS_NOT_PRESENT:
-        fprintf(stderr, "Key cannot be found for the give id.\n");
-        break;
-      default:
-        fprintf(stderr, "Some error occured.\n");
-    }
-}
+#include "client_credentials_utils.h"
+#include "udp_client_info_utils.h"
+#include "vpn_data_utils.h"
 
 socket_t extract_socket(socket_holder *holder) {
 
@@ -111,74 +26,6 @@ socket_t extract_socket(socket_holder *holder) {
     }
 
     return -1;
-}
-
-/* Probably a thread approach would be better since SSL_accept is I/O blocking.
-*  When handling a new client there is no need to just create the client socket and return.
-*  A dedicated process should handle the entire process of data exchange without relying on select in the main loop.
-*  After a timeout or some error the client socket can be freed along with the thread.
-*  This will simplify the whole logic and the thread should create all the data without accessing shared memory. 
-*  The only problem could be future portability on diffrent operating systems.
-*/
-int create_tcs(
-    socket_t tcp_socket,
-    SSL_CTX *ctx, 
-    tcp_client_socket **tcs
-) {
-
-    int ret_val = 0;
-
-    // Classic accept phase.
-    struct sockaddr_storage client_address;
-    socklen_t client_len = sizeof(client_address);
-    socket_t client_socket = accept(tcp_socket, (struct sockaddr*) &client_address, &client_len);
-    if (socket_utils::invalid_socket(client_socket)) return TCP_ACCEPT_ERROR;
-    
-    // Creating an SSL object.
-    SSL *ssl = SSL_new(ctx);
-    if (!ssl) {
-        socket_utils::close_socket(client_socket);
-        return SSL_CREATION_ERROR;
-    }
-
-    // Associating the ssl object with the client socket.
-    SSL_set_fd(ssl, client_socket);
-
-    /* A call to SSL_accept() can fail for many reasons. 
-    *  For example if the connected client does not trust our certificate.
-    *  Or the client and the server cannot agree on a cipher suite. 
-    *  This must be taking into account a the server should continue listening to incoming connections.
-    */
-    if (SSL_accept(ssl) != 1) {
-
-        // Loggin errors.
-        ERR_print_errors_fp(stderr);
-
-        // Cleaning up SSL resources and the useless client socket.  
-        ssl_utils::free_ssl(ssl);
-        return SSL_ACCEPT_ERROR;
-    }
-
-    tcp_client_socket *ret_data = (tcp_client_socket *) malloc(sizeof(tcp_client_socket));
-    if (!ret_data) {
-        ssl_utils::free_ssl(ssl);
-        return OUT_OF_MEMORY;
-    }
-
-    // Logging client ip address and the established cipher.
-    char buffer[256];
-    struct sockaddr *cl_address = (struct sockaddr*) &client_address;
-    getnameinfo(cl_address, client_len, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
-    printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
-
-    // Setting up tcp client socket.
-    ret_data->socket = client_socket;
-    ret_data->client_len = client_len;
-    ret_data->client_address = client_address;
-    ret_data->ssl = ssl;
-    *tcs = ret_data;
-
-    return ret_val;
 }
 
 void tcs_free(tcp_client_socket *tcs) {
@@ -200,27 +47,20 @@ int create_tss(
     int ret_val = 0;
     
     socket_t socket;
-    ret_val = socket_utils::bind_server_socket(true, host, port, &socket);
-    if (ret_val) return ret_val;
-
-    printf("*** Making TCP socket listening for connections ***\n");
-
-    /* Listen put the socket in a state where it listens for new connections.
-    *  The max_connections parameter tells how many connections it is allowed to queue up. 
-    *  If connections become queued up, then the operating system will reject new connections.
-    */
-    if (listen(socket, max_cnts) < 0) {
-        socket_utils::close_socket(socket);
-        return TCP_LISTEN_ERROR;
+    if (socket_utils::bind_server_socket(true, host, port, &socket) == -1) {
+        utils::print_error("create_tss: cannot create TCP server socket\n");
+        return -1;
     }
 
     tcp_server_socket *ret_data = (tcp_server_socket *) malloc(sizeof(tcp_server_socket));
     if (!ret_data) {
+        utils::print_error("create_tss: cannot create TCP server socket data\n");
         socket_utils::close_socket(socket);
-        return OUT_OF_MEMORY;
+        return -1;
     }
 
     // Setting up the tcp server socket.
+    socket_utils::log_start_server(true, host, port);
     ret_data->socket = socket;
     *tcp_socket = ret_data;
 
@@ -244,16 +84,20 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     *  Just up to bind. 
     */
     socket_t socket;
-    ret_val = socket_utils::bind_server_socket(false, host, port, &socket);
-    if (ret_val) return ret_val;
+    if (socket_utils::bind_server_socket(false, host, port, &socket) == -1) {
+        utils::print_error("create_uss: cannot create UDP server socket\n");
+        return -1;
+    }
 
     udp_server_socket *uss = (udp_server_socket *) malloc(sizeof(udp_server_socket));
     if (!uss) {
+        utils::print_error("create_uss: cannot create UDP server socket data\n");
         socket_utils::close_socket(socket);
         return OUT_OF_MEMORY;
     }
 
     // Setting up the udp server socket.
+    socket_utils::log_start_server(false, host, port);
     uss->socket = socket;
     *udp_socket = uss;
 
@@ -376,30 +220,6 @@ int create_uss_sh(
     socket_data data;
     data.uss = uss;
     ret_val = create_sh(UDP_SERVER_SOCKET, data, &holder);
-    if (ret_val) return ret_val;
-
-    *sh = holder;
-
-    return ret_val;
-}
-
-int create_tcs_sh(
-    socket_t tcp_server_socket,
-    SSL_CTX *ctx,
-    socket_holder **sh
-) {
-
-    int ret_val = 0;
-
-    // Creating tcp client socket.
-    tcp_client_socket *tcs;
-    ret_val = create_tcs(tcp_server_socket, ctx, &tcs);
-    if (ret_val) return ret_val;
-
-    socket_holder *holder;
-    socket_data data;
-    data.tcs = tcs;
-    ret_val = create_sh(TCP_CLIENT_SOCKET, data, &holder);
     if (ret_val) return ret_val;
 
     *sh = holder;
@@ -531,24 +351,6 @@ int map_is_tun_ss(socket_holder *holder) {
     return map_check_socket(holder, TUN_SERVER_SOCKET);
 }
 
-int handle_new_tcp_client(
-    socket_t tcp_server_socket,
-    SSL_CTX *ctx,
-    std::map<socket_t, socket_holder*>& map, 
-    fd_set *master_set,
-    socket_t *max_socket
-) {
-
-    int ret_val = 0;
-
-    socket_holder *tcs_holder;
-    ret_val = create_tcs_sh(tcp_server_socket, ctx, &tcs_holder);
-    if (ret_val) return ret_val;
-    map_set_max_add(map, master_set, tcs_holder, max_socket);
-
-    return ret_val;
-}
-
 void uc_map_update(
     user_id id,
     std::map<int, udp_client_info*>& map,
@@ -556,11 +358,15 @@ void uc_map_update(
     udp_client_info *new_info
 ) {
 
+    /* Updating the map.
+    *  Mutex is needed to protect shared memory.
+    */
     std::unique_lock lock(mutex);
 
-    udp_client_info *info = map.at(id);
-    if (info) {
-        free(info);
+    if (map.count(id)) {
+
+        udp_client_info *info = map.at(id);
+        if (info != NULL) free(info);
         map.erase(id);
     }
 
@@ -586,132 +392,71 @@ void handle_tcp_client_key_exchange(
 
     SSL *ssl;
     if (ssl_utils::bind_ssl(ctx, client_socket, &ssl) == -1) {
-        log_vpn_server_error(-1);
-    }
-
-    ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
-
-    client_credentials credentials;
-    memset(&credentials, 0, sizeof(credentials));
-
-    int size = sizeof(credentials.data);
-    int read_error = ssl_utils::read(ssl, credentials.data, size);
-    if (read_error) {
-        log_vpn_server_error(UNEXPECTED_DISCONNECT);
+        utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server");
         return;
     }
 
-    int reading_credentials = 1;
-    char *usr_p = credentials.username;
-    char *pwd_p = credentials.password;
+    utils::println_sep(0);
+    ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
 
-    for (int i = 0; i < size; ++i) {
-        
-        char bdata = credentials.data[i];
-        
-        if (reading_credentials) {
-
-            // While reading credentilas alway checking if the separator is the current byte.
-            if (bdata == USR_PWD_SEPARATOR) {
-                reading_credentials = 0;
-            } else {
-                *usr_p = bdata;
-                usr_p++;
-            }
-        } else {
-
-            // From now on the data that is being read represents the password.
-            *pwd_p = bdata;
-            pwd_p++;
-        }
+    char credentials_buffer[512];
+    int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
+    if (bytes_read == -1) {
+        utils::print_error("handle_tcp_client_key_exchange: Client closed connection and credentials cannot be verified");
+        return;
     }
 
-    /* DogeVPN requires a minimum length of bytes for the password.
-    *  If the minimum length is not respected, than the database does not even gets accessed.
-    */
-    int pwd_len = strlen(credentials.password);
-    if (pwd_len < MINIMUM_PWD_LEN) {
-        log_vpn_server_error(PWD_TOO_SHORT);
+    client_credentials credentials;
+    if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
+        utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized");
         ssl_utils::free_ssl(ssl);
         return;
     }
+
+    utils::println_sep(0);
+    client_credentials_utils::log_client_credentials(&credentials);
 
     /* The user id is an important property for communicating over UDP.
     *  Once the id is fetched, it must be saved in memory.
     *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
     */
     user_id db_user_id = 42; // TODO
-    char id_buf[ID_LEN];
-    memset(id_buf, 0, ID_LEN);
-    sprintf(id_buf, "%d", db_user_id);
+    unsigned char id_buf[64];
+    memset(id_buf, 0, 64);
+    sprintf((char *) id_buf, "%d", db_user_id);
 
-    /* Generating a key by using the OpenSSL library.
-    *  It will be shared with the client to communicate over UDP.
-    */
-    unsigned char rand_buf[KEY_LEN];
-    memset(rand_buf, 0, KEY_LEN);
-    int rand_value = RAND_bytes(rand_buf, KEY_LEN);
-    if (rand_value != 1) {
-        log_vpn_server_error(rand_value == -1 ? RAND_NOT_SUPPORTED : RAND_FAILURE);
+    unsigned char rand_buf[32];
+    if (ssl_utils::generate_rand_32(rand_buf) == -1) {
+        utils::print_error("handle_tcp_client_key_exchange: random bytes cannot be generated");
         ssl_utils::free_ssl(ssl);
         return;
     }
 
-    /* Composing the final message.
-    *  It has the following form:
-    *   - The first part is the key that will be used to encrypt and decrypt the data over UDP
-    *   - There is a separator in the middle
-    *   - The last part is the user id that it will be later on used to fetch the key that must be used
-    */
-    char message[MAX_KEY_MESSAGE_LEN];
-    memset(message, 0, MAX_KEY_MESSAGE_LEN);
-    char *msg_p = message;
+    // TODO check error.
+    char message[256];
+    utils::concat_with_separator(
+        (const char *) rand_buf, sizeof(rand_buf), 
+        (const char *) id_buf, sizeof(id_buf), 
+        message, sizeof(message), 
+        '.'
+    );
 
-    /* Copying the key.
-    *  It will be the first part of the message (256 bit).
-    */
-    for (int i = 0; i < KEY_LEN; ++i) {
-        *msg_p = rand_buf[i];
-        msg_p++;
-    }
+    size_t message_length = sizeof(rand_buf) + strlen((const char *) id_buf) + 1;
+    utils::println_sep(0);
+    utils::print_bytes("Generating message for the client", message, message_length, 5);
 
-    /* The separator within the message.
-    *  After it the user id will be present.
-    */
-    *msg_p = MESSAGE_SEPARATOR;
-    msg_p++;
-
-    /* Adding the final part of the message that is the user id.
-    *  It will be used to retrieve teh correct symmetric key for the UDP client.
-    */
-    char *id_p = id_buf;
-    while(*id_p) {
-        *msg_p = *id_p;
-        msg_p++;
-        id_p++;
-    }
-
-    udp_client_info *info = (udp_client_info*) malloc(sizeof(udp_client_info));
-    if (!info) {
-        log_vpn_server_error(OUT_OF_MEMORY);
+    udp_client_info *info;
+    if (udp_client_info_utils::init((const char *) rand_buf, sizeof(rand_buf), &info) == -1) {
+        utils::print_error("handle_tcp_client_key_exchange: client info cannot be saved\n");
         ssl_utils::free_ssl(ssl);
         return;
     }
 
-    /* Updating the info map.
-    *  Mutex is needed to protect shared memory.
-    */
     uc_map_update(db_user_id, map, mutex, info);
 
-    /* Errors can be different.
-    *  A more resilient approach would be call SSL_get_error() to find out if it's retryable.
-    */
-    if (SSL_write(ssl, message, strlen(message)) <= 0) {
-
-        log_vpn_server_error(SSL_WRITE_ERROR);
-
+    if (ssl_utils::write(ssl, message, message_length) == -1) {
+        utils::print_error("handle_tcp_client_key_exchange: key cannot be shared with the client\n");
         uc_map_update(db_user_id, map, mutex, NULL);
-        ssl_utils::free_ssl(ssl);
         return;
     }
 
@@ -747,103 +492,16 @@ int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::sh
     return ret_val;
 }
 
-/* This function deals with extracting the information. 
-*  DogeVPN requires the payload to respect the following format:
-*   1.  First part of the payload is the original encrypted packet.
-*       The length is variable.
-*   2.  After the payload there is the hash of the message signed with the exchanged key.
-*       The main reason to exchange the hashed messsage is:
-*           - Avoiding that the user id leak allow everyone to send non-sense packet.
-*   3.  After the hashed part we have the IV
-*   4.  Then we have the user id:
-*           - This is needed to decrypt the message with correct key
-*/
 int extract_vpn_client_packet_data(const packet *from, vpn_client_packet_data *ret_data) {
 
-    int ret_val = 0;
-    int current_index = from->length - 1;
-    memset(ret_data, 0, sizeof(vpn_client_packet_data));
-
-    int j = 0;
-    while (current_index >= 0) {
-
-        char bdata = from->message[current_index--];
-
-        /* Id has a specific length.
-        *  When dealing with longer id, an error is returned.
-        */
-        if (j == ID_LEN && bdata != MESSAGE_SEPARATOR) {
-            ret_val = INVALID_CLIENT_ID;
-            return ret_val;
-        }
-        
-        if (bdata == MESSAGE_SEPARATOR) {
-
-            /* The user id is the last part of the message after the IV vector.
-            *  After encountering it the user id processing must stop.  
-            */
-            break;
-        } if (!isdigit(bdata)) {
-
-            /* An user id contains only digits.
-            *  When a different character is encountered an error value is returned.
-            */
-            ret_val = INVALID_CLIENT_ID;
-            return ret_val;
-        } else {
-
-            ret_data->user_id[j++] = bdata;
-        }
-
+    int res = vpn_data_utils::init_vpn_client_packet_data(from, ret_data);
+    if (res == -1) {
+        fprintf(stderr, "Packet from client is malformed and data cannot be extracted");
+        return -1;
     }
 
-    /* Sanity check.
-    *  Id must not be empty.
-    */
-    if (j == 0) {
-        ret_val = INVALID_CLIENT_ID;
-        return ret_val;
-    }
-
-    /* Id has been read in reverse.
-    *  In order to extract it correctly, a reverse operation is applied. 
-    */
-    utils::reverse_string((char *) ret_data->user_id, j);
-
-    // IV extraction.
-    if (utils::read_reverse(
-        ret_data->iv,
-        from->message,
-        IV_LEN,
-        from->length,
-        &current_index,
-        true
-    ) == -1) return INVALID_IV;
-
-    // Hash extraction.
-    if (utils::read_reverse(
-        ret_data->hash,
-        from->message,
-        SHA_256_BYTES,
-        from->length,
-        &current_index,
-        true
-    ) == -1) return INVALID_HASH;
-
-    // Message extraction.
-    size_t packet_length = utils::read_reverse(
-        ret_data->encrypted_packet.message,
-        from->message,
-        MAX_MESSAGE_BYTES,
-        from->length,
-        &current_index,
-        false
-    );
-
-    if (packet_length == -1) return INVALID_MESSAGE;
-    ret_data->encrypted_packet.length = packet_length;
-
-    return ret_val;
+    vpn_data_utils::log_vpn_client_packet_data(ret_data);
+    return res;
 }
 
 /* Errors should be notified to the client peer.
@@ -877,27 +535,17 @@ int handle_incoming_udp_packet(
     */
     if (pkt.length == 0) {
         printf("UDP connection closed by a peer.\n");
-        return ret_val;
+        return 0;
     }
 
     /* A negative value should never happen.
     *  In this case no actions are perfromed, just returning the error.
     */
     if (pkt.length < 0) {
-        ret_val = UDP_READ_ERROR;
-        return ret_val;
+        return -1;
     }
 
-    char address_buffer[128];
-    char service_buffer[128];
-    getnameinfo(
-        (struct sockaddr*) &client_address, client_len,
-        address_buffer, sizeof(address_buffer), 
-        service_buffer, sizeof(service_buffer),
-        NI_NUMERICHOST | NI_NUMERICSERV
-    );
-
-    printf("Received %ld bytes from %s:%s\n", pkt.length, address_buffer, service_buffer);
+    socket_utils::log_client_address(client_address, client_len);
 
     /* Now the main logic of must happen:
     *   1. Extract the the packet
@@ -964,12 +612,12 @@ int start_doge_vpn() {
     FD_ZERO(&master);
 
     // Initialization of the tcp server socket.
-    ret_val = create_tss_sh(TCP_HOST, TCP_PORT, MAX_TCP_CONNECTIONS, &tss_holder);
+    ret_val = create_tss_sh("127.0.0.1", TCP_PORT, MAX_TCP_CONNECTIONS, &tss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 
     // Initialization of the udp server socket.
-    ret_val = create_uss_sh(UDP_HOST, UDP_PORT, &uss_holder);
+    ret_val = create_uss_sh("127.0.0.1", UDP_PORT, &uss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 
@@ -979,7 +627,7 @@ int start_doge_vpn() {
         fd_set reads;
         reads = master;
 
-        if (select(max_socket+1, &reads, 0, 0, 0) < 0) {
+        if (select(max_socket + 1, &reads, 0, 0, 0) < 0) {
             ret_val = SELECT_ERROR;
             goto error_handler;
         }
@@ -1003,7 +651,7 @@ int start_doge_vpn() {
                         /* Calling accept failed.
                         *  This could fail when the connections reach the maximum allowed number.
                         */
-                        log_vpn_server_error(TCP_ACCEPT_ERROR);
+                        utils::print_error("start_doge_vpn: cannot accept new client");
                     } else {
 
                         /* Why do we need to start a new thread when handling a new client?
@@ -1026,10 +674,8 @@ int start_doge_vpn() {
                 } else if (socket == extract_socket(uss_holder)) {
 
                     packet received_packet;
-                    int some_error = handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet);
-
-                    if (some_error) {
-                        log_vpn_server_error(some_error);
+                    if (handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet) == -1) {
+                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified");
                     } else {
 
                     }
@@ -1050,7 +696,7 @@ int start_doge_vpn() {
 error_handler:
 
     // Logging error.
-    log_vpn_server_error(ret_val);
+    utils::print_error("start_doge_vpn: fatal error, switching off the server");
 
     // Cleaning up resources.
     ssl_context_free(ctx);

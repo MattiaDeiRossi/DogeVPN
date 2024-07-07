@@ -18,6 +18,9 @@ add_library(encryption src/encryption.cpp)
 add_library(socket_utils src/socket_utils.cpp)
 add_library(ssl_utils src/ssl_utils.cpp)
 add_library(utils src/utils.cpp)
+add_library(client_credentials_utils src/client_credentials_utils.cpp)
+add_library(udp_client_info_utils src/udp_client_info_utils.cpp)
+add_library(vpn_data_utils src/vpn_data_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 
@@ -25,23 +28,25 @@ target_include_directories(mongo PUBLIC
   ${MONGOCXX_INCLUDE_DIR}/mongocxx/v_noabi
   ${MONGOCXX_INCLUDE_DIR}/bsoncxx/
   ${MONGOCXX_INCLUDE_DIR}/bsoncxx/v_noabi
-  ${MONGOCXX_INCLUDE_DIR}/bsoncxx/v_noabi/bsoncxx/third_party/mnmlstc)
+  ${MONGOCXX_INCLUDE_DIR}/bsoncxx/v_noabi/bsoncxx/third_party/mnmlstc
+)
 
 target_link_libraries(mongo PRIVATE 
   mongocxx 
   bsoncxx
 )
 
-# target_link_libraries(main mongo)
-
 target_link_libraries(vpnserver 
-  crypto
-  ssl
   encryption
   mongo
   socket_utils
   ssl_utils
   utils
+  client_credentials_utils
+  udp_client_info_utils
+  vpn_data_utils
+  crypto
+  ssl
 )
 
 # install(TARGETS 

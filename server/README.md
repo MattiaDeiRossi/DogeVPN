@@ -1,9 +1,9 @@
 ## Without docker compose
 ### To compile: 
 ```bash
-mkdir build; cd build/
+rm build/ -r; mkdir build; cd build/
 cmake ..
-make
+make; cd ..
 ```
 
 ### To run the server:

@@ -38,4 +38,121 @@ namespace utils {
 	    reverse_string((char *) dst, j);
 	    return j;
 	}
+
+    int concat_with_separator(
+        const char *str_one, 
+        size_t n_one,
+        const char *str_two, 
+        size_t n_two, 
+        char *buffer,
+        size_t buffer_size,
+        char separator
+    ) {
+
+    	if (n_one + n_two + 1 > buffer_size) {
+    		return -1;
+    	}
+
+	    /* Composing the message.
+	    *  It has the following form:
+	    *   - The first part is str_one
+	    *   - There is a separator in the middle
+	    *   - The last part is str_two
+	    */
+	    memset(buffer, 0, buffer_size);
+	    char *msg_p = buffer;
+
+	    /* Copying str_one.
+	    *  It will be the first part of the message.
+	    */
+	    for (int i = 0; i < n_one; ++i) {
+	        *msg_p = str_one[i];
+	        msg_p++;
+	    }
+
+	    /* The separator within the message.
+	    *  After it str_two will be present.
+	    */
+	    *msg_p = separator;
+	    msg_p++;
+
+	    /* Last part of the message.
+	    *  This is str_two.
+	    */
+	    for (int i = 0; i < n_two; ++i) {
+	        *msg_p = str_two[i];
+	        msg_p++;
+	    }
+
+	    return n_one + n_two + 1;
+    }
+
+    void print_bytes(const char *title, const char *message, size_t num, int steps_nl) {
+
+    	if (strlen(title) != 0) printf("%s\n", title);
+
+    	int steps = 0;
+    	int line = 1;
+    	for (int i = 0; i < num; ++i) {
+
+    		if (steps_nl != 0 && steps == 0) {
+    			printf("  %d:", line++);
+    		}
+
+    		printf(" %02X", (unsigned char) message[i]);
+
+    		if (steps_nl != 0) {
+    			steps++;
+    			if (steps == steps_nl) {
+    				printf("\n");
+    				steps = 0;
+    			}
+    		}
+    	}
+
+    	if (steps != 0 || steps_nl == 0) {
+    		printf("\n");
+    	}
+    }
+
+    void reset() {
+        printf("\033[0m");
+    }
+
+    void print_red(const char *message) {
+        printf("\033[1;31m");
+        printf("%s", message);
+        reset();
+    }
+
+    void print_yellow(const char *message) {
+        printf("\033[1;33m");
+        printf("%s", message);
+        reset();
+    }
+
+    void print_green(const char *message) {
+        printf("\033[0;32m");
+        printf("%s", message); 
+        reset();
+    }
+
+    void println_sep(int color) {
+
+    	const char *sep_line = "+---+---+---+\n";
+
+    	if (color == 0) print_green(sep_line);
+    	else if (color == 1) print_yellow(sep_line);
+    	else if (color == 2) print_red(sep_line);
+    }
+
+    void print_error(const char *message) {
+    	print_red(message);
+    }
+
+    void print(const char *message, int left_padding) {
+
+        for (int i = 0; i < left_padding; ++i) printf(" ");
+        printf("%s", message);
+    }
 }

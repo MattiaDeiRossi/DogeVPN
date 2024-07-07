@@ -9,8 +9,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: example
       MONGO_INITDB_DATABASE: vpndb
     networks:
-      vpn_net:
-        ipv4_address: 10.5.0.5
+      internal_network:
+        ipv4_address: 192.168.0.5
     ports:
     - "27017:27017"
     volumes:
@@ -20,20 +20,33 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    tty: true
+    cap_add:
+      - ALL
+    sysctls:
+      - net.ipv4.ip_forward=1
     container_name: server
     environment:
       - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
     networks:
-      vpn_net:
-        ipv4_address: 10.5.0.6
-    ports:
-    - "8080:8080"
-    command: ./build/main 'clear_mode'
+      external_network:
+        ipv4_address: 10.5.0.15
+      internal_network:
+        ipv4_address: 192.168.0.15
+
+    command: ./build/vpnserver
 
 networks:
-  vpn_net:
+  external_network:
     driver: bridge
     ipam:
      config:
       - subnet: 10.5.0.0/24
-        gateway: 10.5.0.1
+        gateway: 10.5.0.15
+
+  internal_network:
+    driver: bridge
+    ipam:
+     config:
+      - subnet: 192.168.0.0/24
+        gateway: 192.168.0.15

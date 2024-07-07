@@ -1,0 +1,28 @@
+services:
+  
+  vpnclient1:
+    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client1
+    networks:
+      external_network:
+        ipv4_address: 10.5.0.7
+    command: ./client
+
+  vpnclient2:
+    tty: true
+    image: dogevpn-vpnclient1
+    container_name: client2
+    networks:
+      external_network:
+        ipv4_address: 10.5.0.8
+
+networks:
+  external_network:
+    driver: bridge
+    ipam:
+     config:
+      - subnet: 10.5.0.0/24
+        gateway: 10.5.0.15

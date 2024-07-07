@@ -5,27 +5,11 @@ mongo::mongo(const std::string uri) : instance_{}, uri_(uri), client_(uri_)
 {
    db_ = client_["vpndb"];
    collection_ = db_["users"];
+   salt_ = SALT;
 }
 
 mongo::~mongo()
 {
-}
-
-void mongo::generate_salt(size_t length)
-{
-   const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-   const size_t max_index = (sizeof(charset) - 1);
-   std::random_device rd;
-   std::mt19937 generator(rd());
-   std::uniform_int_distribution<> dist(0, max_index);
-
-   std::string salt;
-   for (size_t i = 0; i < length; ++i)
-   {
-      salt += charset[dist(generator)];
-   }
-
-   salt_ = salt;
 }
 
 std::string mongo::to_hex_string(size_t hash_value)
@@ -51,7 +35,6 @@ void mongo::add_user(const std::string id, const std::string username, const std
 {
    try
    {
-      generate_salt(16);
       std::string hashed_password = hash_password(password);
       auto result = collection_.insert_one(make_document(
           kvp("_id", id),
@@ -69,21 +52,22 @@ void mongo::add_user(const std::string id, const std::string username, const std
    }
 }
 
-bool mongo::is_present(const std::string username, const std::string hashed_password)
+user_id mongo::is_present(const std::string username, const std::string password)
 {
    auto result = collection_.find_one(make_document(kvp("username", username)));
    if (result)
    {
       auto view = result->view();
       auto password_element = view["password"];
+      auto hashed_password = hash_password(password);
       if (password_element && password_element.get_string().value.to_string() == hashed_password)
-         return true;
+         return stoi(view["_id"].get_string().value.to_string());
       else
-         return false;
+         return -1;
    }
    else
    {
-      return false;
+      return -1;
    }
 }
 

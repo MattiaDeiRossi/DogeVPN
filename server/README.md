@@ -1,15 +1,15 @@
 ## Without docker compose
 ### To compile: 
 ```bash
-mkdir build; cd build/
+rm build/ -r; mkdir build; cd build/
 cmake ..
-make
+make; cd ..
 ```
 
 ### To run the server:
 ```bash
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-$ ./build/main
+./build/vpnserver
 ```
 
 ## With docker compose

@@ -4,8 +4,11 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-            unsigned char *iv, unsigned char *ciphertext)
+    /* A 128 bit IV */
+const unsigned char iv[16] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+                             0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 };
+
+int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key, unsigned char *ciphertext)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -39,8 +42,7 @@ int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
     return ciphertext_len;
 }
 
-int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-            unsigned char *iv, unsigned char *plaintext)
+int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key, unsigned char *plaintext)
 {
     EVP_CIPHER_CTX *ctx;
     int len;
@@ -72,53 +74,4 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     EVP_CIPHER_CTX_free(ctx);
 
     return plaintext_len;
-}
-
-int main (void)
-{
-    /* A 256 bit key */
-    unsigned char key[32] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-                              0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
-                              0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33,
-                              0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31 };
-
-    /* A 128 bit IV */
-    unsigned char iv[16] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-                             0x38, 0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 };
-
-    /* Message to be encrypted */
-    unsigned char *plaintext =
-        (unsigned char *)"012345678912345-012345678912345-012345678912345";
-
-    /* Buffer for ciphertext. Ensure the buffer is long enough for the
-     * ciphertext which may be longer than the plaintext, depending on the
-     * algorithm and mode.
-     */
-    unsigned char ciphertext[128];
-
-    /* Buffer for the decrypted text */
-    unsigned char decryptedtext[128];
-
-    int decryptedtext_len, ciphertext_len;
-
-    /* Encrypt the plaintext */
-    ciphertext_len = encrypt(plaintext, strlen ((char *)plaintext), key, iv,
-                             ciphertext);
-
-    /* Do something useful with the ciphertext here */
-    printf("Ciphertext is:\n");
-    BIO_dump_fp(stdout, (const char *)ciphertext, ciphertext_len);
-
-    /* Decrypt the ciphertext */
-    decryptedtext_len = decrypt(ciphertext, ciphertext_len, key, iv,
-                                decryptedtext);
-
-    /* Add a NULL terminator. We are expecting printable text */
-    decryptedtext[decryptedtext_len] = '\0';
-
-    /* Show the decrypted text */
-    printf("Decrypted text is:\n");
-    printf("%s\n", decryptedtext);
-
-    return 0;
 }

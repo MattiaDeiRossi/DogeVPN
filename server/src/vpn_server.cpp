@@ -390,23 +390,22 @@ void handle_tcp_client_key_exchange(
 
     SSL *ssl;
     if (ssl_utils::bind_ssl(ctx, client_socket, &ssl) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server");
+        utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server\n");
         return;
     }
-
-    utils::println_sep(0);
+    
     ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
 
     char credentials_buffer[512];
     int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
     if (bytes_read == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: Client closed connection and credentials cannot be verified");
+        utils::print_error("handle_tcp_client_key_exchange: Client closed connection and credentials cannot be verified\n");
         return;
     }
 
     client_credentials credentials;
     if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized");
+        utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized\n");
         ssl_utils::free_ssl(ssl, NULL);
         return;
     }

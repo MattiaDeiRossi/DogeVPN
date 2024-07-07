@@ -115,7 +115,17 @@ namespace ssl_utils
         /* Logging client IP address.
         *  Logging the established cipher.
         */
-        printf("New connection from %s wth cipher %s\n", buffer, SSL_get_cipher(ssl));
+        utils::println_sep(0);
+        utils::print("Connection established:\n", 0);
+        utils::print("From:", 3);
+        utils::print(" ", 0);
+        utils::print(buffer, 0);
+        utils::print("\n", 0);
+        utils::print("Cipher:", 3);
+        utils::print(" ", 0);
+        utils::print(SSL_get_cipher(ssl), 0);
+        utils::print("\n", 0);
+        utils::println_sep(0);
     }
 
     int read(SSL *ssl, char *buffer, size_t num) {

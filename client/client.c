@@ -1,76 +1,8 @@
 // Compile with gcc aes.c client.c -lssl -lcrypto -o client
 //https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <linux/if.h>
-#include <linux/if_tun.h>
+#include "standards.h"
 #include "aes.h"
-
-// *** Start SSL headers ***
-// In order to generate a self signed certificate:
-//  - openssl req -x509 -newkey rsa:2048 -nodes -sha256 -keyout key.pem -out cert.pem -days 365
-#include <openssl/crypto.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-// *** End SSL headers ***
-
-// ***  Start error definitions ***
-#define SSL_INIT_ERROR 1000
-#define SSL_NEW_ERROR 1001
-#define SSL_TLSEXT_HOST_NAME_ERROR 1002
-#define SSL_SET_FD_ERROR 1003
-#define TCP_SSL_CONNECT_ERROR 1004
-#define TCP_SOCKET_ERROR 2000
-#define TCP_CONNECT_ERROR 2001
-#define TCP_SEND_ERROR 2002
-#define TCP_READ_ERROR 2003
-#define UDP_SOCKET_ERROR 3000
-#define UDP_CONNECT_ERROR 3001
-#define UDP_SEND_ERROR 3002
-#define UDP_READ_ERROR 3003
-#define TUN_OPEN_DEV 4000
-#define TUN_TUNSETIFF 4001
-#define TUN_SEND_ERROR 4002
-#define TUN_READ_ERROR 4003
-#define MAX_FD_ERROR 5000
-#define WRONG_CREDENTIAL 7000
-
-
-// ***  End error definitions ***
-
-// *** Start TCP constant definitions ***
-#define TCP_HOST "0.0.0.0"
-#define TCP_PORT 8080
-// *** End TCP constant definitions ***
-
-// *** Start UDP constant definitions ***
-#define UDP_HOST "127.0.0.1"
-#define UDP_PORT 19090
-// *** End UDP constant definitions ***
-
-// *** Start Tun constant definitions ***
-#define SERVER_HOST "10.5.0.6"
-#define MTU 1400
-// *** End Tun constant definitions ***
-
+#include "defines.h"
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -594,5 +526,5 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
 
 int main(int argc, char const *argv[]) {  
-    return start_doge_vpn(argv[1], argv[2]);    
+    return start_doge_vpn("argv[1]", "argv[2]");    
 }

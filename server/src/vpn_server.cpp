@@ -567,11 +567,11 @@ int handle_incoming_udp_packet(
     ret_val = map_uc_extract_key(user_id, map, mutex, key);
     if (ret_val) return ret_val;
 
-    encryption_data enc_data;
+    encryption::encryption_data enc_data;
     memcpy(enc_data.key, key, KEY_LEN);
     memcpy(enc_data.iv, vpn_data.iv, IV_LEN);
 
-    packet decrypted_message = encryption::decrypt(vpn_data.encrypted_packet, enc_data);
+    encryption::packet decrypted_message = encryption::decrypt(vpn_data.encrypted_packet, enc_data);
     *ret_packet = decrypted_message;
 
     // With the encrypted packet we must verify the hash.

@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include "standards.h"
+#include "encryption.h"
 
 typedef int socket_t;
 typedef int user_id;
@@ -55,20 +56,10 @@ typedef struct {
 } udp_client_info;
 
 typedef struct {
-    unsigned char message[UDP_THEORETICAL_LIMIT];
-    long int length;
-} packet;
-
-typedef struct {
-    unsigned char key[KEY_LEN];
-    unsigned char iv[IV_LEN];
-} encryption_data;
-
-typedef struct {
     unsigned char user_id[ID_LEN];
-    unsigned char iv[IV_LEN];
-    unsigned char hash[SHA_256_BYTES];
-    packet encrypted_packet;
+    unsigned char iv[encryption::MAX_IV_SIZE];
+    unsigned char hash[encryption::SHA_256_SIZE];
+    encryption::packet encrypted_packet;
 } vpn_client_packet_data;
 
 #endif

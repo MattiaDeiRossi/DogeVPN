@@ -3,7 +3,7 @@
 namespace vpn_data_utils {
 
 	
-	int init_vpn_client_packet_data(const packet *from, vpn_client_packet_data *ret_data) {
+	int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
 
         int current_cursor = from->length - 1;
@@ -113,7 +113,7 @@ namespace vpn_data_utils {
         utils::print_bytes("", (const char *) ret_data->hash, 32, 0);
 
         // Priting packet data.
-        packet *from = &(ret_data->encrypted_packet);
+        encryption::packet *from = &(ret_data->encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->length);
         utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 8);
         utils::println_sep(0);

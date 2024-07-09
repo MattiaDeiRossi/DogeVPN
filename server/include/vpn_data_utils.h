@@ -19,7 +19,7 @@ namespace vpn_data_utils
     *   4.  Then we have the user id:
     *           - This is needed to decrypt the message with correct key
     */
-    int init_vpn_client_packet_data(const packet *from, vpn_client_packet_data *ret_data);
+    int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data);
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
 }

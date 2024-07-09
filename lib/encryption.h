@@ -1,11 +1,33 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
-#include "standards.h"
-#include "data_structures.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 
 namespace encryption
 {
+
+    const int MAX_UDP_MESSAGE_SIZE = 32768;
+    const int MAX_KEY_SIZE = 32;
+    const int MAX_IV_SIZE = 16;
+    const int SHA_256_SIZE = 32;
+
+    struct packet {
+        unsigned char message[MAX_UDP_MESSAGE_SIZE];
+        long int length;
+    };
+
+    typedef struct packet packet;
+
+    struct encryption_data {
+        unsigned char key[MAX_KEY_SIZE];
+        unsigned char iv[MAX_IV_SIZE];
+    };
+
+    typedef struct encryption_data encryption_data;
 
     void handleErrors(void);
 

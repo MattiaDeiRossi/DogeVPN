@@ -9,7 +9,7 @@
 #include "udp_client_info_utils.h"
 #include "vpn_data_utils.h"
 
-socket_t extract_socket(socket_holder *holder) {
+socket_utils::socket_t extract_socket(socket_holder *holder) {
 
     socket_type type = holder->type;
     switch (type) {
@@ -45,7 +45,7 @@ int create_tss(
 
     int ret_val = 0;
     
-    socket_t socket;
+    socket_utils::socket_t socket;
     if (socket_utils::bind_server_socket(true, host, port, &socket) == -1) {
         utils::print_error("create_tss: cannot create TCP server socket\n");
         return -1;
@@ -82,7 +82,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     /* A UDP socket does not need to set itself to a listen state.
     *  Just up to bind. 
     */
-    socket_t socket;
+    socket_utils::socket_t socket;
     if (socket_utils::bind_server_socket(false, host, port, &socket) == -1) {
         utils::print_error("create_uss: cannot create UDP server socket\n");
         return -1;
@@ -246,14 +246,14 @@ int create_tun_ss_sh(socket_holder **sh) {
 }
 
 void map_set_max_add(
-    std::map<socket_t, socket_holder*>& map, 
+    std::map<socket_utils::socket_t, socket_holder*>& map, 
     fd_set *set,
     socket_holder *holder,
-    socket_t *max_socket
+    socket_utils::socket_t *max_socket
 ) {
 
     // Assuming extract_socket does not retun -1.
-    socket_t socket = extract_socket(holder);
+    socket_utils::socket_t socket = extract_socket(holder);
 
     // Updating the max_socket variable.
     if (socket > *max_socket) {
@@ -272,15 +272,15 @@ void ssl_context_free(SSL_CTX *ctx) {
 }
 
 void map_set_max_free(
-    std::map<socket_t, socket_holder*>& map, 
+    std::map<socket_utils::socket_t, socket_holder*>& map, 
     fd_set *master_set,
-    socket_t *max_socket
+    socket_utils::socket_t *max_socket
 ) {
 
     for (auto iter = map.begin(); iter != map.end(); ++iter) {
 
         // Getting key and value.
-        socket_t socket = iter->first;
+        socket_utils::socket_t socket = iter->first;
         socket_holder *holder = iter->second;
 
         // Removing socket from the master set and freeing the holder.
@@ -298,21 +298,21 @@ void map_set_max_free(
 // TODO Assumptions ...
 int map_set_max_delete_client(
     socket_holder *holder,
-    std::map<socket_t, socket_holder*>& map, 
+    std::map<socket_utils::socket_t, socket_holder*>& map, 
     fd_set *master_set,
-    socket_t *max_socket
+    socket_utils::socket_t *max_socket
 ) {
 
     int ret_val = 0;
     tcp_client_socket *tcs = holder->data.tcs;
-    socket_t socket = tcs->socket;
+    socket_utils::socket_t socket = tcs->socket;
 
     // Updating the max_socket value.
     if (socket == *max_socket) {
 
         // This is possible since the because the map in C++ is in increasing order of keys by default.
         auto pair = ++map.rbegin();
-        socket_t max_socket_from_map = pair->first;
+        socket_utils::socket_t max_socket_from_map = pair->first;
         *max_socket = max_socket_from_map;
     }
 
@@ -380,7 +380,7 @@ void uc_map_update(
 *  This will simplify the whole logic.
 */
 void handle_tcp_client_key_exchange(
-    socket_t client_socket,
+    socket_utils::socket_t client_socket,
     struct sockaddr_storage client_address,
     socklen_t client_len,
     SSL_CTX *ctx,
@@ -506,7 +506,7 @@ int extract_vpn_client_packet_data(const encryption::packet *from, vpn_client_pa
 *  This version does not include any error notification.
 */
 int handle_incoming_udp_packet(
-    socket_t udp_socket, 
+    socket_utils::socket_t udp_socket, 
     std::map<int, udp_client_info*>& map, 
     std::shared_mutex& mutex, 
     encryption::packet *ret_packet
@@ -583,14 +583,14 @@ int handle_incoming_udp_packet(
 int start_doge_vpn() {
 
     int ret_val = 0;
-    socket_t max_socket = 0;
+    socket_utils::socket_t max_socket = 0;
 
     SSL_CTX *ctx = NULL;
     socket_holder *tss_holder = NULL;
     socket_holder *uss_holder = NULL;
     socket_holder *tun_ss_holder = NULL;
 
-    std::map<socket_t, socket_holder*> sh_map;
+    std::map<socket_utils::socket_t, socket_holder*> sh_map;
     std::map<user_id, udp_client_info*> uc_map;
     std::shared_mutex uc_map_mutex;
 
@@ -629,7 +629,7 @@ int start_doge_vpn() {
             goto error_handler;
         }
 
-        for (socket_t socket = 0; socket <= max_socket; ++socket) {
+        for (socket_utils::socket_t socket = 0; socket <= max_socket; ++socket) {
 
            if (FD_ISSET(socket, &reads)) {
 
@@ -641,7 +641,7 @@ int start_doge_vpn() {
                     */
                     struct sockaddr_storage client_address;
                     socklen_t client_len = sizeof(client_address);
-                    socket_t client_socket = accept(socket, (struct sockaddr*) &client_address, &client_len);
+                    socket_utils::socket_t client_socket = accept(socket, (struct sockaddr*) &client_address, &client_len);
 
                     if (socket_utils::invalid_socket(client_socket)) {
 

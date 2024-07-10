@@ -4,8 +4,8 @@
 #include "defines.h"
 #include "standards.h"
 #include "encryption.h"
+#include "socket_utils.h"
 
-typedef int socket_t;
 typedef int user_id;
 
 typedef enum {
@@ -16,22 +16,22 @@ typedef enum {
 } socket_type;
 
 typedef struct {
-    socket_t socket;
+    socket_utils::socket_t socket;
     socklen_t client_len;
     struct sockaddr_storage client_address;
     SSL *ssl;    
 } tcp_client_socket;
 
 typedef struct {
-    socket_t socket;
+    socket_utils::socket_t socket;
 } tcp_server_socket;
 
 typedef struct {
-    socket_t socket;
+    socket_utils::socket_t socket;
 } udp_server_socket;
 
 typedef struct {
-    socket_t socket;
+    socket_utils::socket_t socket;
 } tun_server_socket;
 
 typedef union {

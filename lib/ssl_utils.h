@@ -1,8 +1,10 @@
 #ifndef SSL_UTILS_H
 #define SSL_UTILS_H
 
-#include "standards.h"
 #include "socket_utils.h"
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 namespace ssl_utils
 {

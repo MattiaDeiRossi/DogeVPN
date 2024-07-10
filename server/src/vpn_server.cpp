@@ -489,7 +489,7 @@ int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::sh
     return ret_val;
 }
 
-int extract_vpn_client_packet_data(const packet *from, vpn_client_packet_data *ret_data) {
+int extract_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
     int res = vpn_data_utils::init_vpn_client_packet_data(from, ret_data);
     if (res == -1) {
@@ -509,7 +509,7 @@ int handle_incoming_udp_packet(
     socket_t udp_socket, 
     std::map<int, udp_client_info*>& map, 
     std::shared_mutex& mutex, 
-    packet *ret_packet
+    encryption::packet *ret_packet
 ) {
 
     int ret_val = 0;
@@ -519,8 +519,8 @@ int handle_incoming_udp_packet(
     /* Using the theoretical limit of an UDP packet.
     *  Instead of setting the MSG_PEEK flag, on safe bet is made on how much data to allocate.
     */
-    packet pkt;
-    memset(&pkt, 0, sizeof(packet));
+    encryption::packet pkt;
+    memset(&pkt, 0, sizeof(encryption::packet));
     pkt.length = recvfrom(
         udp_socket, pkt.message,
         sizeof(pkt.message), 0,
@@ -670,7 +670,7 @@ int start_doge_vpn() {
                     }
                 } else if (socket == extract_socket(uss_holder)) {
 
-                    packet received_packet;
+                    encryption::packet received_packet;
                     if (handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet) == -1) {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified");
                     } else {
@@ -705,32 +705,32 @@ error_handler:
 
 void test_enc_dec() {
 
-    encryption_data ed;
+    encryption::encryption_data ed;
 
     for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
     for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 10;
 
-    packet pkt;
+    encryption::packet pkt;
     pkt.message[0] = '1';
     pkt.message[1] = '2';
     pkt.length = 2;
 
-    packet enc_pkt;
-    memset(&enc_pkt, 0, sizeof(packet));
+    encryption::packet enc_pkt;
+    memset(&enc_pkt, 0, sizeof(encryption::packet));
     encryption::encrypt(pkt, ed, &enc_pkt);
 
     printf("Encrypted data should be %d bytes long and it is of length %ld\n", 16, enc_pkt.length);
 
-    packet dec_pkt;
-    memset(&dec_pkt, 0, sizeof(packet));
+    encryption::packet dec_pkt;
+    memset(&dec_pkt, 0, sizeof(encryption::packet));
     dec_pkt = encryption::decrypt(enc_pkt, ed);
     printf("Decrypted data should be %d bytes long and it is of length %ld\n", 2, dec_pkt.length);
 }
 
 void test_extract() {
 
-    packet pkt;
-    memset(&pkt, 0, sizeof(packet));
+    encryption::packet pkt;
+    memset(&pkt, 0, sizeof(encryption::packet));
 
     int start = 0;
 
@@ -756,12 +756,12 @@ void test_extract() {
 
 void test_enc_packet() {
 
-    encryption_data ed;
+    encryption::encryption_data ed;
     for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
     for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 'l';
 
     char *message = "Hello";
-    packet enc_packet;
+    encryption::packet enc_packet;
     encryption::create_encrypted_packet(message, strlen(message), ed, &enc_packet);
 
     printf("Length should be %d and it is %ld\n", 32, enc_packet.length);

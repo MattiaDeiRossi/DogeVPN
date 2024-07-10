@@ -3,6 +3,8 @@
 #include "standards.h"
 #include "aes.h"
 #include "defines.h"
+#include "../lib/utils.h"
+#include "../lib/ssl_utils.h"
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -20,165 +22,6 @@
 
 typedef int SOCKET;
 
-void log_vpn_client_error(int error_number) {
-
-    switch (error_number) {
-        case SSL_INIT_ERROR:
-            fprintf(
-                stderr, 
-                "Client cannot start since a valid SSL context cannot be created. Call to SSL_CTX_new() failed.\n"
-            );
-            break;
-        case SSL_NEW_ERROR:
-            fprintf(
-                stderr, 
-                "Call to SSL_new() failed.\n"
-            );
-            break;
-        case SSL_TLSEXT_HOST_NAME_ERROR:
-            fprintf(
-                stderr, 
-                "Call to SSL_set_tlsext_host_name() failed.\n"
-            );
-            break;
-        case SSL_SET_FD_ERROR:
-            fprintf(
-                stderr, 
-                "Call to SSL_set_fd() failed.\n"
-            );
-            break;
-        case TCP_SSL_CONNECT_ERROR:
-            fprintf(
-                stderr, 
-                "Call to SSL_connect() failed.\n"
-            );
-            break;
-        case TCP_SOCKET_ERROR:
-            fprintf(
-                stderr, 
-                "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case TCP_CONNECT_ERROR:
-            fprintf(
-                stderr, 
-                "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );        
-            break;
-        case TCP_SEND_ERROR:
-            fprintf(
-                stderr, 
-                "TCP cannot send. Call to send() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case TCP_READ_ERROR:
-            fprintf(
-                stderr, 
-                "TCP cannot send. Call to read() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case UDP_SOCKET_ERROR:
-            fprintf(
-                stderr, 
-                "TCP server cannot be created. Call to socket() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case UDP_CONNECT_ERROR:
-            fprintf(
-                stderr, 
-                "TCP server cannot connect. Call to connect() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );        
-            break;
-        case UDP_SEND_ERROR:
-            fprintf(
-                stderr, 
-                "UDP cannot send. Call to send() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case UDP_READ_ERROR:
-            fprintf(
-                stderr, 
-                "UDP cannot send. Call to read() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case TUN_OPEN_DEV:
-            fprintf(
-                stderr, 
-                "Tun: Cannot open /dev/net/tun\n"
-            );
-            break;
-        case TUN_TUNSETIFF:
-            fprintf(
-                stderr, 
-                "Tun. Call to ioctl() failed\n"
-            );
-            break;
-        case TUN_SEND_ERROR:
-            fprintf(
-                stderr, 
-                "Tun cannot send. Call to send() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-            break;
-        case TUN_READ_ERROR:
-            fprintf(
-                stderr, 
-                "Tun cannot send. Call to read() failed with error=%d.\n", 
-                GET_SOCKET_ERRNO()
-            );
-        case MAX_FD_ERROR:
-            fprintf(
-                stderr, 
-                "FD. Max select failed\n"
-            );
-            break;        
-        case WRONG_CREDENTIAL:
-            fprintf(
-                stderr, 
-                "Wrong credentials. Authentication failed\n"
-            );
-            break;
-        
-        
-        default:
-            fprintf(stderr, "Some error occured.\n");
-    }
-}
-
-// Function to call whenever a SSL contect is needed. 
-// It can be resued for all the connections.
-int init_ssl(SSL_CTX **ctx_pointer) {
-
-    // This is required to initialize the OpenSSL.
-    SSL_library_init();
-
-    // This cause OpenSSL to load all available algorithms. A better alternative
-    // is loading only the needed ones.
-    OpenSSL_add_all_algorithms();
-
-    // This cause OpenSSL to load error strings: it is used just to see
-    // readable error messages when something goes wrong.
-    SSL_load_error_strings();
-
-
-    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    if (!ctx) {
-        log_vpn_client_error(SSL_INIT_ERROR);
-        return SSL_INIT_ERROR;
-    }
-
-    *ctx_pointer = ctx;
-    return 0;
-}
-
 int create_tcp_socket(SOCKET *tcp_socket) {
     int sockfd;
     struct sockaddr_in servaddr;
@@ -189,7 +32,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (!IS_VALID_SOCKET(sockfd)) {
-        log_vpn_client_error(TCP_SOCKET_ERROR);
+        utils::print_error("TCP_SOCKET_ERROR");
         return TCP_SOCKET_ERROR;
     }
 
@@ -205,7 +48,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
 
     // connect the client socket to server socket
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
-        log_vpn_client_error(TCP_CONNECT_ERROR);
+        utils::print_error("TCP_CONNECT_ERROR");
         return TCP_CONNECT_ERROR;
     }   
 
@@ -231,25 +74,25 @@ int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET tcp_socket, SSL** ssl_session){
     printf("*** Creating SSL ***\n");
     SSL* ssl = SSL_new(ctx);
     if (!ssl) {
-        log_vpn_client_error(SSL_NEW_ERROR);
+        utils::print_error("SSL_NEW_ERROR");
         return SSL_NEW_ERROR;
     }
 
     printf("*** Setting tlsext hostname  ***\n");
     if (SSL_set_tlsext_host_name(ssl, TCP_HOST) == 0) {
-        log_vpn_client_error(SSL_TLSEXT_HOST_NAME_ERROR);
+        utils::print_error("SSL_TLSEXT_HOST_NAME_ERROR");
         return SSL_TLSEXT_HOST_NAME_ERROR;
     }
 
     printf("*** Binding TCP socket with SSL session  ***\n");
     if (!SSL_set_fd(ssl, tcp_socket)) {
-        log_vpn_client_error(SSL_SET_FD_ERROR);
+        utils::print_error("SSL_SET_FD_ERROR");
         return SSL_SET_FD_ERROR;
     }
 
     printf("*** Conneting SSL  ***\n");
     if (SSL_connect(ssl) == -1) {
-        log_vpn_client_error(TCP_SSL_CONNECT_ERROR);
+        utils::print_error("TCP_SSL_CONNECT_ERROR");
         return TCP_SSL_CONNECT_ERROR;
     }
 
@@ -271,19 +114,19 @@ int send_credential(SSL* ssl_session, char const* user, char const* pwd, char* s
 
     printf("*** Send authentication parameters ***\n");
     if (!SSL_write(ssl_session, auth_credential, strlen(auth_credential))) {
-        log_vpn_client_error(TCP_SEND_ERROR);
+        utils::print_error("TCP_SEND_ERROR");
         return TCP_SEND_ERROR;
     }
 
     bzero(symmetric_key, sizeof(symmetric_key));
     printf("*** Read authentication's response ***\n");
     if (!SSL_read(ssl_session, symmetric_key, sizeof(symmetric_key))) {
-        log_vpn_client_error(TCP_READ_ERROR);
+        utils::print_error("TCP_READ_ERROR");
         return TCP_READ_ERROR;
     }
     
     if((strncmp(symmetric_key, AUTH_FAILED, strlen(AUTH_FAILED))) == 0) { 
-        log_vpn_client_error(WRONG_CREDENTIAL);
+        utils::print_error("WRONG_CREDENTIAL");
         return WRONG_CREDENTIAL;
     }    
     
@@ -302,7 +145,7 @@ int create_udp_socket(SOCKET *udp_socket) {
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     if (!IS_VALID_SOCKET(sockfd)) {
-        log_vpn_client_error(UDP_SOCKET_ERROR);
+        utils::print_error("UDP_SOCKET_ERROR");
         return UDP_SOCKET_ERROR;
     }
 
@@ -318,7 +161,7 @@ int create_udp_socket(SOCKET *udp_socket) {
 
     // connect the client socket to server socket
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
-        log_vpn_client_error(UDP_CONNECT_ERROR);
+        utils::print_error("UDP_CONNECT_ERROR");
         return UDP_CONNECT_ERROR;
     }   
 
@@ -334,14 +177,14 @@ int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
     unsigned char* decrypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
     bzero(crypted_message, sizeof(crypted_message));
     bzero(decrypted_message, sizeof(decrypted_message));
-    unsigned char* send_message = "CIAO";
+    unsigned char* send_message = (unsigned char *) "CIAO";
 
-    int len_e = encrypt(send_message, strlen(send_message), secret_key, crypted_message);
+    int len_e = encrypt(send_message, strlen((const char *) send_message), secret_key, crypted_message);
     crypted_message[len_e] = 0;
 
     printf("*** Send UDP message ***\n");
-    if (!send(*udp_socket, crypted_message, strlen(crypted_message), 0)) {
-        log_vpn_client_error(UDP_SEND_ERROR);
+    if (!send(*udp_socket, crypted_message, strlen((const char *) crypted_message), 0)) {
+        utils::print_error("UDP_SEND_ERROR");
         return UDP_SEND_ERROR;
     }
 
@@ -350,11 +193,11 @@ int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
     bzero(read_message, sizeof(read_message));
     printf("*** Read udp message ***\n");
     if (!read(*udp_socket, read_message, sizeof(read_message))) {
-        log_vpn_client_error(UDP_READ_ERROR);
+        utils::print_error("UDP_READ_ERROR");
         return UDP_READ_ERROR;
     }
 
-    int len_d = decrypt(read_message, strlen(read_message), secret_key, decrypted_message);
+    int len_d = decrypt(read_message, strlen((const char *) read_message), secret_key, decrypted_message);
     decrypted_message[len_d] = 0;
     printf("Data received decrypted: %s\n", decrypted_message);
 
@@ -367,7 +210,7 @@ int tun_alloc(SOCKET *tun_fd) {
     int fd, e;
 
     if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
-        log_vpn_client_error(TUN_OPEN_DEV);
+        utils::print_error("TUN_OPEN_DEV");
         return TUN_OPEN_DEV;
     }
 
@@ -377,7 +220,7 @@ int tun_alloc(SOCKET *tun_fd) {
     strncpy(ifr.ifr_name, "tun0", IFNAMSIZ);
 
     if ((e = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0) {
-        log_vpn_client_error(TUN_TUNSETIFF);
+        utils::print_error("TUN_TUNSETIFF");
         return TUN_TUNSETIFF;
     }
 
@@ -433,7 +276,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
     // SSL initialization.
     SSL_CTX *ctx = NULL;
-    ret_val = init_ssl(&ctx);
+    ret_val = ssl_utils::init_ssl(&ctx, false, NULL, NULL);
     if (ret_val) return ret_val;
 
     SOCKET tcp_socket;
@@ -445,7 +288,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     if (ret_val) return ret_val;
 
     
-    ret_val = send_credential(ssl_session, user, pwd, secret_key);
+    ret_val = send_credential(ssl_session, user, pwd, (char *) secret_key);
     if (ret_val) return ret_val;
 
     printf("Key received: %s\n", secret_key);
@@ -475,7 +318,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
         int max_fd = max(tun_fd, udp_socket) + 1;
 
         if (-1 == select(max_fd, &readset, NULL, NULL, NULL)) {
-            log_vpn_client_error(MAX_FD_ERROR);
+            utils::print_error("MAX_FD_ERROR");
             return MAX_FD_ERROR;
             break;
         }
@@ -484,17 +327,17 @@ int start_doge_vpn(char const* user, char const* pwd) {
         if (FD_ISSET(tun_fd, &readset)) {
             printf("*** Read from tun interface ***\n");
             if(read(tun_fd, tun_buf, MTU) <0) {
-                log_vpn_client_error(TUN_SEND_ERROR);
+                utils::print_error("TUN_SEND_ERROR");
                 return TUN_SEND_ERROR;
                 break;
             }
 
-            int len_e = encrypt(tun_buf, strlen(tun_buf), secret_key, udp_buf);
+            int len_e = encrypt((unsigned char *) tun_buf, strlen(tun_buf), secret_key, (unsigned char *) udp_buf);
             udp_buf[len_e] = 0;
 
             printf("*** Send UDP message ***\n");
             if (!send(udp_socket, udp_buf, strlen(udp_buf), 0)) {
-                log_vpn_client_error(UDP_SEND_ERROR);
+                utils::print_error("UDP_SEND_ERROR");
                 return UDP_SEND_ERROR;
             }
         }
@@ -502,16 +345,16 @@ int start_doge_vpn(char const* user, char const* pwd) {
         if (FD_ISSET(udp_socket, &readset)) {
             printf("*** Read UDP message ***\n");
             if (!read(udp_socket, udp_buf, MTU)) {
-                log_vpn_client_error(UDP_READ_ERROR);
+                utils::print_error("UDP_READ_ERROR");
                 return UDP_READ_ERROR;
             }
 
-            int len_d = decrypt(udp_buf, strlen(udp_buf), secret_key, tun_buf);
+            int len_d = decrypt((unsigned char *) udp_buf, strlen(udp_buf), secret_key, (unsigned char *) tun_buf);
             tun_buf[len_d] = 0;
 
             printf("*** Send with tun interface ***\n");
             if (write(tun_fd, tun_buf, r) < 0) {
-                log_vpn_client_error(TUN_SEND_ERROR);
+                utils::print_error("TUN_SEND_ERROR");
                 return TUN_SEND_ERROR;                
                 break;
             }

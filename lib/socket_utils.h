@@ -1,12 +1,15 @@
 #ifndef SOCKET_UTILS_H
 #define SOCKET_UTILS_H
 
-#include "standards.h"
 #include "utils.h"
-#include "data_structures.h"
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
 
 namespace socket_utils
 {
+
+    typedef int socket_t;
 
     int invalid_socket(socket_t socket);
 

@@ -16,7 +16,7 @@ namespace ssl_utils
 
     void free_ssl(SSL *ssl, int *with_error);
 
-    int bind_ssl(SSL_CTX *ctx, socket_t socket, SSL **ssl_p);
+    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p);
 
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length);
 

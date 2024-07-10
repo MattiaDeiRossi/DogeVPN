@@ -74,7 +74,7 @@ namespace ssl_utils
         }
     }
 
-    int bind_ssl(SSL_CTX *ctx, socket_t socket, SSL **ssl_p) {
+    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p) {
     
         // Creating an SSL object.
         SSL *ssl = SSL_new(ctx);

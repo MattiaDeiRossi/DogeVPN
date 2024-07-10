@@ -389,7 +389,7 @@ void handle_tcp_client_key_exchange(
 ) {
 
     SSL *ssl;
-    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl) == -1) {
+    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, NULL) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server\n");
         return;
     }

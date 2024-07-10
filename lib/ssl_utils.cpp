@@ -88,6 +88,24 @@ namespace ssl_utils
         */
         SSL_set_fd(ssl, socket);
 
+        /* Client is trying to communicate with the server.
+        *  In the end a connect must be called.
+        */
+        if (server_name != NULL) {
+
+            int tlsext_result = SSL_set_tlsext_host_name(ssl, server_name);
+            if (tlsext_result != 1) {
+                free_ssl(ssl, NULL);
+                return -1;
+            }
+
+            int connect_result = SSL_connect(ssl);
+            if (SSL_connect(ssl) != -1) {
+                free_ssl(ssl, &connect_result);
+                return -1;
+            }
+        }
+
         // Server name is NULL, so the server must accept an incoming client.
         if (server_name == NULL) {
 
@@ -100,15 +118,6 @@ namespace ssl_utils
             if (accept_result != 1) {
                 ERR_print_errors_fp(stderr);
                 free_ssl(ssl, &accept_result);
-                return -1;
-            }
-        }
-
-        // Client is trying to communicate with the server.
-        if (server_name != NULL) {
-            int tlsext_result = SSL_set_tlsext_host_name(ssl, server_name);
-            if (tlsext_result != 1) {
-                free_ssl(ssl, NULL);
                 return -1;
             }
         }

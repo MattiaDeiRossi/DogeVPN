@@ -74,7 +74,7 @@ namespace ssl_utils
         }
     }
 
-    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p) {
+    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, const char *server_name) {
     
         // Creating an SSL object.
         SSL *ssl = SSL_new(ctx);
@@ -88,16 +88,29 @@ namespace ssl_utils
         */
         SSL_set_fd(ssl, socket);
 
-        /* A call to SSL_accept() can fail for many reasons. 
-        *  For example if the connected client does not trust our certificate.
-        *  Or the client and the server cannot agree on a cipher suite. 
-        *  This must be taking into account a the server should continue listening to incoming connections.
-        */
-        int accept_result = SSL_accept(ssl);
-        if (accept_result != 1) {
-            ERR_print_errors_fp(stderr);
-            free_ssl(ssl, &accept_result);
-            return -1;
+        // Server name is NULL, so the server must accept an incoming client.
+        if (server_name == NULL) {
+
+            /* A call to SSL_accept() can fail for many reasons. 
+            *  For example if the connected client does not trust our certificate.
+            *  Or the client and the server cannot agree on a cipher suite. 
+            *  This must be taking into account a the server should continue listening to incoming connections.
+            */
+            int accept_result = SSL_accept(ssl);
+            if (accept_result != 1) {
+                ERR_print_errors_fp(stderr);
+                free_ssl(ssl, &accept_result);
+                return -1;
+            }
+        }
+
+        // Client is trying to communicate with the server.
+        if (server_name != NULL) {
+            int tlsext_result = SSL_set_tlsext_host_name(ssl, server_name);
+            if (tlsext_result != 1) {
+                free_ssl(ssl, NULL);
+                return -1;
+            }
         }
 
         // Saving the SSL object just created.

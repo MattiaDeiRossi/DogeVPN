@@ -15,13 +15,13 @@ namespace socket_utils
 
     void close_socket(socket_t socket);
 
-    /* A TCP server and a UDP server share some common logic when creating a socket.
-    *  In particular, both of them should typically perfrom the following operations:
-    *   - getaddrinfo()
-    *   - socket()
-    *   - bind() 
-    */
-    int bind_server_socket(bool is_tcp, char const *host, char const *port, socket_t *ret_socket);
+    int bind_tcp_server_socket(char const *host, char const *port, socket_t *ret_socket);
+
+    int bind_udp_server_socket(char const *host, char const *port, socket_t *ret_socket);
+
+    int bind_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket);
+
+    int bind_udp_client_socket(char const *host, char const *port, socket_t *ret_socket);
 
     void log_start_server(bool is_tcp, char const *host, char const *port);
 

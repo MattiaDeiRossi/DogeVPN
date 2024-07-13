@@ -20,7 +20,6 @@
 #define TUN_SEND_ERROR 4002
 #define TUN_READ_ERROR 4003
 #define MAX_FD_ERROR 5000
-#define WRONG_CREDENTIAL 7000
 
 // TCP constant definitions
 #define TCP_HOST "127.0.0.1"

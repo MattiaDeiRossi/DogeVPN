@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "utils.h"
 
 namespace client_credentials_utils
 {
@@ -16,6 +17,13 @@ namespace client_credentials_utils
     };
 
     typedef struct client_credentials client_credentials;
+
+    /* Initialize a client_credentials struct.
+    *  Assumptions:
+    *   1. username is NULL terminated
+    *   2. password is NULL terminated
+    */
+    int initialize(const char* username, const char* password, client_credentials *result);
 
     int initialize(const char* data, size_t num, client_credentials *result);
     

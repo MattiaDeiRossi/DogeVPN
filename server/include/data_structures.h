@@ -47,11 +47,6 @@ typedef struct {
 } socket_holder;
 
 typedef struct {
-    char username[256];
-    char password[256];
-} client_credentials;
-
-typedef struct {
     char key[32];
 } udp_client_info;
 

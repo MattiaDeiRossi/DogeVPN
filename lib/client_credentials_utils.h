@@ -10,6 +10,7 @@ namespace client_credentials_utils
     const int MIN_PASSWORD_SIZE = 16;
     const int MAX_CREDENTIALS_SIZE = 256;
     const char USER_PASSWORD_SEPARATOR = '.';
+    const char WRONG_CREDENTIALS[18] = "WRONG_CREDENTIALS";
 
     struct client_credentials {
         char username[256];

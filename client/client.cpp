@@ -6,6 +6,7 @@
 #include "../lib/utils.h"
 #include "../lib/ssl_utils.h"
 #include "../lib/socket_utils.h"
+#include "../lib/client_credentials_utils.h"
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -30,38 +31,46 @@ int bind_socket_to_SSL(SSL_CTX* ctx, socket_utils::socket_t tcp_socket, SSL** ss
     return 0;  
 }
 
-int send_credential(SSL* ssl_session, char const* user, char const* pwd, char* secret_key){
-    int ret_val = 0;
-    int size = strlen(user) + strlen(pwd) + 1;
-    char *auth_credential = (char *)malloc(sizeof(char) * size);
-    char symmetric_key[256];
+int send_credential(SSL* ssl_session, char const* user, char const* pwd, char* secret_key) {
 
-    strcpy(auth_credential, user);
-    strcat(auth_credential, ":");
-    strcat(auth_credential, pwd);
-    strcat(auth_credential, "\0");
+    char credentials[client_credentials_utils::MAX_CREDENTIALS_SIZE];
+    int size = utils::concat_with_separator(
+        user, strlen(user),
+        pwd, strlen(pwd),
+        credentials,
+        client_credentials_utils::MAX_CREDENTIALS_SIZE,
+        client_credentials_utils::USER_PASSWORD_SEPARATOR
+    );
 
-    printf("*** Send authentication parameters ***\n");
-    if (!SSL_write(ssl_session, auth_credential, strlen(auth_credential))) {
-        utils::print_error("TCP_SEND_ERROR");
-        return TCP_SEND_ERROR;
+    if (size == -1) {
+        utils::print_error("send_credential: cannot create credentials\n");
+        return -1;
     }
 
-    bzero(symmetric_key, sizeof(symmetric_key));
-    printf("*** Read authentication's response ***\n");
-    if (!SSL_read(ssl_session, symmetric_key, sizeof(symmetric_key))) {
-        utils::print_error("TCP_READ_ERROR");
-        return TCP_READ_ERROR;
+    if (ssl_utils::write(ssl_session, credentials, size) == -1) {
+        utils::print_error("send_credential: cannot send credentials\n");
+        return -1;
+    }
+
+    char s_key[32];
+    size_t s_key_size = sizeof(s_key);
+    if (ssl_utils::read(ssl_session, s_key, s_key_size) != s_key_size) {
+        utils::print_error("send_credential: cannot send credentials\n");
+        return -1;
     }
     
-    if((strncmp(symmetric_key, AUTH_FAILED, strlen(AUTH_FAILED))) == 0) { 
-        utils::print_error("WRONG_CREDENTIAL");
-        return WRONG_CREDENTIAL;
+    if(strncmp(
+        s_key,
+        client_credentials_utils::WRONG_CREDENTIALS,
+        strlen(client_credentials_utils::WRONG_CREDENTIALS)) == 0
+    ) { 
+        utils::print_error("send_credential: wrong credentials\n");
+        return -1;
     }    
     
-    strcpy(secret_key, symmetric_key);
+    strcpy(secret_key, s_key);
 
-    return ret_val;
+    return 0;
 }
 
 int udp_exchange_data(socket_utils::socket_t *udp_socket, unsigned char* secret_key) {
@@ -186,7 +195,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = send_credential(ssl_session, user, pwd, secret_key);
     if (ret_val) return ret_val;
 
-    printf("Key received: %s\n", secret_key);
+    utils::print_bytes("Received key from server", secret_key, 32, 8);
 
     ssl_utils::free_ssl(ssl_session, NULL);
     SSL_CTX_free(ctx);
@@ -205,7 +214,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     bzero(tun_buf, MTU);
     bzero(udp_buf, MTU);
 
-    while (TRUE) {
+    while (true) {
         fd_set readset;
         FD_ZERO(&readset);
         FD_SET(tun_fd, &readset);
@@ -263,8 +272,6 @@ int start_doge_vpn(char const* user, char const* pwd) {
     return ret_val;
 }
 
-
-
 int main(int argc, char const *argv[]) {  
-    return start_doge_vpn("argv[1]", "argv[2]");    
+    return start_doge_vpn("user", "password_password_password");    
 }

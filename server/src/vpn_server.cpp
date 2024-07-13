@@ -46,7 +46,7 @@ int create_tss(
     int ret_val = 0;
     
     socket_utils::socket_t socket;
-    if (socket_utils::bind_server_socket(true, host, port, &socket) == -1) {
+    if (socket_utils::bind_tcp_server_socket(host, port, &socket) == -1) {
         utils::print_error("create_tss: cannot create TCP server socket\n");
         return -1;
     }
@@ -83,7 +83,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     *  Just up to bind. 
     */
     socket_utils::socket_t socket;
-    if (socket_utils::bind_server_socket(false, host, port, &socket) == -1) {
+    if (socket_utils::bind_udp_server_socket(host, port, &socket) == -1) {
         utils::print_error("create_uss: cannot create UDP server socket\n");
         return -1;
     }
@@ -389,7 +389,7 @@ void handle_tcp_client_key_exchange(
 ) {
 
     SSL *ssl;
-    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, NULL) == -1) {
+    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, true) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server\n");
         return;
     }

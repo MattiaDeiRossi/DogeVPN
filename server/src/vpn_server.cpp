@@ -8,6 +8,7 @@
 #include "client_credentials_utils.h"
 #include "udp_client_info_utils.h"
 #include "vpn_data_utils.h"
+#include "mongo.hpp"
 
 socket_utils::socket_t extract_socket(socket_holder *holder) {
 
@@ -609,12 +610,12 @@ int start_doge_vpn() {
     FD_ZERO(&master);
 
     // Initialization of the tcp server socket.
-    ret_val = create_tss_sh("127.0.0.1", TCP_PORT, &tss_holder);
+    ret_val = create_tss_sh("127.0.0.1", "8080", &tss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 
     // Initialization of the udp server socket.
-    ret_val = create_uss_sh("127.0.0.1", UDP_PORT, &uss_holder);
+    ret_val = create_uss_sh("127.0.0.1", "8080", &uss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 

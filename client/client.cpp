@@ -177,7 +177,6 @@ int start_doge_vpn(char const* user, char const* pwd) {
 
     int ret_val = 0;
 
-    // SSL initialization.
     SSL_CTX *ctx = NULL;
     ret_val = ssl_utils::init_ssl(&ctx, false, NULL, NULL);
     if (ret_val) return ret_val;
@@ -190,7 +189,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
     if (ret_val) return ret_val;
 
-    char secret_key[250];
+    char secret_key[128];
     memset(secret_key, 0, sizeof(secret_key));
     ret_val = send_credential(ssl_session, user, pwd, secret_key);
     if (ret_val) return ret_val;
@@ -201,7 +200,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     SSL_CTX_free(ctx);
 
     socket_utils::socket_t udp_socket;
-    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "9090", &tcp_socket);
+    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "8080", &tcp_socket);
     if (ret_val) return ret_val;
 
     socket_utils::socket_t tun_fd;

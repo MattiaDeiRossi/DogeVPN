@@ -41,6 +41,8 @@ namespace utils
     void print_error(const char *message);
 
     void print(const char *message, int left_padding);
+
+    void int_to_string(int digit, char *buffer, size_t num);
 }
 
 #endif

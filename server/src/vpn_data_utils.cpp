@@ -3,7 +3,7 @@
 namespace vpn_data_utils {
 
 	
-	int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
+	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
 
         int current_cursor = from->length - 1;
@@ -84,6 +84,47 @@ namespace vpn_data_utils {
 
         if (packet_length == -1) return -1;
         ret_data->encrypted_packet.length = packet_length;
+
+        return 0;
+    }
+
+    int build_packet_to_send(encryption::packet message, const char *key, int user_id, encryption::packet *result) {
+
+        if (result == NULL) {
+            utils::print_error("init_data_to_send: result cannot be NULL\n");
+            return -1;
+        }
+
+        encryption::encryption_data e_data;
+        memcpy(e_data.key, key, encryption::MAX_KEY_SIZE);
+        if (ssl_utils::generate_rand_16(e_data.iv) == -1) return -1;
+        if (encryption::encrypt(message, e_data, result) == -1) return -1;
+
+        /* Composing the message:
+        *   - hashing the original message
+        *   - appending it to the packet to send
+        */
+        unsigned char hash[encryption::SHA_256_SIZE];
+        if (encryption::getShaSum(message, hash) == -1) return -1;
+        if (encryption::append(result, hash, encryption::SHA_256_SIZE) == -1) return -1;
+
+        /* Composing the message:
+        *   - appending the IV to the packet to send
+        */
+        if (encryption::append(result, e_data.iv, encryption::MAX_IV_SIZE) == -1) return -1;
+
+        if (user_id != -1) {
+
+            /* Composing the message:
+            *   - appending the separator
+            *   - appending the user id
+            */
+
+            unsigned char user_id_str[16];
+            utils::int_to_string(user_id, (char *) user_id_str, sizeof(user_id_str));
+            if (encryption::append(result, encryption::IV_ID_SEPARATOR) == -1) return -1;
+            if (encryption::append(result, user_id_str, strlen((const char *) user_id_str)) == -1) return -1;
+        }
 
         return 0;
     }

@@ -159,4 +159,8 @@ namespace utils {
         for (int i = 0; i < left_padding; ++i) printf(" ");
         printf("%s", message);
     }
+
+	void int_to_string(int digit, char *buffer, size_t num) {
+		snprintf(buffer, num, "%d", digit);
+	}
 }

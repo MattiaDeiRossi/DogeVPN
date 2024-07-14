@@ -4,6 +4,8 @@
 #include "standards.h"
 #include "data_structures.h"
 #include "utils.h"
+#include "encryption.h"
+#include "ssl_utils.h"
 
 namespace vpn_data_utils
 {
@@ -19,7 +21,9 @@ namespace vpn_data_utils
     *   4.  Then we have the user id:
     *           - This is needed to decrypt the message with correct key
     */
-    int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data);
+    int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data);
+
+    int build_packet_to_send(const encryption::packet *from, const char *key, int user_id, encryption::packet *result);
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
 }

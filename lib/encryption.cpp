@@ -165,4 +165,22 @@ namespace encryption
 
         return strncmp((const char *) buffer, (const char *) decrypted_hash, SHA_256_SIZE) == 0 ? 0 : -1;
     }
+
+    int append(packet *output, unsigned char *data, size_t num) {
+
+        size_t current_size = output->length;
+        if (current_size + num > MAX_UDP_MESSAGE_SIZE) return -1;
+
+        for (size_t i = 0; i < num; ++i) output->message[current_size + i] = data[i];
+        output->length = current_size + num;
+    }
+
+    int append(packet *output, unsigned char data) {
+
+        size_t current_size = output->length;
+        if (current_size + 1 > MAX_UDP_MESSAGE_SIZE) return -1;
+
+        output->message[current_size] = data;
+        output->length = current_size + 1;
+    }
 }

@@ -15,6 +15,7 @@ namespace encryption
     const int MAX_IV_SIZE = 16;
     const int SHA_256_SIZE = 32;
     const int AES_256_CBC_PADDING = 16;
+    const char IV_ID_SEPARATOR = '.';
 
     struct packet {
         unsigned char message[MAX_UDP_MESSAGE_SIZE];
@@ -39,6 +40,10 @@ namespace encryption
     int getShaSum(packet message, unsigned char *output);
 
     int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data);
+
+    int append(packet *output, unsigned char *data, size_t num);
+
+    int append(packet *output, unsigned char data);
 }
 
 #endif

@@ -91,7 +91,7 @@ namespace encryption
         }
 
         packet encrypted_pkt;
-        encrypted_pkt.length = encryption::encrypt(
+        encrypted_pkt.length = encrypt(
             pkt.message, pkt.length, 
             enc_data.key, enc_data.iv, 
             encrypted_pkt.message
@@ -164,28 +164,5 @@ namespace encryption
         decrypt(hash, SHA_256_SIZE, enc_data.key, enc_data.iv, decrypted_hash);
 
         return strncmp((const char *) buffer, (const char *) decrypted_hash, SHA_256_SIZE) == 0 ? 0 : -1;
-    }
-
-    int create_encrypted_packet(char *message, size_t length, encryption_data enc_data, packet *enc_pkt) {
-
-        int ret_val = 0;
-
-        packet pkt;
-        memcpy(pkt.message, message, length);
-        pkt.length = length;
-
-        ret_val = encryption::encrypt(pkt, enc_data, enc_pkt);
-        if (ret_val != 0) return ret_val;
-
-        size_t new_length = enc_pkt->length + MAX_IV_SIZE;
-
-        if (new_length > MAX_UDP_MESSAGE_SIZE) {
-            return -1;
-        }
-
-        for (int i = 0; i < MAX_IV_SIZE; ++i) enc_pkt->message[enc_pkt->length + i] = enc_data.iv[i];
-        enc_pkt->length = new_length;
-
-        return ret_val;
     }
 }

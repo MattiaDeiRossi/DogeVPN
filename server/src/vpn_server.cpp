@@ -755,24 +755,10 @@ void test_extract() {
     printf("Length should be %d and it is %ld\n", 16, data.encrypted_packet.length);
 }
 
-void test_enc_packet() {
-
-    encryption::encryption_data ed;
-    for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
-    for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 'l';
-
-    char *message = "Hello";
-    encryption::packet enc_packet;
-    encryption::create_encrypted_packet(message, strlen(message), ed, &enc_packet);
-
-    printf("Length should be %d and it is %ld\n", 32, enc_packet.length);
-}
-
 void test_suite() {
 
     test_enc_dec();
     test_extract();
-    test_enc_packet();
 }
 
 int main() {

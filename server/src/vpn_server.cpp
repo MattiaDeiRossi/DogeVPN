@@ -23,7 +23,7 @@ socket_utils::socket_t extract_socket(socket_holder *holder) {
     case TUN_SERVER_SOCKET:
         return (holder->data).tun_ss->socket;
     default:
-        exit(ILLEGAL_STATE);
+        exit(1);
     }
 
     return -1;
@@ -78,8 +78,6 @@ void tss_free(tcp_server_socket *tss) {
 
 int create_uss(char const *host, char const *port, udp_server_socket **udp_socket) {
 
-    int ret_val = 0;
-
     /* A UDP socket does not need to set itself to a listen state.
     *  Just up to bind. 
     */
@@ -93,7 +91,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     if (!uss) {
         utils::print_error("create_uss: cannot create UDP server socket data\n");
         socket_utils::close_socket(socket);
-        return OUT_OF_MEMORY;
+        return -1;
     }
 
     // Setting up the udp server socket.
@@ -101,7 +99,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     uss->socket = socket;
     *udp_socket = uss;
 
-    return ret_val;
+    return 0;
 }
 
 int create_tun_ss(tun_server_socket **tun_socket) {
@@ -147,7 +145,7 @@ void socket_data_free(socket_type type, socket_data data) {
         tun_ss_free(data.tun_ss);
         break;
     default:
-        exit(ILLEGAL_STATE);
+        exit(1);
     }
 }
 
@@ -157,9 +155,8 @@ int create_sh(socket_type type, socket_data data, socket_holder **sh) {
 
     socket_holder *holder = (socket_holder *) malloc(sizeof(socket_holder));
     if (!holder) {
-        ret_val = OUT_OF_MEMORY;
         socket_data_free(type, data);
-        return ret_val;
+        return -1;
     }
 
     holder->data = data;
@@ -472,20 +469,24 @@ void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex)
     map.clear();
 }
 
-/* Assumption ...
+/* Functions that deals with shared data must always return new data:
+*   - The data type udp_client_info is not returned directly since it can be accessed and deleted by another thread
+*   - In order to avoid race condition, after taking the mutex, a copy of the key is returned
 */
 int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::shared_mutex& mutex, char *key_buffer) {
 
     std::unique_lock lock(mutex);
-    udp_client_info *info = map.at(id);
 
-    if (info == NULL) {
+    if (map.count(id)) {
+
+        udp_client_info *info = map.at(id); 
+        memcpy(key_buffer, info->key, encryption::MAX_KEY_SIZE);
+        return 0;
+    } else {
+
         utils::print_error("map_uc_extract_key: invalid id\n");
         return -1;
     }
-
-    memcpy(key_buffer, info->key, encryption::MAX_KEY_SIZE);
-    return 0;
 }
 
 int extract_vpn_client_packet_data(
@@ -563,10 +564,7 @@ int handle_incoming_udp_packet(
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
     user_id user_id = id_num;
 
-    /* Extracting the key .
-    *  Write info about mutex...
-    */
-    char key[KEY_LEN];
+    char key[encryption::MAX_KEY_SIZE];
     if (map_uc_extract_key(user_id, map, mutex, key) == -1) return -1;
 
     encryption::encryption_data enc_data;
@@ -629,10 +627,7 @@ int start_doge_vpn() {
         fd_set reads;
         reads = master;
 
-        if (select(max_socket + 1, &reads, 0, 0, 0) < 0) {
-            ret_val = SELECT_ERROR;
-            goto error_handler;
-        }
+        if (select(max_socket + 1, &reads, 0, 0, 0) < 0) goto error_handler;
 
         for (socket_utils::socket_t socket = 0; socket <= max_socket; ++socket) {
 
@@ -705,7 +700,7 @@ error_handler:
     map_set_max_free(sh_map, &master, &max_socket);
     map_uc_free(uc_map, uc_map_mutex);
 
-    return ret_val;
+    return -1;
 }
 
 int main() {

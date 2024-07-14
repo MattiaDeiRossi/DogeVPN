@@ -492,7 +492,7 @@ int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::sh
 
 int extract_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
-    int res = vpn_data_utils::init_vpn_client_packet_data(from, ret_data);
+    int res = vpn_data_utils::parse_packet(from, ret_data);
     if (res == -1) {
         utils::print_error("extract_vpn_client_packet_data: packet from client is malformed and data cannot be extracted\n");
         return -1;

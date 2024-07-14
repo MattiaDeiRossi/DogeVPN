@@ -81,8 +81,6 @@ namespace encryption
 
     int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt)
     {
-        
-        int ret_val = 0;
 
         /* Checking the length for returning an error in case of an UDP packet too large.
         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
@@ -100,7 +98,7 @@ namespace encryption
         );
 
         *enc_pkt = encrypted_pkt;
-        return ret_val;
+        return 0;
     }
 
     packet decrypt(packet encrypted_pkt, encryption_data enc_data)

@@ -156,7 +156,13 @@ namespace vpn_data_utils {
         // Priting packet data.
         encryption::packet *from = &(ret_data->encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->length);
-        utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 8);
+        utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 4);
         utils::println_sep(0);
+    }
+
+    void log_vpn_client_packet_data(const encryption::packet *from) {
+        vpn_client_packet_data data;
+        parse_packet(from, &data);
+        log_vpn_client_packet_data(&data);
     }
 }

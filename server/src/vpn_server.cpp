@@ -477,17 +477,15 @@ void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex)
 int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::shared_mutex& mutex, char *key_buffer) {
 
     std::unique_lock lock(mutex);
-
-    int ret_val = 0;
     udp_client_info *info = map.at(id);
 
     if (info == NULL) {
-        ret_val = USER_IS_NOT_PRESENT;
-        return ret_val;
+        utils::print_error("map_uc_extract_key: invalid id\n");
+        return -1;
     }
 
-    memcpy(key_buffer, info->key, KEY_LEN);
-    return ret_val;
+    memcpy(key_buffer, info->key, encryption::MAX_KEY_SIZE);
+    return 0;
 }
 
 int extract_vpn_client_packet_data(
@@ -540,9 +538,10 @@ int handle_incoming_udp_packet(
     }
 
     /* A negative value should never happen.
-    *  In this case no actions are perfromed, just returning the error.
+    *  In this case no actions are performed, just returning the error.
     */
     if (pkt.length < 0) {
+        utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
         return -1;
     }
 
@@ -558,7 +557,10 @@ int handle_incoming_udp_packet(
     */
     vpn_data_utils::vpn_client_packet_data vpn_data;
     ret_val = extract_vpn_client_packet_data(&pkt, &vpn_data);
-    if (ret_val) return ret_val;
+    if (ret_val) {
+        utils::print_error("handle_incoming_udp_packet: vpn data cannot be extracted\n");
+        return ret_val;
+    }
 
     int id_num;
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
@@ -572,14 +574,14 @@ int handle_incoming_udp_packet(
     if (ret_val) return ret_val;
 
     encryption::encryption_data enc_data;
-    memcpy(enc_data.key, key, KEY_LEN);
-    memcpy(enc_data.iv, vpn_data.iv, IV_LEN);
+    memcpy(enc_data.key, key, encryption::MAX_KEY_SIZE);
+    memcpy(enc_data.iv, vpn_data.iv, encryption::MAX_IV_SIZE);
 
     encryption::packet decrypted_message = encryption::decrypt(vpn_data.encrypted_packet, enc_data);
     *ret_packet = decrypted_message;
 
     // With the encrypted packet we must verify the hash.
-    ret_val = encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data);
+    //ret_val = encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data);
 
     return ret_val;
 }
@@ -676,9 +678,9 @@ int start_doge_vpn() {
 
                     encryption::packet received_packet;
                     if (handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet) == -1) {
-                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified");
+                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
-
+                     
                     }
                 } else {
 

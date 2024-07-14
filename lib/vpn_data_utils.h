@@ -37,6 +37,8 @@ namespace vpn_data_utils
     int build_packet_to_send(encryption::packet from, const char *key, int user_id, encryption::packet *result);
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
+
+    void log_vpn_client_packet_data(const encryption::packet *from);
 }
 
 #endif

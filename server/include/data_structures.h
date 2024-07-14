@@ -47,14 +47,7 @@ typedef struct {
 } socket_holder;
 
 typedef struct {
-    char key[32];
+    unsigned char key[encryption::MAX_KEY_SIZE];
 } udp_client_info;
-
-typedef struct {
-    unsigned char user_id[ID_LEN];
-    unsigned char iv[encryption::MAX_IV_SIZE];
-    unsigned char hash[encryption::SHA_256_SIZE];
-    encryption::packet encrypted_packet;
-} vpn_client_packet_data;
 
 #endif

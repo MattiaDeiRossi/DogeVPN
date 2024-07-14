@@ -493,14 +493,13 @@ int extract_vpn_client_packet_data(
     vpn_data_utils::vpn_client_packet_data *ret_data
 ) {
 
-    int res = vpn_data_utils::parse_packet(from, ret_data);
-    if (res == -1) {
+    if (vpn_data_utils::parse_packet(from, ret_data) == -1) {
         utils::print_error("extract_vpn_client_packet_data: packet from client is malformed and data cannot be extracted\n");
         return -1;
     }
 
     vpn_data_utils::log_vpn_client_packet_data(ret_data);
-    return res;
+    return 0;
 }
 
 /* Errors should be notified to the client peer.
@@ -514,7 +513,6 @@ int handle_incoming_udp_packet(
     encryption::packet *ret_packet
 ) {
 
-    int ret_val = 0;
     struct sockaddr_storage client_address;
     socklen_t client_len = sizeof(client_address);
 
@@ -556,10 +554,9 @@ int handle_incoming_udp_packet(
     *  There can be different scenarios for which packets must be rejected.
     */
     vpn_data_utils::vpn_client_packet_data vpn_data;
-    ret_val = extract_vpn_client_packet_data(&pkt, &vpn_data);
-    if (ret_val) {
+    if (extract_vpn_client_packet_data(&pkt, &vpn_data) == -1) {
         utils::print_error("handle_incoming_udp_packet: vpn data cannot be extracted\n");
-        return ret_val;
+        return -1;
     }
 
     int id_num;
@@ -570,8 +567,7 @@ int handle_incoming_udp_packet(
     *  Write info about mutex...
     */
     char key[KEY_LEN];
-    ret_val = map_uc_extract_key(user_id, map, mutex, key);
-    if (ret_val) return ret_val;
+    if (map_uc_extract_key(user_id, map, mutex, key) == -1) return -1;
 
     encryption::encryption_data enc_data;
     memcpy(enc_data.key, key, encryption::MAX_KEY_SIZE);
@@ -581,9 +577,12 @@ int handle_incoming_udp_packet(
     *ret_packet = decrypted_message;
 
     // With the encrypted packet we must verify the hash.
-    //ret_val = encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data);
+    if (encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data) == -1) {
+        utils::print_error("handle_incoming_udp_packet: wrong hash detected\n");
+        return -1;
+    }
 
-    return ret_val;
+    return 0;
 }
 
 int start_doge_vpn() {
@@ -680,7 +679,7 @@ int start_doge_vpn() {
                     if (handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet) == -1) {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
-                     
+
                     }
                 } else {
 

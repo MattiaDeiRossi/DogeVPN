@@ -150,20 +150,10 @@ namespace encryption
 
     int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data) {
 
-        int ret_val = 0;
-
         // Creating buffer.
-        unsigned char buffer[SHA_256_SIZE];
-        memset(buffer, 0, SHA_256_SIZE);
-
-        ret_val = getShaSum(decrypted_message, buffer);
-        if (ret_val == -1) return ret_val;
-
-        unsigned char decrypted_hash[SHA_256_SIZE];
-        memset(decrypted_hash, 0, SHA_256_SIZE);
-        decrypt(hash, SHA_256_SIZE, enc_data.key, enc_data.iv, decrypted_hash);
-
-        return strncmp((const char *) buffer, (const char *) decrypted_hash, SHA_256_SIZE) == 0 ? 0 : -1;
+        unsigned char computed_hash[SHA_256_SIZE];
+        if (getShaSum(decrypted_message, computed_hash) == -1) return -1;
+        return strncmp((const char *) computed_hash, (const char *) hash, SHA_256_SIZE) == 0 ? 0 : -1;
     }
 
     int append(packet *output, unsigned char *data, size_t num) {

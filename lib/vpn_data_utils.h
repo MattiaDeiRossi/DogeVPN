@@ -1,14 +1,25 @@
 #ifndef VPN_DATA_UTILS_H
 #define VPN_DATA_UTILS_H
 
-#include "standards.h"
-#include "data_structures.h"
+#include <ctype.h>
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
 
 namespace vpn_data_utils
 {
+
+    const int MAX_ID_SIZE = 16;
+    const char IV_ID_SEPARATOR = '.';
+
+    struct vpn_client_packet_data {
+        unsigned char user_id[MAX_ID_SIZE];
+        unsigned char iv[encryption::MAX_IV_SIZE];
+        unsigned char hash[encryption::SHA_256_SIZE];
+        encryption::packet encrypted_packet;
+    };
+
+    typedef struct vpn_client_packet_data vpn_client_packet_data;
 
     /* This function deals with extracting the information. 
     *  DogeVPN requires the payload to respect the following format:

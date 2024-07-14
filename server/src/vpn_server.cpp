@@ -490,7 +490,10 @@ int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::sh
     return ret_val;
 }
 
-int extract_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
+int extract_vpn_client_packet_data(
+    const encryption::packet *from,
+    vpn_data_utils::vpn_client_packet_data *ret_data
+) {
 
     int res = vpn_data_utils::parse_packet(from, ret_data);
     if (res == -1) {
@@ -553,7 +556,7 @@ int handle_incoming_udp_packet(
     *   5. Forward it to the TUN interface
     *  There can be different scenarios for which packets must be rejected.
     */
-    vpn_client_packet_data vpn_data;
+    vpn_data_utils::vpn_client_packet_data vpn_data;
     ret_val = extract_vpn_client_packet_data(&pkt, &vpn_data);
     if (ret_val) return ret_val;
 
@@ -742,7 +745,7 @@ void test_extract() {
     for (int i = 0; i < 8; ++i) pkt.message[start++] = '1';
     pkt.length = strlen((const char *)&pkt.message);
 
-    vpn_client_packet_data data;
+    vpn_data_utils::vpn_client_packet_data data;
     extract_vpn_client_packet_data(&pkt, &data);
 
     int all_equals = 

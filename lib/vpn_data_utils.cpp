@@ -14,14 +14,14 @@ namespace vpn_data_utils {
 
             char bdata = from->message[current_cursor--];
 
-            /* Id has a specific length.
+            /* Id cannot excedd a specific length.
             *  When dealing with longer id, an error is returned.
             */
-            if (j == ID_LEN && bdata != MESSAGE_SEPARATOR) {
+            if (j == MAX_ID_SIZE && bdata != IV_ID_SEPARATOR) {
                 return -1;
             }
             
-            if (bdata == MESSAGE_SEPARATOR) {
+            if (bdata == IV_ID_SEPARATOR) {
 
                 /* The user id is the last part of the message after the IV vector.
                 *  After encountering it the user id processing must stop.  
@@ -56,7 +56,7 @@ namespace vpn_data_utils {
         if (utils::read_reverse(
             ret_data->iv,
             from->message,
-            IV_LEN,
+            encryption::MAX_IV_SIZE,
             from->length,
             &current_cursor,
             true
@@ -66,7 +66,7 @@ namespace vpn_data_utils {
         if (utils::read_reverse(
             ret_data->hash,
             from->message,
-            SHA_256_BYTES,
+            encryption::SHA_256_SIZE,
             from->length,
             &current_cursor,
             true
@@ -76,7 +76,7 @@ namespace vpn_data_utils {
         int packet_length = utils::read_reverse(
             ret_data->encrypted_packet.message,
             from->message,
-            MAX_MESSAGE_BYTES,
+            ret_data->encrypted_packet.length,
             from->length,
             &current_cursor,
             false
@@ -122,7 +122,7 @@ namespace vpn_data_utils {
 
             unsigned char user_id_str[16];
             utils::int_to_string(user_id, (char *) user_id_str, sizeof(user_id_str));
-            if (encryption::append(result, encryption::IV_ID_SEPARATOR) == -1) return -1;
+            if (encryption::append(result, IV_ID_SEPARATOR) == -1) return -1;
             if (encryption::append(result, user_id_str, strlen((const char *) user_id_str)) == -1) return -1;
         }
 

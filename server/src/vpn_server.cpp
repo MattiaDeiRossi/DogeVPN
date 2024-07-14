@@ -708,63 +708,6 @@ error_handler:
     return ret_val;
 }
 
-void test_enc_dec() {
-
-    encryption::encryption_data ed;
-
-    for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
-    for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 10;
-
-    encryption::packet pkt;
-    pkt.message[0] = '1';
-    pkt.message[1] = '2';
-    pkt.length = 2;
-
-    encryption::packet enc_pkt;
-    memset(&enc_pkt, 0, sizeof(encryption::packet));
-    encryption::encrypt(pkt, ed, &enc_pkt);
-
-    printf("Encrypted data should be %d bytes long and it is of length %ld\n", 16, enc_pkt.length);
-
-    encryption::packet dec_pkt;
-    memset(&dec_pkt, 0, sizeof(encryption::packet));
-    dec_pkt = encryption::decrypt(enc_pkt, ed);
-    printf("Decrypted data should be %d bytes long and it is of length %ld\n", 2, dec_pkt.length);
-}
-
-void test_extract() {
-
-    encryption::packet pkt;
-    memset(&pkt, 0, sizeof(encryption::packet));
-
-    int start = 0;
-
-    for (int i = 0; i < 16; ++i) pkt.message[start++] = 'm';
-    for (int i = 0; i < SHA_256_BYTES; ++i) pkt.message[start++] = 'h';
-    for (int i = 0; i < IV_LEN; ++i) pkt.message[start++] = 'i';
-    pkt.message[start++] = '.';
-    for (int i = 0; i < 8; ++i) pkt.message[start++] = '1';
-    pkt.length = strlen((const char *)&pkt.message);
-
-    vpn_data_utils::vpn_client_packet_data data;
-    extract_vpn_client_packet_data(&pkt, &data);
-
-    int all_equals = 
-        strncmp((const char *) data.encrypted_packet.message, "mmmmmmmmmmmmmmmm", 16) +
-        strncmp((const char *) data.user_id, "11111111", 8) +
-        strncmp((const char *) data.iv, "iiiiiiiiiiiiiiii", 16) +
-        strncmp((const char *) data.hash, "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", 32);
-
-    printf("Sum should be %d and it is %d\n", 0, all_equals);
-    printf("Length should be %d and it is %ld\n", 16, data.encrypted_packet.length);
-}
-
-void test_suite() {
-
-    test_enc_dec();
-    test_extract();
-}
-
 int main() {
 
     test_suite();

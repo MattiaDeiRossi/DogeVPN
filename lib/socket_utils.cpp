@@ -134,9 +134,10 @@ namespace socket_utils {
 	    );
 
 	    utils::println_sep(0);
-	    utils::print("Received bytes from:", 0);
+	    utils::print("Received bytes from:\n", 0);
 	    utils::print("IP address:", 3);
 	    utils::print(address_buffer, 1);
+		utils::print("\n", 0);
 	    utils::print("Port:", 3);
 	    utils::print(service_buffer, 1);
 	    utils::print("\n", 0);

@@ -89,8 +89,6 @@ namespace utils {
 
     void print_bytes(const char *title, const char *message, size_t num, int steps_nl) {
 
-		println_sep(0);
-
     	if (title != NULL && strlen(title) != 0) printf("%s\n", title);
 
     	int steps = 0;
@@ -115,8 +113,6 @@ namespace utils {
     	if (steps != 0 || steps_nl == 0) {
     		printf("\n");
     	}
-
-		println_sep(0);
     }
 
     void reset() {

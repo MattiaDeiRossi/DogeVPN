@@ -709,8 +709,5 @@ error_handler:
 }
 
 int main() {
-
-    test_suite();
-    //return 0;
 	return start_doge_vpn();
 }

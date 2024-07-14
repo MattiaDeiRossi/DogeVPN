@@ -623,7 +623,7 @@ int start_doge_vpn() {
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 
-    while(TRUE) {
+    while(true) {
 
         // Copy of master, otherwise we would lose its data.
         fd_set reads;

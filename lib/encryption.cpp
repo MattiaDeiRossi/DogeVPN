@@ -85,7 +85,7 @@ namespace encryption
         /* Checking the length for returning an error in case of an UDP packet too large.
         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
         */
-        size_t ciphertext_len = ((pkt.length / MAX_KEY_SIZE) + 1) * MAX_KEY_SIZE;
+        size_t ciphertext_len = ((pkt.length / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
         if (ciphertext_len > MAX_UDP_MESSAGE_SIZE) {
             return -1;
         }
@@ -114,7 +114,6 @@ namespace encryption
         return pkt;
     }
 
-    // Change output with typedef.
     int getShaSum(packet pkt, unsigned char *output)
     {
 

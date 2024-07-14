@@ -14,6 +14,7 @@ namespace encryption
     const int MAX_KEY_SIZE = 32;
     const int MAX_IV_SIZE = 16;
     const int SHA_256_SIZE = 32;
+    const int AES_256_CBC_PADDING = 16;
 
     struct packet {
         unsigned char message[MAX_UDP_MESSAGE_SIZE];

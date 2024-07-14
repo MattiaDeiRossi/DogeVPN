@@ -200,7 +200,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     SSL_CTX_free(ctx);
 
     socket_utils::socket_t udp_socket;
-    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "8080", &tcp_socket);
+    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "8080", &udp_socket);
     if (ret_val) return ret_val;
 
     socket_utils::socket_t tun_fd;

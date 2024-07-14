@@ -76,7 +76,7 @@ namespace vpn_data_utils {
         int packet_length = utils::read_reverse(
             ret_data->encrypted_packet.message,
             from->message,
-            ret_data->encrypted_packet.length,
+            encryption::MAX_UDP_MESSAGE_SIZE,
             from->length,
             &current_cursor,
             false

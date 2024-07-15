@@ -32,6 +32,9 @@ void MainWindow::on_connectButton_clicked()
     auto psw = settings_.value("password").toStdString().c_str();
 
     qDebug("Connecting");
+    if(!client_thread_){
+        client_thread_ = new Thread(this);
+    }
 
     client_thread_->setParams(us, psw);
     client_thread_->start();

@@ -305,7 +305,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
                 break;
             }
 
-            int len_e = encryption::encrypt((unsigned char *) tun_buf, strlen(tun_buf), secret_key, iv, (unsigned char *) udp_buf);
+            int len_e = encryption::encrypt((unsigned char *) tun_buf, strlen(tun_buf), (unsigned char*) secret_key, iv, (unsigned char *) udp_buf);
             udp_buf[len_e] = 0;
 
             std::cout<<"*** Send UDP message ***"<<std::endl;
@@ -322,7 +322,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
                 return UDP_READ_ERROR;
             }
 
-            int len_d = encryption::decrypt((unsigned char *) udp_buf, strlen(udp_buf), secret_key,iv, (unsigned char *) tun_buf);
+            int len_d = encryption::decrypt((unsigned char *) udp_buf, strlen(udp_buf), (unsigned char*) secret_key,iv, (unsigned char *) tun_buf);
             tun_buf[len_d] = 0;
 
             std::cout<<"*** Send with tun interface ***"<<std::endl;

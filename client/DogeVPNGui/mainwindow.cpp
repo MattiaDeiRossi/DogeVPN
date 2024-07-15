@@ -30,6 +30,8 @@ void MainWindow::on_connectButton_clicked()
 {
     auto us = settings_.value("user").toStdString().c_str();
     auto psw = settings_.value("password").toStdString().c_str();
+    std::cout<< us << " ****** "<< psw << std::endl;
+
 
     qDebug("Connecting");
     if(!client_thread_){

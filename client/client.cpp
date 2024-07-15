@@ -7,6 +7,10 @@
 #include "../lib/ssl_utils.h"
 #include "../lib/socket_utils.h"
 #include "../lib/client_credentials_utils.h"
+#include "../lib/encryption.h"
+#include "../lib/vpn_data_utils.h"
+
+#include <unistd.h>
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -173,6 +177,16 @@ static int max(int a, int b) {
   return a > b ? a : b;
 }
 
+void generate_test_string(char *secret_key, encryption::packet *result) {
+
+    const char *test = "TEST_STRING";
+
+    encryption::packet message;
+    encryption::append(&message, (unsigned char *) test, strlen(test));
+    vpn_data_utils::build_packet_to_send(message, secret_key, 42, result);
+    vpn_data_utils::log_vpn_client_packet_data(result);
+}
+
 int start_doge_vpn(char const* user, char const* pwd) {
 
     int ret_val = 0;
@@ -194,7 +208,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     ret_val = send_credential(ssl_session, user, pwd, secret_key);
     if (ret_val) return ret_val;
 
-    utils::print_bytes("Received key from server", secret_key, 32, 8);
+    utils::print_bytes("Received key from server", secret_key, 32, 4);
 
     ssl_utils::free_ssl(ssl_session, NULL);
     SSL_CTX_free(ctx);
@@ -204,14 +218,30 @@ int start_doge_vpn(char const* user, char const* pwd) {
     if (ret_val) return ret_val;
 
     socket_utils::socket_t tun_fd;
+
+    /*
     ret_val = tun_alloc(&tun_fd);
     if (ret_val) return ret_val;
     ifconfig();
     setup_route_table();
+    */
 
     char tun_buf[MTU], udp_buf[MTU];
     bzero(tun_buf, MTU);
     bzero(udp_buf, MTU);
+
+    while (true) {
+        encryption::packet result;
+        generate_test_string(secret_key, &result);
+        
+        printf("*** Send UDP message ***\n");
+        if (!send(udp_socket, result.message, result.length, 0)) {
+            utils::print_error("UDP_SEND_ERROR");
+            return UDP_SEND_ERROR;
+        }
+
+        sleep(3600);
+    }
 
     while (true) {
         fd_set readset;

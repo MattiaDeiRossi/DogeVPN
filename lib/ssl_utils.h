@@ -18,7 +18,7 @@ namespace ssl_utils
 
     void free_ssl(SSL *ssl, int *with_error);
 
-    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, const char *server_name);
+    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server);
 
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length);
 
@@ -27,6 +27,8 @@ namespace ssl_utils
     int write(SSL *ssl, char *buffer, size_t num);
 
     int generate_rand_32(unsigned char *buffer);
+
+    int generate_rand_16(unsigned char *buffer);
 }
 
 #endif

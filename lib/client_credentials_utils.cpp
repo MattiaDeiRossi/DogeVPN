@@ -2,14 +2,26 @@
 
 namespace client_credentials_utils {
 
+	int initialize(const char* username, const char* password, client_credentials *result) {
+
+		char data[MAX_CREDENTIALS_SIZE];
+		int size = utils::concat_with_separator(
+			username, strlen(username),
+			password, strlen(password),
+			data, MAX_CREDENTIALS_SIZE,
+			USER_PASSWORD_SEPARATOR
+		);
+
+		return initialize(data, size, result);
+	}
+
 	int initialize(const char* data, size_t num, client_credentials *result) {
 
-		/* The maximum length for the credentials message is fixed.
-	    *  The argument num cannot exceed CREDENTIALS_MESSAGE_MAX_LENGTH.
+		/* The maximum length for the credentials message is fixed:
+	    *  	- The argument num cannot exceed CREDENTIALS_MESSAGE_MAX_LENGTH
+		*  	- The argument num must be at least MIN_PASSWORD_SIZE + 2 bytes long (username.password)
 	    */
-		if (num >= CREDENTIALS_MESSAGE_MAX_LENGTH) {
-			return -1;
-		}
+		if ((num < MIN_PASSWORD_SIZE + 2) || (num > MAX_CREDENTIALS_SIZE)) return -1;
 
 		bool reading_username = true;
 	    char *usr_p = result->username;
@@ -26,7 +38,7 @@ namespace client_credentials_utils {
 	        if (reading_username) {
 
 	            // While reading credentilas alway checking if the separator is the current byte.
-	            if (bdata == USR_PWD_SEPARATOR) {
+	            if (bdata == USER_PASSWORD_SEPARATOR) {
 	                reading_username = false;
 	            } else {
 	                *usr_p = bdata;
@@ -44,7 +56,7 @@ namespace client_credentials_utils {
 	    /* A minimum length of bytes for the password is required.
 	    *  If the minimum length is not respected, than an error is returned.
 	    */
-	    if (password_length < MINIMUM_PWD_LEN) {
+	    if (password_length < MIN_PASSWORD_SIZE) {
 	    	return -1;
 	    }
 

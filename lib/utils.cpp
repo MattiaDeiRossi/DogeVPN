@@ -89,7 +89,7 @@ namespace utils {
 
     void print_bytes(const char *title, const char *message, size_t num, int steps_nl) {
 
-    	if (strlen(title) != 0) printf("%s\n", title);
+    	if (title != NULL && strlen(title) != 0) printf("%s\n", title);
 
     	int steps = 0;
     	int line = 1;
@@ -155,4 +155,8 @@ namespace utils {
         for (int i = 0; i < left_padding; ++i) printf(" ");
         printf("%s", message);
     }
+
+	void int_to_string(int digit, char *buffer, size_t num) {
+		snprintf(buffer, num, "%d", digit);
+	}
 }

@@ -1,4 +1,28 @@
-#include "client.h"
+// Compile with gcc aes.c client.c -lssl -lcrypto -o client
+//https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
+#include "standards.h"
+#include <iostream>
+#include "defines.h"
+#include "../lib/utils.h"
+#include "../lib/ssl_utils.h"
+#include "../lib/socket_utils.h"
+#include "../lib/client_credentials_utils.h"
+
+// *** Start macros ***
+#define IS_VALID_SOCKET(s) ((s) >= 0)
+#define CLOSE_SOCKET(s) close(s)
+#define GET_SOCKET_ERRNO() (errno)
+#define PANIC_EXIT() exit(GET_SOCKET_ERRNO())
+// *** End macros ***
+
+// *** Start constants ***
+#define TRUE 1
+#define AUTH_FAILED "AuthFailed"
+// *** End constants ***
+
+#define SA struct sockaddr
+
+typedef int SOCKET;
 
 bool stop_flag = false;
 
@@ -11,7 +35,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     struct sockaddr_in servaddr;
     int ret_val = 0;
     
-    std::cout<<"*** Setting up TCP address info ***"<<std::endl;
+    printf("*** Setting up TCP address info ***\n");
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -20,7 +44,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
         return TCP_SOCKET_ERROR;
     }
 
-    std::cout<<"*** Creating TCP socket ***"<<std::endl;
+    printf("*** Creating TCP socket ***\n");
     bzero(&servaddr, sizeof(servaddr));
  
     // assign IP, PORT
@@ -28,7 +52,7 @@ int create_tcp_socket(SOCKET *tcp_socket) {
     servaddr.sin_addr.s_addr = inet_addr(TCP_HOST);
     servaddr.sin_port = htons(TCP_PORT);
     
-    std::cout<<"*** Connecting TCP socket ***"<<std::endl;
+    printf("*** Connecting TCP socket ***\n");
 
     // connect the client socket to server socket
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
@@ -42,39 +66,39 @@ int create_tcp_socket(SOCKET *tcp_socket) {
 }
 
 void free_tcp_ssl(SSL_CTX* ctx, SOCKET tcp_socket, SSL* ssl_session) {
-    std::cout<<"*** SSL shutdown ***"<<std::endl;
+    printf("*** SSL shutdown ***\n");
     SSL_shutdown(ssl_session);
-    std::cout<<"*** SSL free ***"<<std::endl;
+    printf("*** SSL free ***\n");
     SSL_free(ssl_session);
-    std::cout<<"*** SSL Context free ***"<<std::endl;
+    printf("*** SSL Context free ***\n");
     SSL_CTX_free(ctx);
-    std::cout<<"*** Close socket ***"<<std::endl;
+    printf("*** Close socket ***\n");
     CLOSE_SOCKET(tcp_socket);
 }
 
 int bind_socket_to_SSL(SSL_CTX* ctx, SOCKET tcp_socket, SSL** ssl_session){
     int ret_val = 0;
 
-    std::cout<<"*** Creating SSL ***"<<std::endl;
+    printf("*** Creating SSL ***\n");
     SSL* ssl = SSL_new(ctx);
     if (!ssl) {
         utils::print_error("SSL_NEW_ERROR");
         return SSL_NEW_ERROR;
     }
 
-    std::cout<<"*** Setting tlsext hostname  ***"<<std::endl;
+    printf("*** Setting tlsext hostname  ***\n");
     if (SSL_set_tlsext_host_name(ssl, TCP_HOST) == 0) {
         utils::print_error("SSL_TLSEXT_HOST_NAME_ERROR");
         return SSL_TLSEXT_HOST_NAME_ERROR;
     }
 
-    std::cout<<"*** Binding TCP socket with SSL session  ***"<<std::endl;
+    printf("*** Binding TCP socket with SSL session  ***\n");
     if (!SSL_set_fd(ssl, tcp_socket)) {
         utils::print_error("SSL_SET_FD_ERROR");
         return SSL_SET_FD_ERROR;
     }
 
-    std::cout<<"*** Conneting SSL  ***"<<std::endl;
+    printf("*** Conneting SSL  ***\n");
     if (SSL_connect(ssl) == -1) {
         utils::print_error("TCP_SSL_CONNECT_ERROR");
         return TCP_SSL_CONNECT_ERROR;
@@ -96,65 +120,34 @@ int send_credential(SSL* ssl_session, char const* user, char const* pwd, char* s
     strcat(auth_credential, pwd);
     strcat(auth_credential, "\0");
 
-    std::cout<<"*** Send authentication parameters ***"<<std::endl;
+    printf("*** Send authentication parameters ***\n");
     if (!SSL_write(ssl_session, auth_credential, strlen(auth_credential))) {
         utils::print_error("TCP_SEND_ERROR");
         return TCP_SEND_ERROR;
     }
 
-    bzero(symmetric_key, sizeof(symmetric_key));
-    std::cout<<"*** Read authentication's response ***"<<std::endl;
-    if (!SSL_read(ssl_session, symmetric_key, sizeof(symmetric_key))) {
-        utils::print_error("TCP_READ_ERROR");
-        return TCP_READ_ERROR;
+    char s_key[32];
+    size_t s_key_size = sizeof(s_key);
+    if (ssl_utils::read(ssl_session, s_key, s_key_size) != s_key_size) {
+        utils::print_error("send_credential: cannot send credentials\n");
+        return -1;
     }
     
-    if((strncmp(symmetric_key, AUTH_FAILED, strlen(AUTH_FAILED))) == 0) { 
-        utils::print_error("WRONG_CREDENTIAL");
-        return WRONG_CREDENTIAL;
+    if(strncmp(
+        s_key,
+        client_credentials_utils::WRONG_CREDENTIALS,
+        strlen(client_credentials_utils::WRONG_CREDENTIALS)) == 0
+    ) { 
+        utils::print_error("send_credential: wrong credentials\n");
+        return -1;
     }    
     
-    strcpy(secret_key, symmetric_key);
+    strcpy(secret_key, s_key);
 
-    return ret_val;
+    return 0;
 }
 
-int create_udp_socket(SOCKET *udp_socket) {
-    int sockfd;
-    struct sockaddr_in servaddr;
-    int ret_val = 0;
-    
-    std::cout<<"*** Setting up UDP address info ***"<<std::endl;
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    if (!IS_VALID_SOCKET(sockfd)) {
-        utils::print_error("UDP_SOCKET_ERROR");
-        return UDP_SOCKET_ERROR;
-    }
-
-    std::cout<<"*** Creating UDP socket ***"<<std::endl;
-    bzero(&servaddr, sizeof(servaddr));
- 
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(UDP_HOST);
-    servaddr.sin_port = htons(UDP_PORT);
-    
-    std::cout<<"*** Connecting UDP socket ***"<<std::endl;
-
-    // connect the client socket to server socket
-    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))) {
-        utils::print_error("UDP_CONNECT_ERROR");
-        return UDP_CONNECT_ERROR;
-    }   
-
-    *udp_socket = sockfd;
- 
-    return ret_val;
-}
-
-int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
+int udp_exchange_data(socket_utils::socket_t *udp_socket, unsigned char* secret_key) {
     int ret_val = 0;
 
     unsigned char* crypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
@@ -188,7 +181,7 @@ int udp_exchange_data(SOCKET *udp_socket, unsigned char* secret_key) {
     return ret_val;
 }
 
-int tun_alloc(SOCKET *tun_fd) {
+int tun_alloc(socket_utils::socket_t *tun_fd) {
     int ret_val = 0;
     struct ifreq ifr;
     int fd, e;
@@ -255,35 +248,36 @@ static int max(int a, int b) {
 }
 
 int start_doge_vpn(char const* user, char const* pwd) {
-    int ret_val = 0;
-    unsigned char* secret_key = (unsigned char *)malloc(sizeof(char) * 256);  
 
-    // SSL initialization.
+    int ret_val = 0;
+
     SSL_CTX *ctx = NULL;
     ret_val = ssl_utils::init_ssl(&ctx, false, NULL, NULL);
     if (ret_val) return ret_val;
 
-    SOCKET tcp_socket;
-    ret_val = create_tcp_socket(&tcp_socket);
+    socket_utils::socket_t tcp_socket;
+    ret_val = socket_utils::bind_tcp_client_socket("127.0.0.1", "8080", &tcp_socket);
     if (ret_val) return ret_val;
 
     SSL* ssl_session;
     ret_val = bind_socket_to_SSL(ctx, tcp_socket, &ssl_session);
     if (ret_val) return ret_val;
 
-    
-    ret_val = send_credential(ssl_session, user, pwd, (char *) secret_key);
+    char secret_key[128];
+    memset(secret_key, 0, sizeof(secret_key));
+    ret_val = send_credential(ssl_session, user, pwd, secret_key);
     if (ret_val) return ret_val;
 
-    std::cout<<"Key received: "<< secret_key<<std::endl;
+    utils::print_bytes("Received key from server", secret_key, 32, 8);
 
-    free_tcp_ssl(ctx, tcp_socket, ssl_session);
+    ssl_utils::free_ssl(ssl_session, NULL);
+    SSL_CTX_free(ctx);
 
-    SOCKET udp_socket;
-    ret_val = create_udp_socket(&udp_socket);
+    socket_utils::socket_t udp_socket;
+    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "8080", &udp_socket);
     if (ret_val) return ret_val;
 
-    SOCKET tun_fd;
+    socket_utils::socket_t tun_fd;
     ret_val = tun_alloc(&tun_fd);
     if (ret_val) return ret_val;
     ifconfig();
@@ -352,6 +346,3 @@ int start_doge_vpn(char const* user, char const* pwd) {
 }
 
 
-// int main(int argc, char const *argv[]) {
-//     return start_doge_vpn("argv[1]", "argv[2]");
-// }

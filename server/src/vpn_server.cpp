@@ -8,6 +8,7 @@
 #include "client_credentials_utils.h"
 #include "udp_client_info_utils.h"
 #include "vpn_data_utils.h"
+#include "mongo.hpp"
 
 socket_utils::socket_t extract_socket(socket_holder *holder) {
 
@@ -22,7 +23,7 @@ socket_utils::socket_t extract_socket(socket_holder *holder) {
     case TUN_SERVER_SOCKET:
         return (holder->data).tun_ss->socket;
     default:
-        exit(ILLEGAL_STATE);
+        exit(1);
     }
 
     return -1;
@@ -46,7 +47,7 @@ int create_tss(
     int ret_val = 0;
     
     socket_utils::socket_t socket;
-    if (socket_utils::bind_server_socket(true, host, port, &socket) == -1) {
+    if (socket_utils::bind_tcp_server_socket(host, port, &socket) == -1) {
         utils::print_error("create_tss: cannot create TCP server socket\n");
         return -1;
     }
@@ -77,13 +78,11 @@ void tss_free(tcp_server_socket *tss) {
 
 int create_uss(char const *host, char const *port, udp_server_socket **udp_socket) {
 
-    int ret_val = 0;
-
     /* A UDP socket does not need to set itself to a listen state.
     *  Just up to bind. 
     */
     socket_utils::socket_t socket;
-    if (socket_utils::bind_server_socket(false, host, port, &socket) == -1) {
+    if (socket_utils::bind_udp_server_socket(host, port, &socket) == -1) {
         utils::print_error("create_uss: cannot create UDP server socket\n");
         return -1;
     }
@@ -92,7 +91,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     if (!uss) {
         utils::print_error("create_uss: cannot create UDP server socket data\n");
         socket_utils::close_socket(socket);
-        return OUT_OF_MEMORY;
+        return -1;
     }
 
     // Setting up the udp server socket.
@@ -100,7 +99,7 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     uss->socket = socket;
     *udp_socket = uss;
 
-    return ret_val;
+    return 0;
 }
 
 int create_tun_ss(tun_server_socket **tun_socket) {
@@ -146,7 +145,7 @@ void socket_data_free(socket_type type, socket_data data) {
         tun_ss_free(data.tun_ss);
         break;
     default:
-        exit(ILLEGAL_STATE);
+        exit(1);
     }
 }
 
@@ -156,9 +155,8 @@ int create_sh(socket_type type, socket_data data, socket_holder **sh) {
 
     socket_holder *holder = (socket_holder *) malloc(sizeof(socket_holder));
     if (!holder) {
-        ret_val = OUT_OF_MEMORY;
         socket_data_free(type, data);
-        return ret_val;
+        return -1;
     }
 
     holder->data = data;
@@ -389,7 +387,7 @@ void handle_tcp_client_key_exchange(
 ) {
 
     SSL *ssl;
-    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, NULL) == -1) {
+    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, true) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server\n");
         return;
     }
@@ -403,7 +401,7 @@ void handle_tcp_client_key_exchange(
         return;
     }
 
-    client_credentials credentials;
+     client_credentials_utils::client_credentials credentials;
     if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized\n");
         ssl_utils::free_ssl(ssl, NULL);
@@ -471,34 +469,38 @@ void map_uc_free(std::map<int, udp_client_info*>& map, std::shared_mutex& mutex)
     map.clear();
 }
 
-/* Assumption ...
+/* Functions that deals with shared data must always return new data:
+*   - The data type udp_client_info is not returned directly since it can be accessed and deleted by another thread
+*   - In order to avoid race condition, after taking the mutex, a copy of the key is returned
 */
 int map_uc_extract_key(user_id id, std::map<int, udp_client_info*>& map, std::shared_mutex& mutex, char *key_buffer) {
 
     std::unique_lock lock(mutex);
 
-    int ret_val = 0;
-    udp_client_info *info = map.at(id);
+    if (map.count(id)) {
 
-    if (info == NULL) {
-        ret_val = USER_IS_NOT_PRESENT;
-        return ret_val;
+        udp_client_info *info = map.at(id); 
+        memcpy(key_buffer, info->key, encryption::MAX_KEY_SIZE);
+        return 0;
+    } else {
+
+        utils::print_error("map_uc_extract_key: invalid id\n");
+        return -1;
     }
-
-    memcpy(key_buffer, info->key, KEY_LEN);
-    return ret_val;
 }
 
-int extract_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
+int extract_vpn_client_packet_data(
+    const encryption::packet *from,
+    vpn_data_utils::vpn_client_packet_data *ret_data
+) {
 
-    int res = vpn_data_utils::init_vpn_client_packet_data(from, ret_data);
-    if (res == -1) {
+    if (vpn_data_utils::parse_packet(from, ret_data) == -1) {
         utils::print_error("extract_vpn_client_packet_data: packet from client is malformed and data cannot be extracted\n");
         return -1;
     }
 
     vpn_data_utils::log_vpn_client_packet_data(ret_data);
-    return res;
+    return 0;
 }
 
 /* Errors should be notified to the client peer.
@@ -512,7 +514,6 @@ int handle_incoming_udp_packet(
     encryption::packet *ret_packet
 ) {
 
-    int ret_val = 0;
     struct sockaddr_storage client_address;
     socklen_t client_len = sizeof(client_address);
 
@@ -536,9 +537,10 @@ int handle_incoming_udp_packet(
     }
 
     /* A negative value should never happen.
-    *  In this case no actions are perfromed, just returning the error.
+    *  In this case no actions are performed, just returning the error.
     */
     if (pkt.length < 0) {
+        utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
         return -1;
     }
 
@@ -552,32 +554,33 @@ int handle_incoming_udp_packet(
     *   5. Forward it to the TUN interface
     *  There can be different scenarios for which packets must be rejected.
     */
-    vpn_client_packet_data vpn_data;
-    ret_val = extract_vpn_client_packet_data(&pkt, &vpn_data);
-    if (ret_val) return ret_val;
+    vpn_data_utils::vpn_client_packet_data vpn_data;
+    if (extract_vpn_client_packet_data(&pkt, &vpn_data) == -1) {
+        utils::print_error("handle_incoming_udp_packet: vpn data cannot be extracted\n");
+        return -1;
+    }
 
     int id_num;
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
     user_id user_id = id_num;
 
-    /* Extracting the key .
-    *  Write info about mutex...
-    */
-    char key[KEY_LEN];
-    ret_val = map_uc_extract_key(user_id, map, mutex, key);
-    if (ret_val) return ret_val;
+    char key[encryption::MAX_KEY_SIZE];
+    if (map_uc_extract_key(user_id, map, mutex, key) == -1) return -1;
 
     encryption::encryption_data enc_data;
-    memcpy(enc_data.key, key, KEY_LEN);
-    memcpy(enc_data.iv, vpn_data.iv, IV_LEN);
+    memcpy(enc_data.key, key, encryption::MAX_KEY_SIZE);
+    memcpy(enc_data.iv, vpn_data.iv, encryption::MAX_IV_SIZE);
 
     encryption::packet decrypted_message = encryption::decrypt(vpn_data.encrypted_packet, enc_data);
     *ret_packet = decrypted_message;
 
     // With the encrypted packet we must verify the hash.
-    ret_val = encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data);
+    if (encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data) == -1) {
+        utils::print_error("handle_incoming_udp_packet: wrong hash detected\n");
+        return -1;
+    }
 
-    return ret_val;
+    return 0;
 }
 
 int start_doge_vpn() {
@@ -609,25 +612,22 @@ int start_doge_vpn() {
     FD_ZERO(&master);
 
     // Initialization of the tcp server socket.
-    ret_val = create_tss_sh("127.0.0.1", TCP_PORT, &tss_holder);
+    ret_val = create_tss_sh("127.0.0.1", "8080", &tss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 
     // Initialization of the udp server socket.
-    ret_val = create_uss_sh("127.0.0.1", UDP_PORT, &uss_holder);
+    ret_val = create_uss_sh("127.0.0.1", "8080", &uss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 
-    while(TRUE) {
+    while(true) {
 
         // Copy of master, otherwise we would lose its data.
         fd_set reads;
         reads = master;
 
-        if (select(max_socket + 1, &reads, 0, 0, 0) < 0) {
-            ret_val = SELECT_ERROR;
-            goto error_handler;
-        }
+        if (select(max_socket + 1, &reads, 0, 0, 0) < 0) goto error_handler;
 
         for (socket_utils::socket_t socket = 0; socket <= max_socket; ++socket) {
 
@@ -672,7 +672,7 @@ int start_doge_vpn() {
 
                     encryption::packet received_packet;
                     if (handle_incoming_udp_packet(socket, uc_map, uc_map_mutex, &received_packet) == -1) {
-                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified");
+                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
 
                     }
@@ -700,83 +700,9 @@ error_handler:
     map_set_max_free(sh_map, &master, &max_socket);
     map_uc_free(uc_map, uc_map_mutex);
 
-    return ret_val;
-}
-
-void test_enc_dec() {
-
-    encryption::encryption_data ed;
-
-    for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
-    for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 10;
-
-    encryption::packet pkt;
-    pkt.message[0] = '1';
-    pkt.message[1] = '2';
-    pkt.length = 2;
-
-    encryption::packet enc_pkt;
-    memset(&enc_pkt, 0, sizeof(encryption::packet));
-    encryption::encrypt(pkt, ed, &enc_pkt);
-
-    printf("Encrypted data should be %d bytes long and it is of length %ld\n", 16, enc_pkt.length);
-
-    encryption::packet dec_pkt;
-    memset(&dec_pkt, 0, sizeof(encryption::packet));
-    dec_pkt = encryption::decrypt(enc_pkt, ed);
-    printf("Decrypted data should be %d bytes long and it is of length %ld\n", 2, dec_pkt.length);
-}
-
-void test_extract() {
-
-    encryption::packet pkt;
-    memset(&pkt, 0, sizeof(encryption::packet));
-
-    int start = 0;
-
-    for (int i = 0; i < 16; ++i) pkt.message[start++] = 'm';
-    for (int i = 0; i < SHA_256_BYTES; ++i) pkt.message[start++] = 'h';
-    for (int i = 0; i < IV_LEN; ++i) pkt.message[start++] = 'i';
-    pkt.message[start++] = '.';
-    for (int i = 0; i < 8; ++i) pkt.message[start++] = '1';
-    pkt.length = strlen((const char *)&pkt.message);
-
-    vpn_client_packet_data data;
-    extract_vpn_client_packet_data(&pkt, &data);
-
-    int all_equals = 
-        strncmp((const char *) data.encrypted_packet.message, "mmmmmmmmmmmmmmmm", 16) +
-        strncmp((const char *) data.user_id, "11111111", 8) +
-        strncmp((const char *) data.iv, "iiiiiiiiiiiiiiii", 16) +
-        strncmp((const char *) data.hash, "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", 32);
-
-    printf("Sum should be %d and it is %d\n", 0, all_equals);
-    printf("Length should be %d and it is %ld\n", 16, data.encrypted_packet.length);
-}
-
-void test_enc_packet() {
-
-    encryption::encryption_data ed;
-    for (int i = 0; i < KEY_LEN; ++i) ed.key[i] = 42;
-    for (int i = 0; i < IV_LEN; ++i) ed.iv[i] = 'l';
-
-    char *message = "Hello";
-    encryption::packet enc_packet;
-    encryption::create_encrypted_packet(message, strlen(message), ed, &enc_packet);
-
-    printf("Length should be %d and it is %ld\n", 32, enc_packet.length);
-}
-
-void test_suite() {
-
-    test_enc_dec();
-    test_extract();
-    test_enc_packet();
+    return -1;
 }
 
 int main() {
-
-    test_suite();
-    //return 0;
 	return start_doge_vpn();
 }

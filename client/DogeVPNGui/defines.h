@@ -20,15 +20,14 @@
 #define TUN_SEND_ERROR 4002
 #define TUN_READ_ERROR 4003
 #define MAX_FD_ERROR 5000
-#define WRONG_CREDENTIAL 7000
 
 // TCP constant definitions
-#define TCP_HOST "0.0.0.0"
+#define TCP_HOST "127.0.0.1"
 #define TCP_PORT 8080
 
 // UDP constant definitions
 #define UDP_HOST "127.0.0.1"
-#define UDP_PORT 19090
+#define UDP_PORT 9090
 
 // TUN constant definitions
 #define SERVER_HOST "10.5.0.6"

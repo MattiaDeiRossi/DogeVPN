@@ -14,6 +14,7 @@ namespace encryption
     const int MAX_KEY_SIZE = 32;
     const int MAX_IV_SIZE = 16;
     const int SHA_256_SIZE = 32;
+    const int AES_256_CBC_PADDING = 16;
 
     struct packet {
         unsigned char message[MAX_UDP_MESSAGE_SIZE];
@@ -31,12 +32,6 @@ namespace encryption
 
     void handleErrors(void);
 
-    int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-                unsigned char *iv, unsigned char *ciphertext);
-
-    int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-                unsigned char *iv, unsigned char *plaintext);
-
     int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt);
 
     packet decrypt(packet encrypted_pkt, encryption_data enc_data);
@@ -45,7 +40,9 @@ namespace encryption
 
     int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data);
 
-    int create_encrypted_packet(char *message, size_t length, encryption_data enc_data, packet *enc_pkt);
+    int append(packet *output, unsigned char *data, size_t num);
+
+    int append(packet *output, unsigned char data);
 }
 
 #endif

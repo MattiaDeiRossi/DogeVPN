@@ -74,11 +74,12 @@ namespace ssl_utils
         }
     }
 
-    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, const char *server_name) {
+    int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server) {
     
         // Creating an SSL object.
         SSL *ssl = SSL_new(ctx);
         if (ssl == NULL) {
+            utils::print_error("bind_ssl: a new SSL object cannot be created\n");
             free_ssl(ssl, NULL);
             return -1;
         }
@@ -91,23 +92,18 @@ namespace ssl_utils
         /* Client is trying to communicate with the server.
         *  In the end a connect must be called.
         */
-        if (server_name != NULL) {
-
-            int tlsext_result = SSL_set_tlsext_host_name(ssl, server_name);
-            if (tlsext_result != 1) {
-                free_ssl(ssl, NULL);
-                return -1;
-            }
+        if (!is_server) {
 
             int connect_result = SSL_connect(ssl);
-            if (SSL_connect(ssl) != -1) {
+            if (SSL_connect(ssl) != 1) {
+                utils::print_error("bind_ssl: client cannot connect to server\n");
                 free_ssl(ssl, &connect_result);
                 return -1;
             }
         }
 
-        // Server name is NULL, so the server must accept an incoming client.
-        if (server_name == NULL) {
+        // The server must accept an incoming client.
+        if (is_server) {
 
             /* A call to SSL_accept() can fail for many reasons. 
             *  For example if the connected client does not trust our certificate.
@@ -116,6 +112,7 @@ namespace ssl_utils
             */
             int accept_result = SSL_accept(ssl);
             if (accept_result != 1) {
+                utils::print_error("bind_ssl: server cannot accept connections\n");
                 ERR_print_errors_fp(stderr);
                 free_ssl(ssl, &accept_result);
                 return -1;
@@ -179,15 +176,23 @@ namespace ssl_utils
         return bytes;
     }
 
-    int generate_rand_32(unsigned char *buffer) {
+    int generate_rand(unsigned char *buffer, size_t num) {
 
         /* Generating a key by using the OpenSSL library.
-        *  It will be 32 bytes long.
+        *  It will be num bytes long.
         */
-        memset(buffer, 0, 32);
-        int rand_value = RAND_bytes(buffer, 32);
+        memset(buffer, 0, num);
+        int rand_value = RAND_bytes(buffer, num);
         if (rand_value != 1) return -1;
         else return 0;
+    }
+
+    int generate_rand_32(unsigned char *buffer) {
+        return generate_rand(buffer, 32);
+    }
+
+    int generate_rand_16(unsigned char *buffer) {
+        return generate_rand(buffer, 16);
     }
 
 }

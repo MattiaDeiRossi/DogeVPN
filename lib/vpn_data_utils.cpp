@@ -3,7 +3,7 @@
 namespace vpn_data_utils {
 
 	
-	int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data) {
+	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
 
         int current_cursor = from->length - 1;
@@ -14,14 +14,14 @@ namespace vpn_data_utils {
 
             char bdata = from->message[current_cursor--];
 
-            /* Id has a specific length.
+            /* Id cannot excedd a specific length.
             *  When dealing with longer id, an error is returned.
             */
-            if (j == ID_LEN && bdata != MESSAGE_SEPARATOR) {
+            if (j == MAX_ID_SIZE && bdata != IV_ID_SEPARATOR) {
                 return -1;
             }
             
-            if (bdata == MESSAGE_SEPARATOR) {
+            if (bdata == IV_ID_SEPARATOR) {
 
                 /* The user id is the last part of the message after the IV vector.
                 *  After encountering it the user id processing must stop.  
@@ -56,7 +56,7 @@ namespace vpn_data_utils {
         if (utils::read_reverse(
             ret_data->iv,
             from->message,
-            IV_LEN,
+            encryption::MAX_IV_SIZE,
             from->length,
             &current_cursor,
             true
@@ -66,7 +66,7 @@ namespace vpn_data_utils {
         if (utils::read_reverse(
             ret_data->hash,
             from->message,
-            SHA_256_BYTES,
+            encryption::SHA_256_SIZE,
             from->length,
             &current_cursor,
             true
@@ -76,7 +76,7 @@ namespace vpn_data_utils {
         int packet_length = utils::read_reverse(
             ret_data->encrypted_packet.message,
             from->message,
-            MAX_MESSAGE_BYTES,
+            encryption::MAX_UDP_MESSAGE_SIZE,
             from->length,
             &current_cursor,
             false
@@ -84,6 +84,47 @@ namespace vpn_data_utils {
 
         if (packet_length == -1) return -1;
         ret_data->encrypted_packet.length = packet_length;
+
+        return 0;
+    }
+
+    int build_packet_to_send(encryption::packet message, const char *key, int user_id, encryption::packet *result) {
+
+        if (result == NULL) {
+            utils::print_error("init_data_to_send: result cannot be NULL\n");
+            return -1;
+        }
+
+        encryption::encryption_data e_data;
+        memcpy(e_data.key, key, encryption::MAX_KEY_SIZE);
+        if (ssl_utils::generate_rand_16(e_data.iv) == -1) return -1;
+        if (encryption::encrypt(message, e_data, result) == -1) return -1;
+
+        /* Composing the message:
+        *   - hashing the original message
+        *   - appending it to the packet to send
+        */
+        unsigned char hash[encryption::SHA_256_SIZE];
+        if (encryption::getShaSum(message, hash) == -1) return -1;
+        if (encryption::append(result, hash, encryption::SHA_256_SIZE) == -1) return -1;
+
+        /* Composing the message:
+        *   - appending the IV to the packet to send
+        */
+        if (encryption::append(result, e_data.iv, encryption::MAX_IV_SIZE) == -1) return -1;
+
+        if (user_id != -1) {
+
+            /* Composing the message:
+            *   - appending the separator
+            *   - appending the user id
+            */
+
+            unsigned char user_id_str[16];
+            utils::int_to_string(user_id, (char *) user_id_str, sizeof(user_id_str));
+            if (encryption::append(result, IV_ID_SEPARATOR) == -1) return -1;
+            if (encryption::append(result, user_id_str, strlen((const char *) user_id_str)) == -1) return -1;
+        }
 
         return 0;
     }
@@ -115,7 +156,13 @@ namespace vpn_data_utils {
         // Priting packet data.
         encryption::packet *from = &(ret_data->encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->length);
-        utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 8);
+        utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 4);
         utils::println_sep(0);
+    }
+
+    void log_vpn_client_packet_data(const encryption::packet *from) {
+        vpn_client_packet_data data;
+        parse_packet(from, &data);
+        log_vpn_client_packet_data(&data);
     }
 }

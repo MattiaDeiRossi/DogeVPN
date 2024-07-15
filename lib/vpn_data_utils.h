@@ -1,12 +1,25 @@
 #ifndef VPN_DATA_UTILS_H
 #define VPN_DATA_UTILS_H
 
-#include "standards.h"
-#include "data_structures.h"
+#include <ctype.h>
 #include "utils.h"
+#include "encryption.h"
+#include "ssl_utils.h"
 
 namespace vpn_data_utils
 {
+
+    const int MAX_ID_SIZE = 16;
+    const char IV_ID_SEPARATOR = '.';
+
+    struct vpn_client_packet_data {
+        unsigned char user_id[MAX_ID_SIZE];
+        unsigned char iv[encryption::MAX_IV_SIZE];
+        unsigned char hash[encryption::SHA_256_SIZE];
+        encryption::packet encrypted_packet;
+    };
+
+    typedef struct vpn_client_packet_data vpn_client_packet_data;
 
     /* This function deals with extracting the information. 
     *  DogeVPN requires the payload to respect the following format:
@@ -19,9 +32,13 @@ namespace vpn_data_utils
     *   4.  Then we have the user id:
     *           - This is needed to decrypt the message with correct key
     */
-    int init_vpn_client_packet_data(const encryption::packet *from, vpn_client_packet_data *ret_data);
+    int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data);
+
+    int build_packet_to_send(encryption::packet from, const char *key, int user_id, encryption::packet *result);
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
+
+    void log_vpn_client_packet_data(const encryption::packet *from);
 }
 
 #endif

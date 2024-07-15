@@ -19,9 +19,9 @@ add_library(encryption ../lib//encryption.cpp)
 add_library(socket_utils ../lib/socket_utils.cpp)
 add_library(ssl_utils ../lib/ssl_utils.cpp)
 add_library(utils ../lib/utils.cpp)
-add_library(client_credentials_utils src/client_credentials_utils.cpp)
+add_library(client_credentials_utils ../lib/client_credentials_utils.cpp)
+add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
 add_library(udp_client_info_utils src/udp_client_info_utils.cpp)
-add_library(vpn_data_utils src/vpn_data_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 

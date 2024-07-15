@@ -81,26 +81,24 @@ namespace encryption
 
     int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt)
     {
-        
-        int ret_val = 0;
 
         /* Checking the length for returning an error in case of an UDP packet too large.
         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
         */
-        size_t ciphertext_len = ((pkt.length / MAX_KEY_SIZE) + 1) * MAX_KEY_SIZE;
+        size_t ciphertext_len = ((pkt.length / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
         if (ciphertext_len > MAX_UDP_MESSAGE_SIZE) {
             return -1;
         }
 
         packet encrypted_pkt;
-        encrypted_pkt.length = encryption::encrypt(
+        encrypted_pkt.length = encrypt(
             pkt.message, pkt.length, 
             enc_data.key, enc_data.iv, 
             encrypted_pkt.message
         );
 
         *enc_pkt = encrypted_pkt;
-        return ret_val;
+        return 0;
     }
 
     packet decrypt(packet encrypted_pkt, encryption_data enc_data)
@@ -116,7 +114,6 @@ namespace encryption
         return pkt;
     }
 
-    // Change output with typedef.
     int getShaSum(packet pkt, unsigned char *output)
     {
 
@@ -153,42 +150,27 @@ namespace encryption
 
     int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data) {
 
-        int ret_val = 0;
-
         // Creating buffer.
-        unsigned char buffer[SHA_256_SIZE];
-        memset(buffer, 0, SHA_256_SIZE);
-
-        ret_val = getShaSum(decrypted_message, buffer);
-        if (ret_val == -1) return ret_val;
-
-        unsigned char decrypted_hash[SHA_256_SIZE];
-        memset(decrypted_hash, 0, SHA_256_SIZE);
-        decrypt(hash, SHA_256_SIZE, enc_data.key, enc_data.iv, decrypted_hash);
-
-        return strncmp((const char *) buffer, (const char *) decrypted_hash, SHA_256_SIZE) == 0 ? 0 : -1;
+        unsigned char computed_hash[SHA_256_SIZE];
+        if (getShaSum(decrypted_message, computed_hash) == -1) return -1;
+        return strncmp((const char *) computed_hash, (const char *) hash, SHA_256_SIZE) == 0 ? 0 : -1;
     }
 
-    int create_encrypted_packet(char *message, size_t length, encryption_data enc_data, packet *enc_pkt) {
+    int append(packet *output, unsigned char *data, size_t num) {
 
-        int ret_val = 0;
+        size_t current_size = output->length;
+        if (current_size + num > MAX_UDP_MESSAGE_SIZE) return -1;
 
-        packet pkt;
-        memcpy(pkt.message, message, length);
-        pkt.length = length;
+        for (size_t i = 0; i < num; ++i) output->message[current_size + i] = data[i];
+        output->length = current_size + num;
+    }
 
-        ret_val = encryption::encrypt(pkt, enc_data, enc_pkt);
-        if (ret_val != 0) return ret_val;
+    int append(packet *output, unsigned char data) {
 
-        size_t new_length = enc_pkt->length + MAX_IV_SIZE;
+        size_t current_size = output->length;
+        if (current_size + 1 > MAX_UDP_MESSAGE_SIZE) return -1;
 
-        if (new_length > MAX_UDP_MESSAGE_SIZE) {
-            return -1;
-        }
-
-        for (int i = 0; i < MAX_IV_SIZE; ++i) enc_pkt->message[enc_pkt->length + i] = enc_data.iv[i];
-        enc_pkt->length = new_length;
-
-        return ret_val;
+        output->message[current_size] = data;
+        output->length = current_size + 1;
     }
 }

@@ -1,12 +1,7 @@
 // Compile with gcc aes.c client.c -lssl -lcrypto -o client
 //https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
-#include "standards.h"
-#include <iostream>
-#include "defines.h"
-#include "../lib/utils.h"
-#include "../lib/ssl_utils.h"
-#include "../lib/socket_utils.h"
-#include "../lib/client_credentials_utils.h"
+#include "client.h"
+
 
 // *** Start macros ***
 #define IS_VALID_SOCKET(s) ((s) >= 0)

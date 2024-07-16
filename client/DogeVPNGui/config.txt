@@ -1,0 +1,3 @@
+dominio:localhost
+username:us
+psw:psw

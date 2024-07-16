@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "settingswidget.h"
 #include "thread.h"
+#include "client.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -32,11 +33,11 @@ private slots:
 
     void handleThreadFinished(int result);
 
+    void on_actionEdit_triggered();
+
 private:
     Ui::MainWindow *ui;
     Thread *client_thread_;
     SettingsWidget *settingsWidget;
-    QMap<QString, QString> settings_;
-
 };
 #endif // MAINWINDOW_H

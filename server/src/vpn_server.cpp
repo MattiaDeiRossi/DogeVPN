@@ -20,8 +20,6 @@ socket_utils::socket_t extract_socket(socket_holder *holder) {
         return (holder->data).tss->socket;
     case UDP_SERVER_SOCKET:
         return (holder->data).uss->socket;
-    case TUN_SERVER_SOCKET:
-        return (holder->data).tun_ss->socket;
     default:
         exit(1);
     }
@@ -102,15 +100,6 @@ int create_uss(char const *host, char const *port, udp_server_socket **udp_socke
     return 0;
 }
 
-int create_tun_ss(tun_server_socket **tun_socket) {
-
-    int ret_val = 0;
-
-    // TODO
-
-    return ret_val;
-}
-
 void uss_free(udp_server_socket *udp_socket) {
 
     // Sanity check.
@@ -140,9 +129,6 @@ void socket_data_free(socket_type type, socket_data data) {
         break;
     case UDP_SERVER_SOCKET:
         uss_free(data.uss);
-        break;
-    case TUN_SERVER_SOCKET:
-        tun_ss_free(data.tun_ss);
         break;
     default:
         exit(1);
@@ -216,26 +202,6 @@ int create_uss_sh(
     socket_data data;
     data.uss = uss;
     ret_val = create_sh(UDP_SERVER_SOCKET, data, &holder);
-    if (ret_val) return ret_val;
-
-    *sh = holder;
-
-    return ret_val;
-}
-
-int create_tun_ss_sh(socket_holder **sh) {
-
-    int ret_val = 0;
-
-    // Creating tun server socket.
-    tun_server_socket *tun_ss;
-    ret_val = create_tun_ss(&tun_ss);
-    if (ret_val) return ret_val;
-
-    socket_holder *holder;
-    socket_data data;
-    data.tun_ss = tun_ss;
-    ret_val = create_sh(TUN_SERVER_SOCKET, data, &holder);
     if (ret_val) return ret_val;
 
     *sh = holder;
@@ -341,10 +307,6 @@ int map_is_uss(socket_holder *holder) {
 
 int map_is_tcs(socket_holder *holder) {
     return map_check_socket(holder, TCP_CLIENT_SOCKET);
-}
-
-int map_is_tun_ss(socket_holder *holder) {
-    return map_check_socket(holder, TUN_SERVER_SOCKET);
 }
 
 void uc_map_update(

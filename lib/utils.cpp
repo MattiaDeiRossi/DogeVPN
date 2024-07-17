@@ -159,4 +159,17 @@ namespace utils {
 	void int_to_string(int digit, char *buffer, size_t num) {
 		snprintf(buffer, num, "%d", digit);
 	}
+
+	int run_sys_command(const char *command) {
+
+		// Passing a NULL value is considered a valid fast return even though this is useless.
+		if (command == NULL) return 0;
+		return system(command);
+	}
+
+	int if_config_up(const char *iname, const char *address, int mtu) {
+		char command[512];
+		snprintf(command, sizeof(command), "ifconfig %s %s mtu %d up", iname, address, mtu);
+		return run_sys_command(command);
+	}
 }

@@ -561,11 +561,6 @@ int start_doge_vpn() {
 
     fd_set master;
 
-    // Initialization of the tun server socket.
-    //ret_val = create_tun_ss_sh(&tun_ss_holder);
-    //if (ret_val) goto error_handler;
-    //map_set_max_add(sh_map, &master, tun_ss_holder, &max_socket);
-
     // SSL initialization.
     ret_val = ssl_utils::init_ssl(&ctx, true, "certs/cert.pem", "certs/key.pem");
     if (ret_val) goto error_handler;

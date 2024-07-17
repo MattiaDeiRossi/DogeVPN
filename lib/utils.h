@@ -44,7 +44,7 @@ namespace utils
 
     void int_to_string(int digit, char *buffer, size_t num);
 
-    int if_config_up(const char *iname, const char *address, int mtu);
+    int run_sys_command(const char *command);
 }
 
 #endif

@@ -166,10 +166,4 @@ namespace utils {
 		if (command == NULL) return 0;
 		return system(command);
 	}
-
-	int if_config_up(const char *iname, const char *address, int mtu) {
-		char command[512];
-		snprintf(command, sizeof(command), "ifconfig %s %s mtu %d up", iname, address, mtu);
-		return run_sys_command(command);
-	}
 }

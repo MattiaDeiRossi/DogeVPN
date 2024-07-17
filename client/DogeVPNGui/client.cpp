@@ -244,15 +244,15 @@ static int max(int a, int b) {
   return a > b ? a : b;
 }
 
-void generate_test_string(char *secret_key, encryption::packet *result) {
+// void generate_test_string(char *secret_key, encryption::packet *result) {
 
-    const char *test = "TEST_STRING";
+//     const char *test = "TEST_STRING";
 
-    encryption::packet message;
-    encryption::append(&message, (unsigned char *) test, strlen(test));
-    vpn_data_utils::build_packet_to_send(message, secret_key, 42, result);
-    vpn_data_utils::log_vpn_client_packet_data(result);
-}
+//     encryption::packet message;
+//     encryption::append(&message, (unsigned char *) test, strlen(test));
+//     vpn_data_utils::build_packet_to_send(message, secret_key, 42, result);
+//     vpn_data_utils::log_vpn_client_packet_data(result);
+// }
 
 int start_doge_vpn(char const* user, char const* pwd) {
 
@@ -298,31 +298,31 @@ int start_doge_vpn(char const* user, char const* pwd) {
     bzero(tun_buf, MTU);
     bzero(udp_buf, MTU);
 
-    while (true) {
-        encryption::packet result;
-        generate_test_string(secret_key, &result);
+    // while (true) {
+    //     encryption::packet result;
+    //     generate_test_string(secret_key, &result);
         
-        printf("*** Send UDP message ***\n");
-        if (!send(udp_socket, result.message, result.length, 0)) {
-            utils::print_error("UDP_SEND_ERROR");
-            return UDP_SEND_ERROR;
-        }
+    //     printf("*** Send UDP message ***\n");
+    //     if (!send(udp_socket, result.message, result.length, 0)) {
+    //         utils::print_error("UDP_SEND_ERROR");
+    //         return UDP_SEND_ERROR;
+    //     }
 
-        sleep(3600);
-    }
+    //     sleep(3600);
+    // }
 
-    while (true) {
-        encryption::packet result;
-        generate_test_string(secret_key, &result);
+    // while (true) {
+    //     encryption::packet result;
+    //     generate_test_string(secret_key, &result);
         
-        printf("*** Send UDP message ***\n");
-        if (!send(udp_socket, result.message, result.length, 0)) {
-            utils::print_error("UDP_SEND_ERROR");
-            return UDP_SEND_ERROR;
-        }
+    //     printf("*** Send UDP message ***\n");
+    //     if (!send(udp_socket, result.message, result.length, 0)) {
+    //         utils::print_error("UDP_SEND_ERROR");
+    //         return UDP_SEND_ERROR;
+    //     }
 
-        sleep(3600);
-    }
+    //     sleep(3600);
+    // }
 
     while (stop_flag == false) {
         fd_set readset;

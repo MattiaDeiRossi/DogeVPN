@@ -4,6 +4,8 @@ SettingsWidget::SettingsWidget(QWidget *parent)
     : QDialog(parent)
     , domainServerLabel( new QLabel("Domain", this))
     , domainServerLineEdit( new QLineEdit(this))
+    , portServerLabel( new QLabel("Port", this))
+    , portServerLineEdit( new QLineEdit(this))
     , userLabel(new QLabel("Username", this))
     , userLineEdit(new QLineEdit(this))
     , passwordLabel(new QLabel("Password", this))
@@ -16,8 +18,16 @@ SettingsWidget::SettingsWidget(QWidget *parent)
     passwordLineEdit->setEchoMode(QLineEdit::Password);
 
     layout = new QVBoxLayout(this);
-    layout->addWidget(domainServerLabel);
-    layout->addWidget(domainServerLineEdit);
+    QHBoxLayout *domainLabelLayout = new QHBoxLayout;
+    domainLabelLayout->addWidget(domainServerLabel);
+    domainLabelLayout->addWidget(portServerLabel);
+    layout->addLayout(domainLabelLayout);
+
+    QHBoxLayout *domainLayout = new QHBoxLayout;
+    domainLayout->addWidget(domainServerLineEdit);
+    domainLayout->addWidget(portServerLineEdit);
+    layout->addLayout(domainLayout);
+
     layout->addWidget(userLabel);
     layout->addWidget(userLineEdit);
     layout->addWidget(passwordLabel);

@@ -17,7 +17,7 @@ services:
 
   vpnclient2:
     tty: true
-    image: client-vpnclient
+    image: dogevpn-vpnclient
     # build:
     #   context: ../
     #   dockerfile: client/Dockerfile
@@ -30,6 +30,8 @@ services:
     networks:
       external_network:
         ipv4_address: 10.5.0.8
+    depends_on:
+      - vpnclient
 
 # networks:
 #   external_network:

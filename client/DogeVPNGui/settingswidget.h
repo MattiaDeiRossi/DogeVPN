@@ -32,12 +32,8 @@ private slots:
     void onSaveClicked();
 
 private:
-    QLabel *domainServerLabel;
-    QLineEdit *domainServerLineEdit;
-    QLabel *userLabel;
-    QLineEdit *userLineEdit;
-    QLabel *passwordLabel;
-    QLineEdit *passwordLineEdit;
+    QLabel *domainServerLabel, *userLabel, *passwordLabel, *portServerLabel;
+    QLineEdit *domainServerLineEdit, *portServerLineEdit, *userLineEdit, *passwordLineEdit;
     QPushButton *okButton, *saveButton, *togglePswButton;
     QVBoxLayout *layout;
 

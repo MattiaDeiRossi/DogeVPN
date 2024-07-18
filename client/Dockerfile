@@ -1,16 +1,21 @@
-FROM ubuntu
-RUN apt -y update
+FROM ubuntu:latest
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt install -y \
-    g++ \
+RUN apt-get update && \
+    apt-get install -y \
     cmake \
-    git \
-    curl\
-    python3\
-    build-essential\
-    libssl-dev
+    build-essential \
+    qtbase5-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# copy and build
-WORKDIR /client
-ADD . .
-RUN make all
+WORKDIR /DogeVPN
+ADD lib/ /DogeVPN/lib
+ADD client/  /DogeVPN/client
+
+RUN cd DogeVPNGui/;\
+    mkdir build;\
+    cd build\
+    cmake ..\
+    make
+
+ENTRYPOINT ["./client/DogeVPNGui/build/DogeVPNGui"]

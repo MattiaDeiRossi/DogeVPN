@@ -31,10 +31,10 @@ services:
       external_network:
         ipv4_address: 10.5.0.8
 
-networks:
-  external_network:
-    driver: bridge
-    ipam:
-     config:
-      - subnet: 10.5.0.0/24
-        gateway: 10.5.0.15
+# networks:
+#   external_network:
+#     driver: bridge
+#     ipam:
+#      config:
+#       - subnet: 10.5.0.0/24
+#         gateway: 10.5.0.15

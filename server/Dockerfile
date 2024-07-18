@@ -23,7 +23,8 @@ RUN cd ~ \
 
 # copy and build
 WORKDIR /server
-ADD . .
+ADD lib/ /lib
+ADD server/ .
 RUN mkdir build; cd build/ \
     && cmake .. \
     && make

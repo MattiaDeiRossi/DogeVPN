@@ -43,6 +43,5 @@ void setup_route_table();
 void cleanup_route_table();
 static void run(char *cmd);
 static int max(int a, int b);
-int start_doge_vpn(char const* user, char const* pwd);
-
+int start_doge_vpn(char const* domain, char const* port, char const* user, char const* pwd);
 #endif // CLIENT_H

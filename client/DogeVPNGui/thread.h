@@ -11,7 +11,7 @@ public:
     Thread(QObject *parent = nullptr);
     ~Thread();
 
-    void setParams(const char *user, const char *pwd);
+    void setParams(const char *domain, const char *port, const char *user, const char *pwd);
 
 signals:
     void threadFinished(int result);
@@ -20,8 +20,7 @@ protected:
     void run() override;
 
 private:
-    const char *m_user;
-    const char *m_pwd;
+    const char *user_, *pwd_, *domain_, *port_;
 };
 
 #endif // THREAD_H

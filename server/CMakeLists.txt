@@ -15,7 +15,7 @@ include_directories(include)
 include_directories(../lib)
 
 add_library(mongo src/mongo.cpp)
-add_library(encryption ../lib//encryption.cpp)
+add_library(encryption ../lib/encryption.cpp)
 add_library(socket_utils ../lib/socket_utils.cpp)
 add_library(ssl_utils ../lib/ssl_utils.cpp)
 add_library(utils ../lib/utils.cpp)

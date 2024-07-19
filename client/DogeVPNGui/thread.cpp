@@ -1,7 +1,7 @@
 #include "thread.h"
 #include "client.h"
 Thread::Thread(QObject *parent)
-    : QThread(parent), m_user(nullptr), m_pwd(nullptr)
+    : QThread(parent), user_(nullptr), pwd_(nullptr)
 {
 }
 
@@ -13,17 +13,19 @@ Thread::~Thread()
     }
 }
 
-void Thread::setParams(const char *user, const char *pwd)
+void Thread::setParams(const char *domain, const char *port, const char *user, const char *pwd)
 {
-    m_user = user;
-    m_pwd = pwd;
+    domain_ = domain;
+    port_ = port;
+    user_ = user;
+    pwd_ = pwd;
 
 }
 
 void Thread::run()
 {
-    if (m_user && m_pwd) {
-        int result = start_doge_vpn("Mattia", "1234567890mattia1234567890");
+    if (user_ && pwd_ && domain_ && port_) {
+        int result = start_doge_vpn(domain_, port_,user_, pwd_);
         emit threadFinished(result);
     } else {
         std::cerr << "Errore: Parametri non impostati correttamente" << std::endl;

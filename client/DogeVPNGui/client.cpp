@@ -254,7 +254,7 @@ static int max(int a, int b) {
 //     vpn_data_utils::log_vpn_client_packet_data(result);
 // }
 
-int start_doge_vpn(char const* user, char const* pwd) {
+int start_doge_vpn(char const* domain, char const* port, char const* user, char const* pwd) {
 
     int ret_val = 0;
 
@@ -263,7 +263,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     if (ret_val) return ret_val;
 
     socket_utils::socket_t tcp_socket;
-    ret_val = socket_utils::bind_tcp_client_socket("127.0.0.1", "8080", &tcp_socket);
+    ret_val = socket_utils::bind_tcp_client_socket(domain, port, &tcp_socket);
     if (ret_val) return ret_val;
 
     SSL* ssl_session;
@@ -282,7 +282,7 @@ int start_doge_vpn(char const* user, char const* pwd) {
     SSL_CTX_free(ctx);
 
     socket_utils::socket_t udp_socket;
-    ret_val = socket_utils::bind_udp_client_socket("127.0.0.1", "8080", &udp_socket);
+    ret_val = socket_utils::bind_udp_client_socket(domain, port, &udp_socket);
     if (ret_val) return ret_val;
 
     socket_utils::socket_t tun_fd;

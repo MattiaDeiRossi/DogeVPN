@@ -34,6 +34,8 @@ void MainWindow::on_connectButton_clicked()
         return;
     }
 
+    auto domain = settings.value("domain").toStdString().c_str();
+    auto port = settings.value("port").toStdString().c_str();
     auto us = settings.value("username").toStdString().c_str();
     auto psw = settings.value("password").toStdString().c_str();
     std::cout<< "Sending: "<< us << " "<< psw <<std::endl;
@@ -42,7 +44,7 @@ void MainWindow::on_connectButton_clicked()
         client_thread_ = new Thread(this);
     }
 
-    client_thread_->setParams(us, psw);
+    client_thread_->setParams(domain, port, us, psw);
     client_thread_->start();
     ui->connectionStatus->setText("Connected");
     ui->connectionStatus->setStyleSheet("color: green;");

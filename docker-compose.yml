@@ -1,3 +1,18 @@
 include:
   - ./server/docker-compose.yml
   - ./client/docker-compose.yml
+  
+networks:
+  external_network:
+    driver: bridge
+    ipam:
+     config:
+      - subnet: 10.5.0.0/24
+        gateway: 10.5.0.1
+
+  internal_network:
+    driver: bridge
+    ipam:
+     config:
+      - subnet: 192.168.0.0/24
+        gateway: 192.168.0.1

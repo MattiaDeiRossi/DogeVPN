@@ -569,12 +569,12 @@ int start_doge_vpn() {
     FD_ZERO(&master);
 
     // Initialization of the tcp server socket.
-    ret_val = create_tss_sh("127.0.0.1", "8080", &tss_holder);
+    ret_val = create_tss_sh("0.0.0.0", "8080", &tss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, tss_holder, &max_socket);
 
     // Initialization of the udp server socket.
-    ret_val = create_uss_sh("127.0.0.1", "8080", &uss_holder);
+    ret_val = create_uss_sh("0.0.0.0", "8080", &uss_holder);
     if (ret_val) goto error_handler;
     map_set_max_add(sh_map, &master, uss_holder, &max_socket);
 

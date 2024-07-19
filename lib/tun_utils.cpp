@@ -2,7 +2,17 @@
 
 namespace tun_utils {
 
-    int tun_alloc(char *dev) {
+    tundev_t init_meta_no_pi(const char *name) {
+
+        tundev_t meta;
+        bzero(&meta, sizeof(tundev_t));
+        memcpy(meta.dev, name, strlen(name));
+        meta.flags = IFF_TUN;
+
+        return meta;
+    }
+
+    int tun_alloc(tundev_t *meta) {
 
         const char *clonedev = "/dev/net/tun";
 
@@ -18,13 +28,13 @@ namespace tun_utils {
         */
         struct ifreq ifr;
         memset(&ifr, 0, sizeof(ifr));
-        ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+        ifr.ifr_flags = meta->flags;
 
-        if (*dev) {
+        if (strlen(meta->dev)) {
             /* If a device name was specified, put it in the structure.
             *  If not the kernel will try to allocate the "next" device of the specified type .
             */
-            strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+            strncpy(ifr.ifr_name, meta->dev, IFNAMSIZ);
         }
 
         /* Trying to create the device.
@@ -41,10 +51,70 @@ namespace tun_utils {
         *  This way the caller can know it. 
         *  Note that the caller MUST reserve space in *dev.
         */
-         strcpy(dev, ifr.ifr_name);
+         strcpy(meta->dev, ifr.ifr_name);
         
         /* This is the special file descriptor that the caller will use to talk with the virtual interface. */
-        return fd;
+        meta->fd = fd;
+        return 0;
+    }
+
+    tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame) {
+
+        uint8_t buffer[MAX_DATA_SIZE];
+        uint8_t* ptr = buffer;
+
+        ssize_t len = read(meta->fd, buffer, MAX_DATA_SIZE);
+
+
+        if (len < 0) {
+            fprintf(stderr, "failed read from tun\n");
+            return NULL;
+        }
+        
+        /* If IFF_NO_PI is set, this header is omitted. */
+        if ((meta->flags & IFF_NO_PI)) {
+            frame->info.flags = 0;
+            frame->info.proto = 0;
+        } else {
+
+            /* First four bytes are the packet information.
+            *  Protocol is in big-endian format.
+            */
+            memcpy(&(frame->info), ptr, sizeof(frame->info));
+            ptr += sizeof(frame->info);
+            len -= sizeof(frame->info);
+            frame->info.proto = ntohs(frame->info.proto);
+        }
+
+        /* Rest is the packet data. */
+        memcpy(frame->data, ptr, len);
+        frame->size = len;
+
+	    return frame;
+    }
+
+    int tun_close(int fd) {
+
+        if (fd <= 0) return -1;
+        if (close(fd) < 0) return -1;
+
+        return 0;
+    }
+
+    int read_ip_header(const tundev_frame_t *frame, ip_header *ret) {
+
+        if (!(frame && ret)) {
+            fprintf(stderr, "argument error\n");
+            return -1;
+        }
+
+        struct ip *iphdr = (struct ip *) frame->data;
+
+        u_int8_t protocol = iphdr->ip_p;
+        inet_ntop(AF_INET, &(iphdr->ip_src), ret->source_ip, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(iphdr->ip_dst), ret->destination_ip, INET_ADDRSTRLEN);
+
+        return 0;
     }
 
     int enable_forwarding(bool enable) {
@@ -54,10 +124,10 @@ namespace tun_utils {
     }
     
     int configure_interface(
-        const char *iname,
+        const tundev_t *meta,
         bool up,
-        const char *address) 
-    {
+        const char *address
+    ) {
 
         /* Exit status:
         *   - 0 if command was successful
@@ -68,12 +138,12 @@ namespace tun_utils {
 
         /* ip link set dev {interface} {up|down} */
         bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip link set dev %s %s", iname, up ? "up" : "down");
+        snprintf(command, sizeof(command), "ip link set dev %s %s", meta->dev, up ? "up" : "down");
         if (system(command) != 0) goto handle_error;
 
         /* ip a add {ip_addr/mask} dev {interface} */
         bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip a add %s dev %s", address, iname);
+        snprintf(command, sizeof(command), "ip a add %s dev %s", address, meta->dev);
         if (system(command) != 0) goto handle_error;
 
         return 0;

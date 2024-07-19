@@ -6,23 +6,62 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 
 namespace tun_utils {
+
+    const unsigned int MTU = 1500;
+    const unsigned int MAX_IP_SIZE = 64;
+    const unsigned int MAX_DATA_SIZE = 32768;
+
+    struct ip_header {
+        char source_ip[MAX_IP_SIZE];
+        char destination_ip[MAX_IP_SIZE];
+    };
+
+    typedef struct ip_header ip_header;
+
+    struct tundev_t {
+        char dev[IFNAMSIZ];
+        int	fd;
+        int	flags;
+    };
+
+    typedef struct tundev_t tundev_t;
+
+    struct tundev_frame_t {
+        struct tun_pi info;
+        size_t size;
+        char data[MAX_DATA_SIZE];
+    };
+
+    typedef struct tundev_frame_t tundev_frame_t;
+
+    tundev_t init_meta_no_pi(const char *name);
 
     /* Arguments taken by the function:
     *   - char *dev: 
     *       The name of an interface (or '\0').
     *       MUST have enough space to hold the interface name if '\0' is passed.
     */
-    int tun_alloc(char *dev);
+    int tun_alloc(tundev_t *meta);
+
+    tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame);
+
+    int tun_close(int fd);
+
+    int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
 
     int enable_forwarding(bool enable);
 
     int configure_interface(
-        const char *iname,
+        const tundev_t *meta,
         bool up,
         const char *address
     );

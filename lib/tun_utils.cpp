@@ -1,11 +1,9 @@
-#ifndef TUN_UTILS_H
-#define TUN_UTILS_H
+#include "tun_utils.h"
 
 namespace tun_utils {
 
-    int tun_alloc(const char *dev) {
+    int tun_alloc(char *dev) {
 
-        int err;
         const char *clonedev = "/dev/net/tun";
 
         /* Opening the clone device. */
@@ -34,7 +32,7 @@ namespace tun_utils {
         *  The file descriptor we had is now associated to it, and can be used to communicate. 
         */
         int err = ioctl(fd, TUNSETIFF, (void *) &ifr);
-        if( (err = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0 ) {
+        if (err < 0 ) {
             close(fd);
             return -1;
         }
@@ -49,11 +47,39 @@ namespace tun_utils {
         return fd;
     }
 
-    int if_config_up(const char *iname, const char *address, int mtu) {
-		char command[512];
-		snprintf(command, sizeof(command), "ifconfig %s %s mtu %d up", iname, address, mtu);
-		return run_sys_command(command);
-	}
-}
+    int enable_forwarding(bool enable) {
+        char command[256];
+		snprintf(command, sizeof(command), "sysctl net.ipv4.ip_forward=%d", enable ? 1 : 0);
+        return system(command);
+    }
+    
+    int configure_interface(
+        const char *iname,
+        bool up,
+        const char *address) 
+    {
 
-#endif
+        /* Exit status:
+        *   - 0 if command was successful
+        *   - 1 if there is a syntax error
+        *   - 2 if an error was reported by the kernel
+        */
+        char command[256];
+
+        /* ip link set dev {interface} {up|down} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip link set dev %s %s", iname, up ? "up" : "down");
+        if (system(command) != 0) goto handle_error;
+
+        /* ip a add {ip_addr/mask} dev {interface} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip a add %s dev %s", address, iname);
+        if (system(command) != 0) goto handle_error;
+
+        return 0;
+
+    handle_error:
+        fprintf(stderr, "%s failed", command);
+        return -1;
+    }
+}

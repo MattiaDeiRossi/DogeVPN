@@ -21,6 +21,7 @@ add_library(ssl_utils ../lib/ssl_utils.cpp)
 add_library(utils ../lib/utils.cpp)
 add_library(client_credentials_utils ../lib/client_credentials_utils.cpp)
 add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
+add_library(tun_utils ../lib/tun_utils.cpp)
 add_library(udp_client_info_utils src/udp_client_info_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
@@ -46,6 +47,7 @@ target_link_libraries(vpnserver
   client_credentials_utils
   udp_client_info_utils
   vpn_data_utils
+  tun_utils
   crypto
   ssl
 )

@@ -8,7 +8,8 @@ RUN apt install -y \
     curl\
     python3\
     build-essential\
-    libssl-dev
+    libssl-dev\
+    iproute2
 
 # installing mongocxx driver - connects c++ to mongo
 RUN cd ~ \

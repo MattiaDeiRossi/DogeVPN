@@ -1,6 +1,7 @@
 #ifndef TUN_UTILS_H
 #define TUN_UTILS_H
 
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,6 +58,8 @@ namespace tun_utils {
     int tun_close(int fd);
 
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
+
+    void log_ip_header(const ip_header *ret);
 
     int enable_forwarding(bool enable);
 

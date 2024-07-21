@@ -7,7 +7,7 @@ namespace tun_utils {
         tundev_t meta;
         bzero(&meta, sizeof(tundev_t));
         memcpy(meta.dev, name, strlen(name));
-        meta.flags = IFF_TUN;
+        meta.flags = IFF_TUN | IFF_NO_PI;
 
         return meta;
     }
@@ -115,6 +115,14 @@ namespace tun_utils {
         inet_ntop(AF_INET, &(iphdr->ip_dst), ret->destination_ip, INET_ADDRSTRLEN);
 
         return 0;
+    }
+
+    void log_ip_header(const ip_header *header) {
+
+        const char *padding = "   ";
+        std::cout << "Logging ip header:" << std::endl;
+        std::cout << padding << "Source ip address: " << header->source_ip << std::endl;
+        std::cout << padding << "Destination ip address: " << header->destination_ip << std::endl;
     }
 
     int enable_forwarding(bool enable) {

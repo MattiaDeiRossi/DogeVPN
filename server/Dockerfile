@@ -25,6 +25,4 @@ RUN cd ~ \
 WORKDIR /server
 ADD lib/ /lib
 ADD server/ .
-RUN mkdir build; cd build/ \
-    && cmake .. \
-    && make
+RUN rm build/ -r; mkdir build; cd build; cmake ..; make; cd ..

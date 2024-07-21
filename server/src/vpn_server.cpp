@@ -8,6 +8,7 @@
 #include "client_credentials_utils.h"
 #include "udp_client_info_utils.h"
 #include "vpn_data_utils.h"
+#include "tun_utils.h"
 #include "mongo.hpp"
 
 socket_utils::socket_t extract_socket(socket_holder *holder) {
@@ -660,6 +661,38 @@ error_handler:
     return -1;
 }
 
+void test_tun() {
+
+    char name[500];
+    bzero(name, sizeof(name));
+    snprintf(name, sizeof(name), "tun42");
+
+    tun_utils::tundev_t meta = tun_utils::init_meta_no_pi(name);
+    tun_utils::tun_alloc(&meta);
+    tun_utils::enable_forwarding(true);
+    tun_utils::configure_interface(&meta, true, "192.168.53.5/24");
+    
+    /* Note that "buffer" should be at least the MTU size of the interface, eg 1500 bytes */
+
+    while (true) {
+
+        tun_utils::tundev_frame_t frame;
+        tun_utils::ip_header header;
+        tun_utils::read_ip_header(tun_utils::tun_read(&meta, &frame), &header);
+
+        /*if(nread < 0) {
+            perror("Reading from interface");
+            close(meta.fd);
+            exit(1);
+        }*/
+
+        /* Do whatever with the data */
+       // printf("Read %d bytes from device %s\n", nread, name);
+
+    }
+}
+
 int main() {
+    test_tun();
 	return start_doge_vpn();
 }

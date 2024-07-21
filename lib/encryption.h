@@ -43,7 +43,7 @@ namespace encryption
 
     int getShaSum(packet message, unsigned char *output);
 
-    int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data);
+    int hash_verify(packet decrypted_message, unsigned char *hash);
 
     int append(packet *output, unsigned char *data, size_t num);
 

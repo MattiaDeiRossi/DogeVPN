@@ -538,7 +538,7 @@ int handle_incoming_udp_packet(
     *ret_packet = decrypted_message;
 
     // With the encrypted packet we must verify the hash.
-    if (encryption::hash_verify(decrypted_message, vpn_data.hash, enc_data) == -1) {
+    if (encryption::hash_verify(decrypted_message, vpn_data.hash) == -1) {
         utils::print_error("handle_incoming_udp_packet: wrong hash detected\n");
         return -1;
     }
@@ -554,7 +554,6 @@ int start_doge_vpn() {
     SSL_CTX *ctx = NULL;
     socket_holder *tss_holder = NULL;
     socket_holder *uss_holder = NULL;
-    socket_holder *tun_ss_holder = NULL;
 
     std::map<socket_utils::socket_t, socket_holder*> sh_map;
     std::map<user_id, udp_client_info*> uc_map;

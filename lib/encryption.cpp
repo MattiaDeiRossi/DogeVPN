@@ -148,7 +148,7 @@ namespace encryption
         return 0;
     }
 
-    int hash_verify(packet decrypted_message, unsigned char *hash, encryption_data enc_data) {
+    int hash_verify(packet decrypted_message, unsigned char *hash) {
 
         // Creating buffer.
         unsigned char computed_hash[SHA_256_SIZE];

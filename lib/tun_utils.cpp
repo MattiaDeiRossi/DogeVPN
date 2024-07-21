@@ -109,8 +109,6 @@ namespace tun_utils {
         }
 
         struct ip *iphdr = (struct ip *) frame->data;
-
-        u_int8_t protocol = iphdr->ip_p;
         inet_ntop(AF_INET, &(iphdr->ip_src), ret->source_ip, INET_ADDRSTRLEN);
         inet_ntop(AF_INET, &(iphdr->ip_dst), ret->destination_ip, INET_ADDRSTRLEN);
 

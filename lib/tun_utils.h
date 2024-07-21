@@ -26,23 +26,17 @@ namespace tun_utils {
         char destination_ip[MAX_IP_SIZE];
     };
 
-    typedef struct ip_header ip_header;
-
     struct tundev_t {
         char dev[IFNAMSIZ];
         int	fd;
         int	flags;
     };
 
-    typedef struct tundev_t tundev_t;
-
     struct tundev_frame_t {
         struct tun_pi info;
         size_t size;
         char data[MAX_DATA_SIZE];
     };
-
-    typedef struct tundev_frame_t tundev_frame_t;
 
     tundev_t init_meta_no_pi(const char *name);
 

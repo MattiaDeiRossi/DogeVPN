@@ -13,5 +13,6 @@ Authors:
 
 ## How to build and run
 ```bash
+docker compose build
 docker compose up -d
 ```

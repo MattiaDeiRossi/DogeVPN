@@ -17,8 +17,6 @@ namespace client_credentials_utils
         char password[256];
     };
 
-    typedef struct client_credentials client_credentials;
-
     /* Initialize a client_credentials struct.
     *  Assumptions:
     *   1. username is NULL terminated

@@ -6,7 +6,7 @@ namespace vpn_data_utils {
 	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
 
-        int current_cursor = from->length - 1;
+        ssize_t current_cursor = from->length - 1;
         memset(ret_data, 0, sizeof(vpn_client_packet_data));
 
         int j = 0;

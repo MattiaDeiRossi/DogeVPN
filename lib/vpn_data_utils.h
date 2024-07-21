@@ -19,8 +19,6 @@ namespace vpn_data_utils
         encryption::packet encrypted_packet;
     };
 
-    typedef struct vpn_client_packet_data vpn_client_packet_data;
-
     /* This function deals with extracting the information. 
     *  DogeVPN requires the payload to respect the following format:
     *   1.  First part of the payload is the original encrypted packet.

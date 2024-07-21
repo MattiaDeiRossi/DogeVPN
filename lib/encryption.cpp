@@ -163,6 +163,7 @@ namespace encryption
 
         for (size_t i = 0; i < num; ++i) output->message[current_size + i] = data[i];
         output->length = current_size + num;
+        return 0;
     }
 
     int append(packet *output, unsigned char data) {
@@ -172,5 +173,6 @@ namespace encryption
 
         output->message[current_size] = data;
         output->length = current_size + 1;
+        return 0;
     }
 }

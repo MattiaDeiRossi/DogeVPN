@@ -21,19 +21,16 @@ namespace encryption
         long int length;
     };
 
-    typedef struct packet packet;
-
     struct encryption_data {
         unsigned char key[MAX_KEY_SIZE];
         unsigned char iv[MAX_IV_SIZE];
     };
 
-    typedef struct encryption_data encryption_data;
-
     void handleErrors(void);
 
     int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *ciphertext);
+
     int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *plaintext);
 

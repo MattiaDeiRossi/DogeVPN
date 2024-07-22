@@ -8,8 +8,9 @@
 
 namespace socket_utils
 {
-
     typedef int socket_t;
+
+    const socket_t invalid_socket_value = -1;
 
     int invalid_socket(socket_t socket);
 

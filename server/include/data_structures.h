@@ -29,10 +29,6 @@ typedef struct {
     socket_utils::socket_t socket;
 } udp_server_socket;
 
-typedef struct {
-    socket_utils::socket_t socket;
-} tun_server_socket;
-
 typedef union {
     tcp_client_socket *tcs;
     tcp_server_socket *tss;
@@ -43,9 +39,5 @@ typedef struct {
     socket_data data;
     socket_type type;
 } socket_holder;
-
-typedef struct {
-    unsigned char key[encryption::MAX_KEY_SIZE];
-} udp_client_info;
 
 #endif

@@ -2,10 +2,14 @@
 #define UDP_CLIENT_INFO_UTILS_H
 
 #include "standards.h"
-#include "data_structures.h"
 
-namespace udp_client_info_utils
-{
+namespace udp_client_info_utils {
+
+    const int KEY_SIZE = 32;
+
+    struct udp_client_info{
+        unsigned char key[KEY_SIZE];
+    };
 
     int init(const char *key, size_t num, udp_client_info **info);
 }

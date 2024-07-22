@@ -2,6 +2,8 @@
 #define TUN_UTILS_H
 
 #include <iostream>
+#include <set>
+#include <cmath>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +40,14 @@ namespace tun_utils {
         char data[MAX_DATA_SIZE];
     };
 
+    struct ip_pool_t {
+
+        unsigned char netmask;
+        unsigned char ip_bytes[4];
+        unsigned int next_ip;
+        std::set<unsigned int> unavailable_ips;
+    };
+
     tundev_t init_meta_no_pi(const char *name);
 
     /* Arguments taken by the function:
@@ -62,6 +72,13 @@ namespace tun_utils {
         bool up,
         const char *address
     );
+
+    /* Given a pool of available ip addresses, a call to next returns the next available ip.
+    *  In order to work properly the pool must be properly configured.
+    */
+    const char* next(ip_pool_t *pool, char *buffer, size_t num);
+
+    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }
 
 #endif

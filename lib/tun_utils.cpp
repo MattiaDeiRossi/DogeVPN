@@ -158,4 +158,98 @@ namespace tun_utils {
         fprintf(stderr, "%s failed", command);
         return -1;
     }
+
+    const char* next(ip_pool_t *pool, char *buffer, size_t num) {
+
+        unsigned int host_bits = 32 - pool->netmask;
+        unsigned int max_ips = ((int) pow(2, host_bits));
+
+        if (pool->unavailable_ips.size() == max_ips) {
+            std::cerr << "no available ip for the given pool" << std::endl;
+            return NULL;
+        }
+
+        while (true) {
+
+            /* Searching for the next available ip.
+            *  As soon the next ip is found, it gets added to the already used set.
+            */
+            if (pool->unavailable_ips.count(pool->next_ip) != 0) {
+                pool->next_ip = (pool->next_ip + 1) % max_ips;
+            } else {
+                pool->unavailable_ips.insert(pool->next_ip);
+                break;
+            }
+        }
+
+        /* Composign the ipv4 address as bytes:
+        *   - assuming the call o pool->ip_bytes[i] produce a byte with correct offset
+        */
+        unsigned int ip_to_use = pool->next_ip;
+        unsigned int mask = 255;
+        unsigned int byte_length = 8;
+
+        unsigned char ip_bytes[4];
+        bzero(ip_bytes, sizeof(ip_bytes));
+
+        for (size_t i = 0; i < 4; ++i) {
+            ip_bytes[i] = (ip_to_use | pool->ip_bytes[i]) & mask ;
+            ip_to_use >>= byte_length;
+        }
+
+        /* Composing the ipv4 string.
+        *  The given buffer will be returned.
+        */
+        bzero(buffer, num);
+        int start = 0;
+
+        for (int i = 3; i >= 0; --i) {
+
+            char current_byte[4];
+            char *ptr = current_byte;
+            sprintf(current_byte, "%d", ip_bytes[i]);
+            
+            while(true) {
+
+                if (!(*ptr)) {
+                    if (i != 0) buffer[start++] = '.';
+                    break;
+                } else {
+                    buffer[start++] = *ptr;
+                    ptr++;
+                }
+            }
+        }
+        
+        return buffer; 
+    }
+
+    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool) {
+
+        if (third_octet == 0 || third_octet == 255) {
+            fprintf(stderr, "Invalid third_octet; valid range is (1..254)");
+            return -1;
+        }
+
+        pool->netmask = 24;
+        pool->ip_bytes[3] = 192;
+        pool->ip_bytes[2] = 168;
+        pool->ip_bytes[1] = third_octet;
+
+        /* Last byte is zero:
+        *   - it will be incremented gradually from one to 254
+        *   - each call to next will update the configured pool 
+        */
+        pool->ip_bytes[0] = 0;
+        pool->next_ip = 0;
+
+        /* Host cannot have ip with special meaning:
+        *   - in binary host portion all zeros is the subnet address
+        *   - in binary: host portion all ones is the broadcast address
+        */
+        pool->unavailable_ips.insert(0);
+        pool->unavailable_ips.insert(255);
+
+        return 0;
+    }
 }

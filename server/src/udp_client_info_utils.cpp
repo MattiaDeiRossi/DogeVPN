@@ -6,7 +6,7 @@ namespace udp_client_info_utils {
 	int init(const char *key, size_t num, udp_client_info **info) {
 
 		// Key must be 32 bytes long.
-        if (num != 32) {
+        if (num != KEY_SIZE) {
             return -1;
         }
 

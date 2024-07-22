@@ -70,6 +70,10 @@ namespace socket_utils {
 		// No address succeeded.
         if (ba_p == NULL) return -1;
 
+
+		/* A UDP socket does not need to set itself to a listen state.
+		*  Just up to bind. 
+		*/
 	    if (is_tcp && is_server) {
 
 		    /* Listen put the socket in a state where it listens for new connections.

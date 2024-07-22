@@ -11,7 +11,7 @@ namespace udp_client_info_utils {
         unsigned char key[KEY_SIZE];
     };
 
-    int init(const char *key, size_t num, udp_client_info **info);
+    int init(const char *key, udp_client_info *info);
 }
 
 #endif

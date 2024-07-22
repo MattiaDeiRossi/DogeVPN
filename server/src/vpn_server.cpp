@@ -303,7 +303,7 @@ int map_is_tcs(socket_holder *holder) {
 
 void uc_map_update(
     user_id id,
-    std::map<int, udp_client_info_utils::udp_client_info*>& map,
+    std::map<int, udp_client_info_utils::udp_client_info>& map,
     std::shared_mutex& mutex,
     udp_client_info_utils::udp_client_info *new_info
 ) {
@@ -313,15 +313,10 @@ void uc_map_update(
     */
     std::unique_lock lock(mutex);
 
-    if (map.count(id)) {
-
-        udp_client_info_utils::udp_client_info *info = map.at(id);
-        if (info != NULL) free(info);
-        map.erase(id);
-    }
+    if (map.count(id)) map.erase(id);
 
     if (new_info) {
-        map[id] = new_info;
+        map[id] = *new_info;
     }
 }
 
@@ -336,7 +331,7 @@ void handle_tcp_client_key_exchange(
     struct sockaddr_storage client_address,
     socklen_t client_len,
     SSL_CTX *ctx,
-    std::map<int, udp_client_info_utils::udp_client_info*>& map, 
+    std::map<int, udp_client_info_utils::udp_client_info>& map, 
     std::shared_mutex& mutex
 ) {
 
@@ -394,14 +389,14 @@ void handle_tcp_client_key_exchange(
     utils::println_sep(0);
     utils::print_bytes("Generating message for the client", message, message_length, 5);
 
-    udp_client_info_utils::udp_client_info *info;
-    if (udp_client_info_utils::init((const char *) rand_buf, sizeof(rand_buf), &info) == -1) {
+    udp_client_info_utils::udp_client_info info;
+    if (udp_client_info_utils::init((const char *) rand_buf, &info) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: client info cannot be saved\n");
         ssl_utils::free_ssl(ssl, NULL);
         return;
     }
 
-    uc_map_update(db_user_id, map, mutex, info);
+    uc_map_update(db_user_id, map, mutex, &info);
 
     if (ssl_utils::write(ssl, message, message_length) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: key cannot be shared with the client\n");
@@ -417,9 +412,8 @@ void handle_tcp_client_key_exchange(
     ssl_utils::free_ssl(ssl, NULL);
 }
 
-void map_uc_free(std::map<int, udp_client_info_utils::udp_client_info*>& map, std::shared_mutex& mutex) {
+void map_uc_free(std::map<int, udp_client_info_utils::udp_client_info>& map, std::shared_mutex& mutex) {
     std::unique_lock lock(mutex);
-    for (auto iter = map.begin(); iter != map.end(); ++iter) free(iter->second);
     map.clear();
 }
 
@@ -427,14 +421,14 @@ void map_uc_free(std::map<int, udp_client_info_utils::udp_client_info*>& map, st
 *   - The data type udp_client_info is not returned directly since it can be accessed and deleted by another thread
 *   - In order to avoid race condition, after taking the mutex, a copy of the key is returned
 */
-int map_uc_extract_key(user_id id, std::map<int, udp_client_info_utils::udp_client_info*>& map, std::shared_mutex& mutex, char *key_buffer) {
+int map_uc_extract_key(user_id id, std::map<int, udp_client_info_utils::udp_client_info>& map, std::shared_mutex& mutex, char *key_buffer) {
 
     std::unique_lock lock(mutex);
 
     if (map.count(id)) {
 
-        udp_client_info_utils::udp_client_info *info = map.at(id); 
-        memcpy(key_buffer, info->key, encryption::MAX_KEY_SIZE);
+        udp_client_info_utils::udp_client_info info = map.at(id); 
+        memcpy(key_buffer, info.key, encryption::MAX_KEY_SIZE);
         return 0;
     } else {
 
@@ -463,7 +457,7 @@ int extract_vpn_client_packet_data(
 */
 int handle_incoming_udp_packet(
     socket_utils::socket_t udp_socket, 
-    std::map<int, udp_client_info_utils::udp_client_info*>& map, 
+    std::map<int, udp_client_info_utils::udp_client_info>& map, 
     std::shared_mutex& mutex, 
     encryption::packet *ret_packet
 ) {
@@ -547,7 +541,7 @@ int start_doge_vpn() {
     socket_holder *uss_holder = NULL;
 
     std::map<socket_utils::socket_t, socket_holder*> sh_map;
-    std::map<user_id, udp_client_info_utils::udp_client_info*> uc_map;
+    std::map<user_id, udp_client_info_utils::udp_client_info> uc_map;
     std::shared_mutex uc_map_mutex;
 
     fd_set master;

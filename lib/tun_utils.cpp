@@ -159,7 +159,7 @@ namespace tun_utils {
         return -1;
     }
 
-    const char* next(ip_pool_t *pool, char *buffer, size_t num) {
+    const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip) {
 
         unsigned int host_bits = 32 - pool->netmask;
         unsigned int max_ips = ((int) pow(2, host_bits));
@@ -220,7 +220,21 @@ namespace tun_utils {
                 }
             }
         }
-        
+
+        buffer[start++] = '/';
+
+        char netmask_buffer[4];
+        char *ptr = netmask_buffer;
+        sprintf(netmask_buffer, "%d", pool->netmask);
+
+        for (int i = 0; i < 4; i++) {
+
+            if (!(*ptr)) break;
+            buffer[start++] = *ptr;
+            ptr++;
+        }
+
+        *next_ip = pool->next_ip;
         return buffer; 
     }
 

@@ -40,6 +40,8 @@ namespace tun_utils {
         char data[MAX_DATA_SIZE];
     };
 
+    /* pool must be pretected with mutex
+    */
     struct ip_pool_t {
 
         unsigned char netmask;
@@ -76,7 +78,7 @@ namespace tun_utils {
     /* Given a pool of available ip addresses, a call to next returns the next available ip.
     *  In order to work properly the pool must be properly configured.
     */
-    const char* next(ip_pool_t *pool, char *buffer, size_t num);
+    const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip);
 
     int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }

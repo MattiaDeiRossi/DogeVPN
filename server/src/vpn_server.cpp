@@ -350,7 +350,7 @@ void handle_tcp_client_key_exchange(
         return;
     }
 
-     client_credentials_utils::client_credentials credentials;
+    client_credentials_utils::client_credentials credentials;
     if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
         utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized\n");
         ssl_utils::free_ssl(ssl, NULL);

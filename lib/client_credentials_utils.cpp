@@ -64,8 +64,10 @@ namespace client_credentials_utils {
 	}
 
 	void log_client_credentials(const client_credentials *credentials) {
-
-		const char *message = "%s\n  Username: %s\n  Password: %s\n";
-		printf(message, "Reading client credentials", credentials->username, credentials->password);
+		printf(
+			"%s\n  Username: %s\n  Password: %s\n", "Reading client credentials",
+			credentials->username,
+			credentials->password
+		);
 	}
 }

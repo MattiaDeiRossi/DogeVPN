@@ -239,6 +239,12 @@ namespace tun_utils {
         return buffer; 
     }
 
+    void erase(ip_pool_t *pool, unsigned int ip) {
+
+        std::unique_lock lock(pool->mutex);
+        pool->unavailable_ips.erase(ip);
+    }
+
     int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool) {
 
         if (third_octet == 0 || third_octet == 255) {

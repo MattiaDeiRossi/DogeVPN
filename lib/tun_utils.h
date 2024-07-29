@@ -83,6 +83,8 @@ namespace tun_utils {
     */
     const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip);
 
+    void erase(ip_pool_t *pool, unsigned int ip);
+
     int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }
 

@@ -42,8 +42,6 @@ namespace tun_utils {
         char data[MAX_DATA_SIZE];
     };
 
-    /* pool must be pretected with mutex
-    */
     struct ip_pool_t {
 
         unsigned char netmask;
@@ -51,7 +49,7 @@ namespace tun_utils {
         unsigned int next_ip;
         std::set<unsigned int> unavailable_ips;
 
-        /**/
+        /* This pool must be pretected with mutex. */
         std::shared_mutex mutex;
     };
 

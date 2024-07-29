@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(mongo)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -Wformat=2 -Wmisleading-indentation)
 endif()
 
 set(MONGOCXX_INCLUDE_DIR /usr/local/include)
@@ -23,6 +23,7 @@ add_library(client_credentials_utils ../lib/client_credentials_utils.cpp)
 add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
 add_library(tun_utils ../lib/tun_utils.cpp)
 add_library(udp_client_info_utils src/udp_client_info_utils.cpp)
+add_library(holder src/holder.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 
@@ -46,6 +47,7 @@ target_link_libraries(vpnserver
   utils
   client_credentials_utils
   udp_client_info_utils
+  holder
   vpn_data_utils
   tun_utils
   crypto

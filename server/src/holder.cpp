@@ -196,7 +196,7 @@ namespace holder {
         c_register->tun_ip_per_session.insert({holder.client_tun_ip, holder.session_id});
     }
 
-    void delete_client_holder(client_register *c_register, client_holder holder) {
+    void delete_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder) {
 
         {
             std::unique_lock lock(c_register->mutex);
@@ -214,6 +214,7 @@ namespace holder {
 
         }
 
+        tun_utils::erase(pool, holder.client_tun_ip_id);
         ssl_utils::free_ssl(holder.ssl, NULL);
     }
 }

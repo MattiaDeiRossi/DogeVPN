@@ -9,6 +9,7 @@
 #include "udp_client_info_utils.h"
 #include "vpn_data_utils.h"
 #include "tun_utils.h"
+#include "holder.h"
 #include "mongo.hpp"
 
 socket_utils::socket_t extract_socket(socket_holder *holder) {
@@ -320,6 +321,20 @@ void uc_map_update(
     }
 }
 
+void handle_tcp_client_key_exchange_2(
+    socket_utils::socket_t client_socket,
+    struct sockaddr_storage client_address,
+    socklen_t client_len,
+    SSL_CTX *ctx,
+    tun_utils::ip_pool_t *pool,
+    holder::client_register *c_register
+) {
+
+    holder::socket_holder holder;
+    holder::init_client_holder(pool, client_socket, client_address, client_len, ctx, &holder);
+    holder::save_client_holder(c_register, holder.c_holder);
+}
+
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
 *  When handling a new client there is no need to just create the client socket and return.
 *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
@@ -544,6 +559,11 @@ int start_doge_vpn() {
     std::map<user_id, udp_client_info_utils::udp_client_info> uc_map;
     std::shared_mutex uc_map_mutex;
 
+    tun_utils::ip_pool_t pool;
+    tun_utils::configure_private_class_c_pool(11, &pool);
+
+    holder::client_register c_register;
+
     fd_set master;
 
     // SSL initialization.
@@ -599,13 +619,13 @@ int start_doge_vpn() {
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
                         std::thread th(
-                            handle_tcp_client_key_exchange, 
+                            handle_tcp_client_key_exchange_2, 
                             client_socket,
                             client_address,
                             client_len,
                             ctx, 
-                            std::ref(uc_map), 
-                            std::ref(uc_map_mutex)
+                            &pool, 
+                            &c_register
                         );
 
                         th.detach();
@@ -677,7 +697,20 @@ void test_tun() {
     }
 }
 
+void test_pool() {
+
+    tun_utils::ip_pool_t pool;
+    tun_utils::configure_private_class_c_pool(11, &pool);
+
+    char buffer[512];
+    unsigned int nip;
+    while (tun_utils::next(&pool, buffer, 512, &nip)) {
+        std::cout << buffer << "--" << nip << std::endl;
+    }
+}
+
 int main() {
+    //test_pool();
     //test_tun();
 	return start_doge_vpn();
 }

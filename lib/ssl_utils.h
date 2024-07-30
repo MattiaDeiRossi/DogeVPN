@@ -18,6 +18,8 @@ namespace ssl_utils
 
     void free_ssl(SSL *ssl, int *with_error);
 
+    void ssl_context_free(SSL_CTX *ctx);
+
     int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server);
 
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length);

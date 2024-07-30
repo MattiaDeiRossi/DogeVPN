@@ -74,6 +74,10 @@ namespace ssl_utils
         }
     }
 
+    void ssl_context_free(SSL_CTX *ctx) {
+        if (ctx != NULL) SSL_CTX_free(ctx);
+    }
+
     int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server) {
     
         // Creating an SSL object.

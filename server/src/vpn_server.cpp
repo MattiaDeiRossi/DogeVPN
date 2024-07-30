@@ -17,7 +17,13 @@ void ssl_context_free(SSL_CTX *ctx) {
     if (ctx != NULL) SSL_CTX_free(ctx);
 }
 
-void handle_tcp_client_key_exchange_2(
+/* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
+*  When handling a new client there is no need to just create the client socket and return.
+*  A dedicated process should handle the process of data exchange without relying on select in the main loop.
+*  After a timeout or some error the client socket can be freed along with the thread.
+*  This will simplify the whole logic.
+*/
+void handle_tcp_client_key_exchange(
     socket_utils::socket_t client_socket,
     struct sockaddr_storage client_address,
     socklen_t client_len,
@@ -29,113 +35,6 @@ void handle_tcp_client_key_exchange_2(
     holder::socket_holder holder;
     holder::init_client_holder(pool, client_socket, client_address, client_len, ctx, &holder);
     holder::save_client_holder(c_register, holder.c_holder);
-}
-
-/* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
-*  When handling a new client there is no need to just create the client socket and return.
-*  A dedicated process should handle the process of data exchange without relying on select in the main loop.
-*  After a timeout or some error the client socket can be freed along with the thread.
-*  This will simplify the whole logic.
-*/
-void handle_tcp_client_key_exchange(
-    socket_utils::socket_t client_socket,
-    struct sockaddr_storage client_address,
-    socklen_t client_len,
-    SSL_CTX *ctx
-) {
-
-    SSL *ssl;
-    if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, true) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: TLS communication cannot start between client and server\n");
-        return;
-    }
-    
-    ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
-
-    char credentials_buffer[512];
-    int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
-    if (bytes_read == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: Client closed connection and credentials cannot be verified\n");
-        return;
-    }
-
-    client_credentials_utils::client_credentials credentials;
-    if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: client credentials cannot be initialized\n");
-        ssl_utils::free_ssl(ssl, NULL);
-        return;
-    }
-
-    utils::println_sep(0);
-    client_credentials_utils::log_client_credentials(&credentials);
-
-    /* The user id is an important property for communicating over UDP.
-    *  Once the id is fetched, it must be saved in memory.
-    *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
-    */
-    user_id db_user_id = 42; // TODO
-    unsigned char id_buf[64];
-    memset(id_buf, 0, 64);
-    sprintf((char *) id_buf, "%d", db_user_id);
-
-    unsigned char rand_buf[32];
-    if (ssl_utils::generate_rand_32(rand_buf) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: random bytes cannot be generated");
-        ssl_utils::free_ssl(ssl, NULL);
-        return;
-    }
-
-    // TODO check error.
-    char message[256];
-    utils::concat_with_separator(
-        (const char *) rand_buf, sizeof(rand_buf), 
-        (const char *) id_buf, sizeof(id_buf), 
-        message, sizeof(message), 
-        '.'
-    );
-
-    size_t message_length = sizeof(rand_buf) + strlen((const char *) id_buf) + 1;
-    utils::println_sep(0);
-    utils::print_bytes("Generating message for the client", message, message_length, 5);
-
-    udp_client_info_utils::udp_client_info info;
-    if (udp_client_info_utils::init((const char *) rand_buf, &info) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: client info cannot be saved\n");
-        ssl_utils::free_ssl(ssl, NULL);
-        return;
-    }
-
-    if (ssl_utils::write(ssl, message, message_length) == -1) {
-        utils::print_error("handle_tcp_client_key_exchange: key cannot be shared with the client\n");
-        return;
-    }
-
-    /* After the key has been exchanged the TCP connection gets closed.
-    *  A better approach would be to keep the connection alive and use it to perform specific operations:
-    *   - For example establish a new key after a while
-    *   - Release UDP resources before the TCP connection goes away
-    */
-    ssl_utils::free_ssl(ssl, NULL);
-}
-
-/* Functions that deals with shared data must always return new data:
-*   - The data type udp_client_info is not returned directly since it can be accessed and deleted by another thread
-*   - In order to avoid race condition, after taking the mutex, a copy of the key is returned
-*/
-int map_uc_extract_key(user_id id, std::map<int, udp_client_info_utils::udp_client_info>& map, std::shared_mutex& mutex, char *key_buffer) {
-
-    std::unique_lock lock(mutex);
-
-    if (map.count(id)) {
-
-        udp_client_info_utils::udp_client_info info = map.at(id); 
-        memcpy(key_buffer, info.key, encryption::MAX_KEY_SIZE);
-        return 0;
-    } else {
-
-        utils::print_error("map_uc_extract_key: invalid id\n");
-        return -1;
-    }
 }
 
 int extract_vpn_client_packet_data(
@@ -214,6 +113,10 @@ int handle_incoming_udp_packet(
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
     user_id user_id = id_num;
 
+    /* Functions that deals with shared data must always return new data:
+    *   - the client holder is not returned directly since it can be accessed and deleted by another thread
+    *   - in order to avoid race condition, after taking the mutex, a copy of the key is returned
+    */
     unsigned char key[holder::SIZE_32];
     if (holder::extract_client_key(c_register, user_id, key) == -1) return -1;
 
@@ -291,7 +194,7 @@ int start_doge_vpn() {
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
                         std::thread th(
-                            handle_tcp_client_key_exchange_2, 
+                            handle_tcp_client_key_exchange, 
                             client_socket,
                             client_address,
                             client_len,

@@ -46,9 +46,9 @@ target_link_libraries(vpnserver
   socket_utils
   ssl_utils
   utils
+  holder
   client_credentials_utils
   udp_client_info_utils
-  holder
   selector
   vpn_data_utils
   tun_utils

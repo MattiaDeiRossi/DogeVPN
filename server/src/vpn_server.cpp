@@ -13,10 +13,6 @@
 #include "selector.h"
 #include "mongo.hpp"
 
-void ssl_context_free(SSL_CTX *ctx) {
-    if (ctx != NULL) SSL_CTX_free(ctx);
-}
-
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
 *  When handling a new client there is no need to just create the client socket and return.
 *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
@@ -233,7 +229,7 @@ error_handler:
     utils::print_error("start_doge_vpn: fatal error, switching off the server");
 
     // Cleaning up resources.
-    ssl_context_free(ctx);
+    ssl_utils::ssl_context_free(ctx);
     // map_set_max_free(sh_map, &master, &max_socket);
     // map_uc_free(uc_map, uc_map_mutex);
 

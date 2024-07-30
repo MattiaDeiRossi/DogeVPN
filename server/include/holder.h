@@ -106,6 +106,12 @@ namespace holder {
     *  Once holder gets erased from register, data within holder should not be touched anymore.
     */
     void delete_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder);
+
+    int extract_client_key(
+        client_register *c_register,
+        unsigned int session_id,
+        unsigned char *symmetric_key
+    );
 }
 
 #endif

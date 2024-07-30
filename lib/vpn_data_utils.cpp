@@ -131,7 +131,6 @@ namespace vpn_data_utils {
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data) {
 
-        utils::println_sep(0);
         printf("Reading VPN data from client packet\n");
 
         // Id must be long no more than 8 bytes.
@@ -157,7 +156,6 @@ namespace vpn_data_utils {
         encryption::packet *from = &(ret_data->encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->length);
         utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 4);
-        utils::println_sep(0);
     }
 
     void log_vpn_client_packet_data(const encryption::packet *from) {

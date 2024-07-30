@@ -110,8 +110,6 @@ namespace socket_utils {
 
 	void log_start_server(bool is_tcp, char const *host, char const *port) {
 
-		utils::println_sep(0);
-
 		if (is_tcp) utils::print("Server can now listen for new TCP connections\n", 0);
 		else utils::print("Server can now receive UDP packets\n", 0);
 
@@ -122,7 +120,6 @@ namespace socket_utils {
 	    utils::print("Port:", 3);
 	    utils::print(port, 1);
 	    utils::print("\n", 0);
-	    utils::println_sep(0);
 	}
 
 	void log_client_address(struct sockaddr_storage address, socklen_t length) {
@@ -137,7 +134,6 @@ namespace socket_utils {
 	        NI_NUMERICHOST | NI_NUMERICSERV
 	    );
 
-	    utils::println_sep(0);
 	    utils::print("Received bytes from:\n", 0);
 	    utils::print("IP address:", 3);
 	    utils::print(address_buffer, 1);
@@ -145,6 +141,5 @@ namespace socket_utils {
 	    utils::print("Port:", 3);
 	    utils::print(service_buffer, 1);
 	    utils::print("\n", 0);
-		utils::println_sep(0);
 	}
 }

@@ -7,8 +7,10 @@ namespace selector {
         fd_set master;
         FD_ZERO(&master);
 
-        std::set<socket_utils::socket_t> sockets;
-        selector_set s_set = {master, 0, sockets};
+        selector_set s_set;
+        s_set.socket_set = master;
+        s_set.max_socket = 0;
+
         return s_set;
     }
 

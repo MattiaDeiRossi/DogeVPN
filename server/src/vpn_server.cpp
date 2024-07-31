@@ -134,32 +134,27 @@ int handle_incoming_udp_packet(
 
 int start_doge_vpn() {
 
-    SSL_CTX *ctx = NULL;
-    holder::client_register c_register;
-    selector::selector_set s_set = selector::empty_set();
+    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
+    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
+    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);
+
+    /* After tcp and udp sockets are created:
+    *   1. extract sockets from holder
+    *   2. update selector_set
+    */
+    socket_utils::socket_t tcp_socket = holder::extract_socket(&server_tcp_holder);
+    socket_utils::socket_t udp_socket = holder::extract_socket(&server_udp_holder);
+    selector::selector_set s_set = selector::create_set({tcp_socket, udp_socket});
 
     tun_utils::ip_pool_t pool;
     tun_utils::configure_private_class_c_pool(11, &pool);
 
-    if (ssl_utils::init_ssl(&ctx, true, "certs/cert.pem", "certs/key.pem") == -1) goto error_handler;
-
-    holder::socket_holder server_tcp_holder;
-    if (holder::init_tcp_server_holder("0.0.0.0", "8080", &server_tcp_holder) == -1) goto error_handler;
-
-    holder::socket_holder server_udp_holder;
-    if (holder::init_udp_server_holder("0.0.0.0", "8080", &server_udp_holder) == -1) goto error_handler;
-
-    /* Once server sockets have been created:
-    *   - the fd_set must be updated
-    *   - the max_socket must be updated
-    */
-    selector::add(&s_set, holder::extract_socket(&server_tcp_holder));
-    selector::add(&s_set, holder::extract_socket(&server_udp_holder));
+    holder::client_register c_register;
 
     while(true) {
 
         // Copy of master, otherwise we would lose its data.
-        fd_set reads = s_set.socket_set;
+        fd_set reads = s_set.socket_fd_set;
         if (selector::wait_select(&s_set, &reads) < 0) goto error_handler;
 
         for (socket_utils::socket_t socket = 0; socket <= s_set.max_socket; ++socket) {

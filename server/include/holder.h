@@ -4,6 +4,7 @@
 #include <map>
 #include <shared_mutex>
 #include <mutex>
+#include <stdlib.h>
 #include "socket_utils.h"
 #include "ssl_utils.h"
 #include "client_credentials_utils.h"
@@ -112,6 +113,8 @@ namespace holder {
         unsigned int session_id,
         unsigned char *symmetric_key
     );
+
+    holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp);
 }
 
 #endif

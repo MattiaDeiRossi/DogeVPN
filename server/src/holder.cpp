@@ -235,4 +235,20 @@ namespace holder {
 
         return 0;
     }
+
+    holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp) {
+
+        holder::socket_holder holder;
+
+        int result = is_tcp ? 
+            holder::init_tcp_server_holder(ip, port, &holder) :
+            holder::init_udp_server_holder(ip, port, &holder);
+
+        if (result == -1) {
+            fprintf(stderr, "create_server_holder_or_abort: %s server cannot start\n", is_tcp ? "tcp" : "udp");
+            exit(EXIT_FAILURE);
+        }
+
+        return holder;
+    }
 }

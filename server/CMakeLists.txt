@@ -55,7 +55,3 @@ target_link_libraries(vpnserver
   crypto
   ssl
 )
-
-# install(TARGETS 
-#   vpnserver
-#   DESTINATION lib/${PROJECT_NAME})

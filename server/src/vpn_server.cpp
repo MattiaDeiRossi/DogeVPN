@@ -153,15 +153,13 @@ int start_doge_vpn() {
 
     while(true) {
 
-        // Copy of master, otherwise we would lose its data.
-        fd_set reads = s_set.socket_fd_set;
-        if (selector::wait_select(&s_set, &reads) < 0) goto error_handler;
+        fd_set reads = selector::wait_select_or_abort(&s_set);
 
         for (socket_utils::socket_t socket = 0; socket <= s_set.max_socket; ++socket) {
 
            if (selector::is_set(&reads, socket)) {
 
-                if (socket == holder::extract_socket(&server_tcp_holder)) {
+                if (socket == tcp_socket) {
 
                     /* The TCP socket is ready to accept a new client.
                     *  By calling accept, a new client socket will be created.
@@ -173,10 +171,8 @@ int start_doge_vpn() {
 
                     if (socket_utils::invalid_socket(client_socket)) {
 
-                        /* Calling accept failed.
-                        *  This could fail when the connections reach the maximum allowed number.
-                        */
-                        utils::print_error("start_doge_vpn: cannot accept new client\n");
+                        /* This could fail when the connections reach the maximum allowed number. */
+                        fprintf(stderr, "start_doge_vpn: cannot accept new client\n");
                     } else {
 
                         /* Why do we need to start a new thread when handling a new client?
@@ -196,7 +192,7 @@ int start_doge_vpn() {
 
                         th.detach();
                     }
-                } else if (socket == holder::extract_socket(&server_udp_holder)) {
+                } else if (socket == udp_socket) {
 
                     encryption::packet received_packet;
                     if (handle_incoming_udp_packet(socket, &c_register, &received_packet) == -1) {
@@ -216,19 +212,10 @@ int start_doge_vpn() {
         }
     }
 
-	return 0;
-
-error_handler:
-
-    // Logging error.
-    utils::print_error("start_doge_vpn: fatal error, switching off the server");
-
-    // Cleaning up resources.
+    fprintf(stderr, "start_doge_vpn: something wrong occurred and server must be stopped\n");
     ssl_utils::ssl_context_free(ctx);
-    // map_set_max_free(sh_map, &master, &max_socket);
-    // map_uc_free(uc_map, uc_map_mutex);
-
-    return -1;
+    
+	return 0;
 }
 
 void test_tun() {

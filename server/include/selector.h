@@ -3,17 +3,18 @@
 
 #include <sys/select.h>
 #include <set>
+#include <vector>
 #include "socket_utils.h"
 
 namespace selector {
 
     struct selector_set {
-        fd_set socket_set;
+        fd_set socket_fd_set;
         socket_utils::socket_t max_socket;
-        std::set<socket_utils::socket_t> sockets;
+        std::set<socket_utils::socket_t> socket_set;
     };
 
-    selector_set empty_set();
+    selector_set create_set(std::vector<socket_utils::socket_t> sockets);
 
     void add(selector_set *set, socket_utils::socket_t socket);
 

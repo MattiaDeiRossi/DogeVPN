@@ -49,7 +49,19 @@ namespace selector {
     }
 
     int wait_select(const selector_set *s_set, fd_set *reads) {
+        *reads = s_set->socket_fd_set;
         return select(s_set->max_socket + 1, reads, 0, 0, 0);
+    }
+
+    fd_set wait_select_or_abort(const selector_set *s_set) {
+
+        fd_set reads;
+        if (selector::wait_select(s_set, &reads) == -1) {
+            fprintf(stderr, "wait_select_or_abort: select failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return reads;
     }
 
     bool is_set(const fd_set *reads, socket_utils::socket_t socket) {

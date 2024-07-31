@@ -2,6 +2,7 @@
 #define SELECTOR_H
 
 #include <sys/select.h>
+#include <stdlib.h>
 #include <set>
 #include <vector>
 #include "socket_utils.h"
@@ -21,6 +22,8 @@ namespace selector {
     void remove(selector_set *set, socket_utils::socket_t socket);
 
     int wait_select(const selector_set *s_set, fd_set *reads);
+
+    fd_set wait_select_or_abort(const selector_set *s_set);
 
     bool is_set(const fd_set *reads, socket_utils::socket_t socket);
 }

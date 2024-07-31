@@ -45,6 +45,22 @@ namespace ssl_utils
         return 0;
     }
 
+    SSL_CTX *create_ssl_context_or_abort(
+        bool is_server,
+        const char *pub_cert_path,
+        const char *pri_cert_path
+    ) {
+
+        SSL_CTX *ctx = NULL;
+        if (ssl_utils::init_ssl(&ctx, is_server, pub_cert_path, pri_cert_path) == -1) {
+            fprintf(stderr, "create_ssl_context_or_abort: ssl context cannot be created\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return ctx;
+    }
+
+
     void free_ssl(SSL *ssl, int *with_error) {
 
         // Nothing can be done.

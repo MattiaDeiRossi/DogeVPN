@@ -16,6 +16,12 @@ namespace ssl_utils
         const char *pri_cert_path
     );
 
+    SSL_CTX *create_ssl_context_or_abort(
+        bool is_server,
+        const char *pub_cert_path,
+        const char *pri_cert_path
+    );
+
     void free_ssl(SSL *ssl, int *with_error);
 
     void ssl_context_free(SSL_CTX *ctx);

@@ -33,20 +33,6 @@ void handle_tcp_client_key_exchange(
     holder::save_client_holder(c_register, holder.c_holder);
 }
 
-int extract_vpn_client_packet_data(
-    const encryption::packet *from,
-    vpn_data_utils::vpn_client_packet_data *ret_data
-) {
-
-    if (vpn_data_utils::parse_packet(from, ret_data) == -1) {
-        utils::print_error("extract_vpn_client_packet_data: packet from client is malformed and data cannot be extracted\n");
-        return -1;
-    }
-
-    vpn_data_utils::log_vpn_client_packet_data(ret_data);
-    return 0;
-}
-
 /* Errors should be notified to the client peer.
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
@@ -100,10 +86,12 @@ int handle_incoming_udp_packet(
     *  There can be different scenarios for which packets must be rejected.
     */
     vpn_data_utils::vpn_client_packet_data vpn_data;
-    if (extract_vpn_client_packet_data(&pkt, &vpn_data) == -1) {
-        utils::print_error("handle_incoming_udp_packet: vpn data cannot be extracted\n");
+    if (vpn_data_utils::parse_packet(&pkt, &vpn_data) == -1) {
+        fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
         return -1;
     }
+
+    vpn_data_utils::log_vpn_client_packet_data(&vpn_data);
 
     int id_num;
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
@@ -214,7 +202,7 @@ int start_doge_vpn() {
 
     fprintf(stderr, "start_doge_vpn: something wrong occurred and server must be stopped\n");
     ssl_utils::ssl_context_free(ctx);
-    
+
 	return 0;
 }
 

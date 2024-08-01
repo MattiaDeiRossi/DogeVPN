@@ -239,7 +239,7 @@ namespace tun_utils {
         return buffer; 
     }
 
-    void erase(ip_pool_t *pool, unsigned int ip) {
+    void insert(ip_pool_t *pool, unsigned int ip) {
 
         std::unique_lock lock(pool->mutex);
         pool->unavailable_ips.erase(ip);

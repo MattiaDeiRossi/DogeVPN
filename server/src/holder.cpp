@@ -33,7 +33,7 @@ namespace holder {
         return 0;
     }
 
-    int update_register(client_register *c_register, client_holder holder, bool saving, bool free_ssl) {
+    int update_register(client_register *c_register, client_holder holder, bool saving, bool free_old_ssl) {
 
         std::unique_lock lock(c_register->mutex);
 
@@ -54,7 +54,7 @@ namespace holder {
                 c_register->tun_ip_per_session.erase(old_client_tun_ip);
             }
 
-            if (free_ssl) {
+            if (free_old_ssl) {
                 ssl_utils::free_ssl(old_holder.ssl, NULL);
             }
 
@@ -89,8 +89,8 @@ namespace holder {
         update_register(c_register, holder, true, true);
     }
 
-    void delete_client_holder(client_register *c_register, client_holder holder, bool free_ssl) {
-        update_register(c_register, holder, false, free_ssl);
+    void delete_client_holder(client_register *c_register, client_holder holder) {
+        update_register(c_register, holder, false, true);
     }
 
     int register_client_holder(
@@ -106,7 +106,7 @@ namespace holder {
 
         SSL *ssl;
         if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1) {
-            fprintf(stderr, "init_tcp_client_holder: TLS communication cannot start between client and server\n");
+            fprintf(stderr, "register_client_holder: TLS communication cannot start between client and server\n");
             return -1;
         }
 
@@ -116,13 +116,13 @@ namespace holder {
         char credentials_buffer[SIZE_512];
         int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
         if (bytes_read == -1) {
-            fprintf(stderr, "init_tcp_client_holder: client closed connection and credentials cannot be verified\n");
+            fprintf(stderr, "register_client_holder: client closed connection and credentials cannot be verified\n");
             return -1;
         }
 
         client_credentials_utils::client_credentials credentials;
         if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
-            fprintf(stderr, "init_tcp_client_holder: client credentials cannot be initialized\n");
+            fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
@@ -145,15 +145,19 @@ namespace holder {
         */
         unsigned char rand_buf[SIZE_32];
         if (ssl_utils::generate_rand_32(rand_buf) == -1) {
-            fprintf(stderr, "init_tcp_client_holder: random bytes cannot be generated\n");
+            fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
         memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
-
-/* Check error*/
-        save_client_holder(c_register, holder);
+        
+        /* Check error*/
+        if (update_register(c_register, holder, true, true) == -1) {
+            fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
+            ssl_utils::free_ssl(ssl, NULL);
+            return -1;
+        }
 
         /* Composing the first message for the client. */
         int start = 0;
@@ -192,23 +196,18 @@ namespace holder {
 
         /* Sending the message to the client securely under a TLS tunnel. */
         if (ssl_utils::write(ssl, message, message_size) == -1) {
-            fprintf(stderr, "init_tcp_client_holder: first wrote failed between client and server\n");
-            delete_client_holder(c_register, holder, false);
+            fprintf(stderr, "register_client_holder: first wrote failed between client and server\n");
+            update_register(c_register, holder, false, false);
             return -1;
         }
 
         /* Printing message bytes for logging purposes. */
         printf("Client message generated\n");
 
-        for (size_t i = 0; i < sizeof(message); ++i) {
+        for (size_t i = 0; i < message_size; ++i) {
 
-            if (!message[i]) break;
-            printf("%02X", (unsigned char) message[i]);
-
-            if (i != 0) {
-                if (i % 8 == 0) printf("\n");
-                else printf("::");
-            }
+            if (i % 8 == 7 || i == message_size - 1) printf("%02X\n", (unsigned char) message[i]);
+            else printf("%02X::", (unsigned char) message[i]);
         }
 
         return 0;

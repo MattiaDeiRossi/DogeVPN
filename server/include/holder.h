@@ -100,13 +100,10 @@ namespace holder {
 
     socket_utils::socket_t extract_socket(const socket_holder *wrapper);
 
-    /* Client holder gets saved for future accesses. */
     void save_client_holder(client_register *c_register, client_holder holder);
 
-    /* Delete holder from register.
-    *  Once holder gets erased from register, data within holder should not be touched anymore.
-    */
-    void delete_client_holder(client_register *c_register, client_holder holder, bool free_ssl);
+    /* Once holder gets erased from register, data within holder should not be touched anymore. */
+    void delete_client_holder(client_register *c_register, client_holder holder);
 
     int extract_client_key(
         client_register *c_register,

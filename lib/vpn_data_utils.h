@@ -9,11 +9,27 @@
 namespace vpn_data_utils
 {
 
-    const int MAX_ID_SIZE = 16;
-    const char IV_ID_SEPARATOR = '.';
+    const unsigned char SIZE_16 = 16;
+    const unsigned char SIZE_64 = 64;
+    const char MESSAGE_SEPARATOR_POINT = '.';
+    const char MESSAGE_SEPARATOR_OPEN = '(';
+    const char MESSAGE_SEPARATOR_CLOSE = ')';
+
+    struct key_exchange_from_server_message {
+
+        unsigned char key[encryption::MAX_KEY_SIZE];
+        unsigned char id[SIZE_16];
+        unsigned char tun_ip[SIZE_64];
+    };
+
+    int parse_key_exchange_from_server_message(
+        char *raw_message,
+        size_t raw_message_size,
+        key_exchange_from_server_message *message
+    );
 
     struct vpn_client_packet_data {
-        unsigned char user_id[MAX_ID_SIZE];
+        unsigned char user_id[SIZE_16];
         unsigned char iv[encryption::MAX_IV_SIZE];
         unsigned char hash[encryption::SHA_256_SIZE];
         encryption::packet encrypted_packet;

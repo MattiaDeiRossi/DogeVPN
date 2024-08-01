@@ -2,9 +2,67 @@
 
 namespace vpn_data_utils {
 
+    int parse_key_exchange_from_server_message(
+        char *raw_message,
+        size_t raw_message_size,
+        key_exchange_from_server_message *message
+    ) {
+
+        unsigned char selector = 0;
+
+        size_t user_id_size = 0;
+        size_t tun_ip_size = 0;
+
+        bzero(message, sizeof(key_exchange_from_server_message));
+
+        for (size_t i = 0; i < raw_message_size; i++) {
+
+            char byte_data = raw_message[i];
+            int is_digit = isdigit(byte_data);
+            int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
+            int is_open = byte_data == MESSAGE_SEPARATOR_OPEN;
+
+            /* Key extraction. */
+            if (selector == 0) {
+                message->key[i] = byte_data;
+                selector = (i == encryption::MAX_KEY_SIZE - 1) ? 1 : selector;
+                continue;
+            }
+
+            /* Id extraction. */
+            if (selector == 1) {
+
+                if (user_id_size == SIZE_16) {
+                    break;
+                } else if (is_digit) {
+                    message->id[i] = byte_data;
+                    user_id_size += 1;
+                } else if (is_open) {
+                    selector = 2;
+                } else {
+                    break;
+                }
+            }
+
+            /* Tun ip extraction. */
+            if (selector == 2) {
+
+                if (tun_ip_size == SIZE_64) {
+                    break;
+                } else if (is_digit || is_point) {
+                    message->tun_ip[i] = byte_data;
+                } else {
+                    break;
+                }
+            }
+
+        }
+
+        return (user_id_size > 0 && tun_ip_size > 0) ? 0 : -1;
+    }
+
 	
 	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
-
 
         ssize_t current_cursor = from->length - 1;
         memset(ret_data, 0, sizeof(vpn_client_packet_data));
@@ -17,11 +75,11 @@ namespace vpn_data_utils {
             /* Id cannot excedd a specific length.
             *  When dealing with longer id, an error is returned.
             */
-            if (j == MAX_ID_SIZE && bdata != IV_ID_SEPARATOR) {
+            if (j == SIZE_16 && bdata != MESSAGE_SEPARATOR_POINT) {
                 return -1;
             }
             
-            if (bdata == IV_ID_SEPARATOR) {
+            if (bdata == MESSAGE_SEPARATOR_POINT) {
 
                 /* The user id is the last part of the message after the IV vector.
                 *  After encountering it the user id processing must stop.  
@@ -122,7 +180,7 @@ namespace vpn_data_utils {
 
             unsigned char user_id_str[16];
             utils::int_to_string(user_id, (char *) user_id_str, sizeof(user_id_str));
-            if (encryption::append(result, IV_ID_SEPARATOR) == -1) return -1;
+            if (encryption::append(result, MESSAGE_SEPARATOR_POINT) == -1) return -1;
             if (encryption::append(result, user_id_str, strlen((const char *) user_id_str)) == -1) return -1;
         }
 

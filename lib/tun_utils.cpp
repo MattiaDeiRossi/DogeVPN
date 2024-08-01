@@ -161,7 +161,6 @@ namespace tun_utils {
 
     const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip) {
 
-        std::unique_lock lock(pool->mutex);
         unsigned int host_bits = 32 - pool->netmask;
         unsigned int max_ips = ((int) pow(2, host_bits));
 
@@ -240,8 +239,6 @@ namespace tun_utils {
     }
 
     void insert(ip_pool_t *pool, unsigned int ip) {
-
-        std::unique_lock lock(pool->mutex);
         pool->unavailable_ips.erase(ip);
     }
 

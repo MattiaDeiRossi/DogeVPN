@@ -48,9 +48,6 @@ namespace tun_utils {
         unsigned char ip_bytes[4];
         unsigned int next_ip;
         std::set<unsigned int> unavailable_ips;
-
-        /* This pool must be pretected with mutex. */
-        std::shared_mutex mutex;
     };
 
     tundev_t init_meta_no_pi(const char *name);

@@ -165,7 +165,6 @@ namespace holder {
         bzero(message, sizeof(message));
 
         for (size_t i = 0; i < sizeof(rand_buf); i++) message[start++] = rand_buf[i];
-        message[start++] = MESSAGE_SEPARATOR_POINT;
 
         char *ptr = id_buf;
         while (*ptr) {
@@ -174,7 +173,6 @@ namespace holder {
         }
 
         message[start++] = MESSAGE_SEPARATOR_POINT;
-        message[start++] = MESSAGE_SEPARATOR_OPEN;
 
         tun_ip tun_ip = extract_tun_ip_or_abort(c_register, holder.session_id);
         ptr = tun_ip.ip;
@@ -183,16 +181,11 @@ namespace holder {
             ptr++;
         }
 
-        message[start++] = MESSAGE_SEPARATOR_CLOSE;
-
         size_t message_size = 
-            sizeof(rand_buf) +      /* Size of the key */
-            1 +                     /* Point separator */
-            strlen(id_buf) +        /* Session id size */
-            1 +                     /* Point separator */
-            1 +                     /* Open round bracket */
-            strlen(tun_ip.ip) +     /* TUN ip size */
-            1;                      /* Closed open bracket */
+            sizeof(rand_buf) +  /* Size of the key */
+            strlen(id_buf) +    /* Session id size */
+            1 +                 /* Point separator */
+            strlen(tun_ip.ip);  /* TUN ip size */
 
         /* Sending the message to the client securely under a TLS tunnel. */
         if (ssl_utils::write(ssl, message, message_size) == -1) {

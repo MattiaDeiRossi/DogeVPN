@@ -20,16 +20,14 @@
 *  This will simplify the whole logic.
 */
 void handle_tcp_client_key_exchange(
-    socket_utils::socket_t client_socket,
-    struct sockaddr_storage client_address,
-    socklen_t client_len,
     SSL_CTX *ctx,
+    const socket_utils::tcp_client_info *info,
     tun_utils::ip_pool_t *pool,
     holder::client_register *c_register
 ) {
 
     holder::socket_holder holder;
-    holder::init_client_holder(pool, client_socket, client_address, client_len, ctx, &holder);
+    holder::init_client_holder(pool, info->socket, info->address, info->length, ctx, &holder);
     holder::save_client_holder(c_register, holder.c_holder);
 }
 
@@ -149,15 +147,10 @@ int start_doge_vpn() {
 
                 if (socket == tcp_socket) {
 
-                    /* The TCP socket is ready to accept a new client.
-                    *  By calling accept, a new client socket will be created.
-                    *  Calling accept won't block the main thread since a call to select was made.
-                    */
-                    struct sockaddr_storage client_address;
-                    socklen_t client_len = sizeof(client_address);
-                    socket_utils::socket_t client_socket = accept(socket, (struct sockaddr*) &client_address, &client_len);
+                    /* Calling accept_client won't block the main thread since a call to select was made. */
+                    socket_utils::tcp_client_info info = socket_utils::accept_client(socket);
 
-                    if (socket_utils::invalid_socket(client_socket)) {
+                    if (socket_utils::invalid_info(&info)) {
 
                         /* This could fail when the connections reach the maximum allowed number. */
                         fprintf(stderr, "start_doge_vpn: cannot accept new client\n");
@@ -169,11 +162,9 @@ int start_doge_vpn() {
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
                         std::thread th(
-                            handle_tcp_client_key_exchange, 
-                            client_socket,
-                            client_address,
-                            client_len,
-                            ctx, 
+                            handle_tcp_client_key_exchange,
+                            ctx,
+                            &info,
                             &pool, 
                             &c_register
                         );

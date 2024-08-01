@@ -2,6 +2,51 @@
 
 namespace vpn_data_utils {
 
+    void print_start_pad(size_t num) {
+        for (size_t i = 0; i < num; i++) printf(" ");
+    }
+
+    void log_key_exchange_from_server_message(const key_exchange_from_server_message *message) {
+
+        size_t key_size = encryption::MAX_KEY_SIZE;
+
+        printf("Key exchange from server:\n");
+        print_start_pad(4);
+        printf("KEY: ");
+
+        for (size_t i = 0; i < key_size; ++i) {
+            if (i % 8 == 7 || i == key_size - 1) {
+                printf("%02X\n", (unsigned char) message->key[i]);
+                if (i != key_size - 1) {
+                    print_start_pad(9);
+                }
+            } else {
+                printf("%02X::", (unsigned char) message->key[i]);
+            }
+        }
+
+        print_start_pad(4);
+        printf("ID: ");
+
+        for (size_t i = 0; i < SIZE_16; ++i) {
+            if (message->id[i]) {
+                printf("%c", message->id[i]);
+            }
+        }
+        printf("\n");
+
+        print_start_pad(4);
+        printf("TUN IP: ");
+
+        for (size_t i = 0; i < SIZE_64; ++i) {
+            if (message->tun_ip[i]) {
+                printf("%c", message->tun_ip[i]);
+            }
+        }
+        printf("\n");
+        
+    }
+
     int parse_key_exchange_from_server_message(
         char *raw_message,
         size_t raw_message_size,
@@ -33,13 +78,15 @@ namespace vpn_data_utils {
             if (selector == 1) {
 
                 if (user_id_size == SIZE_16) {
+                    fprintf(stderr, "parse_key_exchange_from_server_message: id of wrong size\n");
                     break;
                 } else if (is_digit) {
-                    message->id[i] = byte_data;
-                    user_id_size += 1;
+                    message->id[user_id_size++] = byte_data;
                 } else if (is_point) {
                     selector = 2;
+                    continue;
                 } else {
+                    fprintf(stderr, "parse_key_exchange_from_server_message: malformed id\n");
                     break;
                 }
             }
@@ -48,14 +95,14 @@ namespace vpn_data_utils {
             if (selector == 2) {
 
                 if (tun_ip_size == SIZE_64) {
+                    fprintf(stderr, "parse_key_exchange_from_server_message: tun ip of wrong size\n");
                     break;
                 } else if (is_digit || is_point || is_div) {
-                    message->tun_ip[i] = byte_data;
+                    message->tun_ip[tun_ip_size++] = byte_data;
                 } else {
                     break;
                 }
             }
-
         }
 
         return (user_id_size > 0 && tun_ip_size > 0) ? 0 : -1;

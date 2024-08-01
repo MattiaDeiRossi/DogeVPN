@@ -25,6 +25,8 @@ namespace vpn_data_utils
         unsigned char tun_ip[SIZE_64];
     };
 
+    void log_key_exchange_from_server_message(const key_exchange_from_server_message *message);
+
     int parse_key_exchange_from_server_message(
         char *raw_message,
         size_t raw_message_size,

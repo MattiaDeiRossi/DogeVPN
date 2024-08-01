@@ -35,9 +35,10 @@ namespace socket_utils
 
     int bind_udp_client_socket(char const *host, char const *port, socket_t *ret_socket);
 
+    /* When the TCP socket is ready to accept, call accept_client to create a client socket. */
     tcp_client_info accept_client(socket_t server_socket);
 
-    bool is_valid(const tcp_client_info *info);
+    bool invalid_info(const tcp_client_info *info);
 
     void log_start_server(bool is_tcp, char const *host, char const *port);
 

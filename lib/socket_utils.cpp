@@ -127,10 +127,8 @@ namespace socket_utils {
 		return info;
 	}
 
-    bool is_valid(const tcp_client_info *info) {
-		return socket_utils::invalid_socket(info->socket) ? 
-			false : 
-			true;
+    bool invalid_info(const tcp_client_info *info) {
+		return socket_utils::invalid_socket(info->socket);
 	}
 
 	void log_start_server(bool is_tcp, char const *host, char const *port) {

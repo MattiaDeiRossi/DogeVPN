@@ -11,10 +11,12 @@ namespace vpn_data_utils
 
     const unsigned char SIZE_16 = 16;
     const unsigned char SIZE_64 = 64;
-    const char MESSAGE_SEPARATOR_POINT = '.';
-    const char MESSAGE_SEPARATOR_DIV = '/';
-    const char MESSAGE_SEPARATOR_OPEN = '(';
-    const char MESSAGE_SEPARATOR_CLOSE = ')';
+    const unsigned char MESSAGE_SEPARATOR_POINT = '.';
+    const unsigned char MESSAGE_SEPARATOR_DIV = '/';
+    const unsigned char MESSAGE_SEPARATOR_OPEN = '(';
+    const unsigned char MESSAGE_SEPARATOR_CLOSE = ')';
+
+    const unsigned int KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE = 128;
 
     struct key_exchange_from_server_message {
 

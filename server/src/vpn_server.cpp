@@ -21,14 +21,11 @@
 */
 void handle_tcp_client_key_exchange(
     SSL_CTX *ctx,
-    const socket_utils::tcp_client_info *info,
-    tun_utils::ip_pool_t *pool,
+    socket_utils::tcp_client_info *info,
     holder::client_register *c_register
 ) {
 
-    holder::socket_holder holder;
-    holder::init_client_holder(pool, info->socket, info->address, info->length, ctx, &holder);
-    holder::save_client_holder(c_register, pool, holder.c_holder);
+    holder::register_client_holder(c_register, ctx, info);
 }
 
 /* Errors should be notified to the client peer.
@@ -135,10 +132,8 @@ int start_doge_vpn() {
     socket_utils::socket_t udp_socket = holder::extract_socket(&server_udp_holder);
     selector::selector_set s_set = selector::create_set({tcp_socket, udp_socket});
 
-    tun_utils::ip_pool_t pool;
-    tun_utils::configure_private_class_c_pool(11, &pool);
-
     holder::client_register c_register;
+    holder::create_client_register_with_c_pool(11, &c_register);
 
     while(true) {
 
@@ -167,8 +162,7 @@ int start_doge_vpn() {
                         std::thread th(
                             handle_tcp_client_key_exchange,
                             ctx,
-                            &info,
-                            &pool, 
+                            &info, 
                             &c_register
                         );
 

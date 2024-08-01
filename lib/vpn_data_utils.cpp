@@ -33,8 +33,8 @@ namespace vpn_data_utils {
                 printf("%c", message->id[i]);
             }
         }
-        printf("\n");
 
+        printf("\n");
         print_start_pad(4);
         printf("TUN IP: ");
 
@@ -43,8 +43,8 @@ namespace vpn_data_utils {
                 printf("%c", message->tun_ip[i]);
             }
         }
+
         printf("\n");
-        
     }
 
     int parse_key_exchange_from_server_message(

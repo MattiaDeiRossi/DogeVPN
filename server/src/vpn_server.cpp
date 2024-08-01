@@ -13,6 +13,28 @@
 #include "selector.h"
 #include "mongo.hpp"
 
+/* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
+*  When handling a new client there is no need to just create the client socket and return.
+*  A dedicated process should handle the process of data exchange without relying on select in the main loop.
+*  After a timeout or some error the client socket can be freed along with the thread.
+*  This will simplify the whole logic.
+*/
+void handle_tcp_client_key_exchange(
+    SSL_CTX *ctx,
+    socket_utils::tcp_client_info *info,
+    holder::client_register *c_register,
+    selector::selector_set *set
+) {
+
+    if (holder::register_client_holder(c_register, ctx, info) == -1) {
+        fprintf(stderr, "handle_tcp_client_key_exchange: registration error\n");
+        return;
+    }
+
+    /* change!! Should not be a STATE!! */
+    selector::add(set, info->socket);
+}
+
 /* Errors should be notified to the client peer.
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
@@ -145,10 +167,11 @@ int start_doge_vpn() {
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
                         std::thread th(
-                            holder::register_client_holder,
+                            handle_tcp_client_key_exchange,
+                            ctx,
+                            &info, 
                             &c_register,
-                            ctx, 
-                            &info
+                            &s_set
                         );
 
                         th.detach();

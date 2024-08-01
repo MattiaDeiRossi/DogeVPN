@@ -12,6 +12,7 @@ namespace vpn_data_utils
     const unsigned char SIZE_16 = 16;
     const unsigned char SIZE_64 = 64;
     const char MESSAGE_SEPARATOR_POINT = '.';
+    const char MESSAGE_SEPARATOR_DIV = '/';
     const char MESSAGE_SEPARATOR_OPEN = '(';
     const char MESSAGE_SEPARATOR_CLOSE = ')';
 

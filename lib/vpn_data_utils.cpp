@@ -20,7 +20,7 @@ namespace vpn_data_utils {
             char byte_data = raw_message[i];
             int is_digit = isdigit(byte_data);
             int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
-            int is_open = byte_data == MESSAGE_SEPARATOR_OPEN;
+            int is_div = byte_data == MESSAGE_SEPARATOR_DIV;
 
             /* Key extraction. */
             if (selector == 0) {
@@ -37,7 +37,7 @@ namespace vpn_data_utils {
                 } else if (is_digit) {
                     message->id[i] = byte_data;
                     user_id_size += 1;
-                } else if (is_open) {
+                } else if (is_point) {
                     selector = 2;
                 } else {
                     break;
@@ -49,7 +49,7 @@ namespace vpn_data_utils {
 
                 if (tun_ip_size == SIZE_64) {
                     break;
-                } else if (is_digit || is_point) {
+                } else if (is_digit || is_point || is_div) {
                     message->tun_ip[i] = byte_data;
                 } else {
                     break;

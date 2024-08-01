@@ -2,6 +2,22 @@
 
 namespace holder {
 
+    tun_ip extract_tun_ip_or_abort(client_register *c_register, unsigned int session_id) {
+
+        std::shared_lock lock(c_register->mutex);
+
+        if (c_register->session_per_holder.count(session_id) == 0) {
+            fprintf(stderr, "extract_tun_ip: ip cannot be extracted\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return c_register->session_per_holder.at(session_id).client_tun_ip;
+    }
+
+    void create_client_register_with_c_pool(unsigned char third_octet, client_register *result) {
+        tun_utils::configure_private_class_c_pool(third_octet, &(result->pool));
+    }
+
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder) {
         
         socket_utils::socket_t socket;
@@ -17,27 +33,86 @@ namespace holder {
         return 0;
     }
 
-    int init_client_holder(
-        tun_utils::ip_pool_t *pool,
-        socket_utils::socket_t client_socket,
-        struct sockaddr_storage client_address,
-        socklen_t client_len,
+    int update_register(client_register *c_register, client_holder holder, bool saving, bool free_ssl) {
+
+        std::unique_lock lock(c_register->mutex);
+
+        unsigned int session_id = holder.session_id;
+
+        /* In order to avoid dealing with wrong behaviour (i.e. old client have not been properly released),
+        *  every time a new client gets registered, a delete pass gets executed.
+        *  This is done for both maps.
+        */
+        if (c_register->session_per_holder.count(session_id) != 0) {
+
+            client_holder old_holder = c_register->session_per_holder.at(session_id);
+            tun_ip old_client_tun_ip = old_holder.client_tun_ip;
+
+            tun_utils::insert(&(c_register->pool), old_holder.client_tun_ip_id);
+
+            if (c_register->tun_ip_per_session.count(old_client_tun_ip) != 0) {
+                c_register->tun_ip_per_session.erase(old_client_tun_ip);
+            }
+
+            if (free_ssl) {
+                ssl_utils::free_ssl(old_holder.ssl, NULL);
+            }
+
+            c_register->session_per_holder.erase(session_id);
+        }
+
+        if (saving) {
+
+            /* In order to preoperly communicate with the correct client a TUN ip must be assigned,
+            *  and this ip must uniquely identify the client. 
+            *  When the packet gets sent back from a private host, 
+            *  the correct key and the correct client ip must be selected.
+            */
+            char tun_ip[SIZE_32];
+            unsigned int client_tun_ip_id;
+            if (tun_utils::next(&(c_register->pool), tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL) {
+                fprintf(stderr, "init_tcp_client_holder: unavailable ip for client\n");
+                return -1;
+            }
+
+            holder.client_tun_ip_id = client_tun_ip_id;
+            memcpy(holder.client_tun_ip.ip, tun_ip, sizeof(tun_ip));
+
+            c_register->session_per_holder.insert({session_id, holder});
+            c_register->tun_ip_per_session.insert({holder.client_tun_ip, session_id});
+        }
+
+        return 0;
+    }
+
+    void save_client_holder(client_register *c_register, client_holder holder) {
+        update_register(c_register, holder, true, true);
+    }
+
+    void delete_client_holder(client_register *c_register, client_holder holder, bool free_ssl) {
+        update_register(c_register, holder, false, free_ssl);
+    }
+
+    int register_client_holder(
+        client_register *c_register,
         SSL_CTX *ctx,
-        socket_holder *holder
+        socket_utils::tcp_client_info *info
     ) {
 
+        client_holder holder;
+        holder.tcp_info.socket = info->socket;
+        holder.tcp_info.length = info->length;
+        holder.tcp_info.address = info->address;
+
         SSL *ssl;
-        if (ssl_utils::bind_ssl(ctx, client_socket, &ssl, true) == -1) {
+        if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1) {
             fprintf(stderr, "init_tcp_client_holder: TLS communication cannot start between client and server\n");
             return -1;
         }
 
-        ssl_utils::log_ssl_cipher(ssl, client_address, client_len);
+        ssl_utils::log_ssl_cipher(ssl, info->address, info->length);
+        holder.ssl = ssl;
 
-        /* Reading credentials from client.
-        *  If ssl_utils::read fails the already created TLS data gets autmatically erased.
-        *  No need to call ssl_utils::free_ssl.
-        */
         char credentials_buffer[SIZE_512];
         int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
         if (bytes_read == -1) {
@@ -63,6 +138,8 @@ namespace holder {
         memset(id_buf, 0, sizeof(id_buf));
         sprintf(id_buf, "%d", db_user_id); // Replace with mongo check.
 
+        holder.session_id = db_user_id;
+
         /* A symmetric key must be generated securely.
         *  The SSL libarary is used in order to properly delegate such difficutl generation.
         */
@@ -73,17 +150,10 @@ namespace holder {
             return -1;
         }
 
-        /* In order to preoperly communicate with the correct client a TUN ip must be assigned.
-        *  This ip must uniquely identify the client.
-        *  When the packet gets sent back from a private host, the correct key and the correct client ip must be selected.
-        */
-        char tun_ip[SIZE_32];
-        unsigned int client_tun_ip_id;
-        if (tun_utils::next(pool, tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL) {
-            fprintf(stderr, "init_tcp_client_holder: unavailable ip for client\n");
-            ssl_utils::free_ssl(ssl, NULL);
-            return -1;
-        }
+        memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
+
+/* Check error*/
+        save_client_holder(c_register, holder);
 
         /* Composing the first message for the client. */
         int start = 0;
@@ -102,7 +172,8 @@ namespace holder {
         message[start++] = MESSAGE_SEPARATOR_POINT;
         message[start++] = MESSAGE_SEPARATOR_OPEN;
 
-        ptr = tun_ip;
+        tun_ip tun_ip = extract_tun_ip_or_abort(c_register, holder.session_id);
+        ptr = tun_ip.ip;
         while (*ptr) {
             message[start++] = *ptr;
             ptr++;
@@ -111,18 +182,18 @@ namespace holder {
         message[start++] = MESSAGE_SEPARATOR_CLOSE;
 
         size_t message_size = 
-            sizeof(rand_buf) +  /* Size of the key */
-            1 +                 /* Point separator */
-            strlen(id_buf) +    /* Session id size */
-            1 +                 /* Point separator */
-            1 +                 /* Open round bracket */
-            strlen(tun_ip) +    /* TUN ip size */
-            1;                  /* Closed open bracket */
+            sizeof(rand_buf) +      /* Size of the key */
+            1 +                     /* Point separator */
+            strlen(id_buf) +        /* Session id size */
+            1 +                     /* Point separator */
+            1 +                     /* Open round bracket */
+            strlen(tun_ip.ip) +     /* TUN ip size */
+            1;                      /* Closed open bracket */
 
         /* Sending the message to the client securely under a TLS tunnel. */
         if (ssl_utils::write(ssl, message, message_size) == -1) {
             fprintf(stderr, "init_tcp_client_holder: first wrote failed between client and server\n");
-            tun_utils::insert(pool, client_tun_ip_id);
+            delete_client_holder(c_register, holder, false);
             return -1;
         }
 
@@ -139,23 +210,6 @@ namespace holder {
                 else printf("::");
             }
         }
-
-        /* After the operations that must be always performed, holder can be populated. */
-        holder::client_holder client_holder;
-
-        client_holder.session_id = db_user_id;
-        client_holder.client_tun_ip_id = client_tun_ip_id;
-        memcpy(client_holder.symmetric_key, rand_buf, sizeof(rand_buf));
-        memcpy(client_holder.client_tun_ip.ip, tun_ip, sizeof(tun_ip));
-
-        client_holder.socket = client_socket;
-        client_holder.tcp_socklen = client_len;
-        client_holder.tcp_address = client_address;
-
-        client_holder.ssl = ssl;
-
-        holder->holder_type = socket_holder::CLIENT_HOLDER;
-        holder->c_holder = client_holder;
 
         return 0;
     }
@@ -183,64 +237,10 @@ namespace holder {
             case socket_holder::SERVER_HOLDER:
                 return (wrapper->s_holder).socket;
             case socket_holder::CLIENT_HOLDER:
-                return (wrapper->c_holder).socket;
+                return (wrapper->c_holder).tcp_info.socket;
             default:
                 return socket_utils::invalid_socket_value;
         }
-    }
-
-    void remove_holder(client_register *c_register, client_holder holder) {
-
-                    
-        if (c_register->session_per_holder.count(holder.session_id) != 0) {
-            c_register->session_per_holder.erase(holder.session_id);
-        }
-
-        if (c_register->tun_ip_per_session.count(holder.client_tun_ip) != 0) {
-            c_register->tun_ip_per_session.erase(holder.client_tun_ip);
-        }
-
-    }
-
-    void update_register(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder, bool saving) {
-
-        std::unique_lock lock(c_register->mutex);
-
-        unsigned int session_id = holder.session_id;
-        tun_ip client_tun_ip = holder.client_tun_ip;
-
-        /* In order to avoid dealing with wrong behaviour (i.e. old client have not been properly released),
-        *  every time a new client gets registered, a delete pass gets executed.
-        *  This is done for both maps.
-        */
-        if (c_register->session_per_holder.count(session_id) != 0) {
-
-            client_holder old_holder = c_register->session_per_holder.at(session_id);
-
-            if (holder.client_tun_ip_id != old_holder.client_tun_ip_id) {
-                tun_utils::insert(pool, old_holder.client_tun_ip_id);
-            }
-        
-            ssl_utils::free_ssl(old_holder.ssl, NULL);
-            c_register->session_per_holder.erase(session_id);
-        }
-
-        if (c_register->tun_ip_per_session.count(client_tun_ip) != 0) {
-            c_register->tun_ip_per_session.erase(client_tun_ip);
-        }
-
-        if (saving) {
-            c_register->session_per_holder.insert({session_id, holder});
-            c_register->tun_ip_per_session.insert({client_tun_ip, holder.session_id});
-        }
-    }
-
-    void save_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder) {
-        update_register(c_register, pool, holder, true);
-    }
-
-    void delete_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder) {
-        update_register(c_register, pool, holder, false);
     }
 
     int extract_client_key(

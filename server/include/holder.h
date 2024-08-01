@@ -35,20 +35,17 @@ namespace holder {
         /*
         */
         unsigned int session_id;
-        unsigned int client_tun_ip_id;
         unsigned char symmetric_key[SIZE_32];
+
+        /*
+        */
+        unsigned int client_tun_ip_id;
         tun_ip client_tun_ip;
 
         /*
         */
-        socket_utils::socket_t socket;
-        socklen_t tcp_socklen;
-        struct sockaddr_storage tcp_address;
-
-        /*
-        */
-        socklen_t udp_socklen;
-        struct sockaddr_storage udp_address;
+        socket_utils::tcp_client_info tcp_info;
+        socket_utils::udp_client_info udp_info;
 
         /*
         */
@@ -78,22 +75,25 @@ namespace holder {
     */
     struct client_register {
 
+        /* Associations. */
         std::map<unsigned int, client_holder> session_per_holder;
         std::map<tun_ip, unsigned int> tun_ip_per_session;
+
+        /* Pool handled by this register. */
+        tun_utils::ip_pool_t pool;
         
         /* This register must be pretected with mutex. */
         std::shared_mutex mutex;
     };
 
+    void create_client_register_with_c_pool(unsigned char third_octet, client_register *result);
+
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder);
 
-    int init_client_holder(
-        tun_utils::ip_pool_t *pool,
-        socket_utils::socket_t client_socket,
-        struct sockaddr_storage client_address,
-        socklen_t client_len,
+    int register_client_holder(
+        client_register *c_register,
         SSL_CTX *ctx,
-        socket_holder *holder
+        socket_utils::tcp_client_info *info
     );
 
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder);
@@ -101,12 +101,12 @@ namespace holder {
     socket_utils::socket_t extract_socket(const socket_holder *wrapper);
 
     /* Client holder gets saved for future accesses. */
-    void save_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder);
+    void save_client_holder(client_register *c_register, client_holder holder);
 
     /* Delete holder from register.
     *  Once holder gets erased from register, data within holder should not be touched anymore.
     */
-    void delete_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder);
+    void delete_client_holder(client_register *c_register, client_holder holder, bool free_ssl);
 
     int extract_client_key(
         client_register *c_register,

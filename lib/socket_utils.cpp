@@ -108,6 +108,31 @@ namespace socket_utils {
 		return create_socket(host, port, false, false, ret_socket);
 	}
 
+	tcp_client_info accept_client(socket_t server_socket) {
+
+		struct sockaddr_storage client_address;
+        socklen_t client_length = sizeof(client_address);
+
+		socket_utils::socket_t client_socket = accept(
+			server_socket,
+			(struct sockaddr*) &client_address,
+			&client_length
+		);
+
+		tcp_client_info info;
+		info.socket = client_socket;
+		info.address = client_address;
+		info.length = client_length;
+
+		return info;
+	}
+
+    bool is_valid(const tcp_client_info *info) {
+		return socket_utils::invalid_socket(info->socket) ? 
+			false : 
+			true;
+	}
+
 	void log_start_server(bool is_tcp, char const *host, char const *port) {
 
 		if (is_tcp) utils::print("Server can now listen for new TCP connections\n", 0);

@@ -12,6 +12,17 @@ namespace socket_utils
 
     const socket_t invalid_socket_value = -1;
 
+    struct tcp_client_info {
+        socket_t socket;
+        socklen_t length;
+        struct sockaddr_storage address;
+    };
+
+    struct udp_client_info {
+        socklen_t length;
+        struct sockaddr_storage address;
+    };
+
     int invalid_socket(socket_t socket);
 
     void close_socket(socket_t socket);
@@ -23,6 +34,10 @@ namespace socket_utils
     int bind_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket);
 
     int bind_udp_client_socket(char const *host, char const *port, socket_t *ret_socket);
+
+    tcp_client_info accept_client(socket_t server_socket);
+
+    bool is_valid(const tcp_client_info *info);
 
     void log_start_server(bool is_tcp, char const *host, char const *port);
 

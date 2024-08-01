@@ -160,10 +160,10 @@ int start_doge_vpn() {
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
                         std::thread th(
-                            handle_tcp_client_key_exchange,
-                            ctx,
-                            &info, 
-                            &c_register
+                            holder::register_client_holder,
+                            &c_register,
+                            ctx, 
+                            &info
                         );
 
                         th.detach();

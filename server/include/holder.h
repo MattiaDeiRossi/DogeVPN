@@ -90,6 +90,11 @@ namespace holder {
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder);
 
+    /* When calling this method a thread approach may be a better approach since SSL_accept is I/O blocking.
+    *  When handling a new client there is no need to just create the client socket and return.
+    *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
+    *  After a timeout or some error the client socket can be freed along with the thread; this will simplify the whole logic.
+    */
     int register_client_holder(
         client_register *c_register,
         SSL_CTX *ctx,

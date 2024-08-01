@@ -28,7 +28,7 @@ void handle_tcp_client_key_exchange(
 
     holder::socket_holder holder;
     holder::init_client_holder(pool, info->socket, info->address, info->length, ctx, &holder);
-    holder::save_client_holder(c_register, holder.c_holder);
+    holder::save_client_holder(c_register, pool, holder.c_holder);
 }
 
 /* Errors should be notified to the client peer.
@@ -100,7 +100,10 @@ int handle_incoming_udp_packet(
     *   - in order to avoid race condition, after taking the mutex, a copy of the key is returned
     */
     unsigned char key[holder::SIZE_32];
-    if (holder::extract_client_key(c_register, user_id, key) == -1) return -1;
+    if (holder::extract_client_key(c_register, user_id, key) == -1) {
+        fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
+        return -1;
+    }
 
     encryption::encryption_data enc_data;
     memcpy(enc_data.key, key, encryption::MAX_KEY_SIZE);

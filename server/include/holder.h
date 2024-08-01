@@ -101,7 +101,7 @@ namespace holder {
     socket_utils::socket_t extract_socket(const socket_holder *wrapper);
 
     /* Client holder gets saved for future accesses. */
-    void save_client_holder(client_register *c_register, client_holder holder);
+    void save_client_holder(client_register *c_register, tun_utils::ip_pool_t *pool, client_holder holder);
 
     /* Delete holder from register.
     *  Once holder gets erased from register, data within holder should not be touched anymore.

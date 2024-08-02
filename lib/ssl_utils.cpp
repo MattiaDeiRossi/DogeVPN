@@ -145,6 +145,17 @@ namespace ssl_utils
         return 0;
     }
 
+    SSL *bind_client_ssl_or_abort(SSL_CTX *ctx, socket_utils::socket_t socket) {
+
+        SSL *ssl_pointer;
+        if (bind_ssl(ctx, socket, &ssl_pointer, false) == -1) {
+            fprintf(stderr, "bind_client_ssl_or_abort: client socket cannot be bound to ssl object\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return ssl_pointer;
+    }
+
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length) {
 
         char buffer[512];

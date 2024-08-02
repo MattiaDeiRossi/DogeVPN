@@ -100,12 +100,34 @@ namespace socket_utils {
 		return create_socket(host, port, false, true, ret_socket);
 	}
 
-	int bind_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
 		return create_socket(host, port, true, false, ret_socket);
 	}
 
-	int bind_udp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_udp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
 		return create_socket(host, port, false, false, ret_socket);
+	}
+
+	socket_t connect_tcp_client_socket_or_abort(char const *host, char const *port) {
+
+		socket_t socket;
+		if (connect_tcp_client_socket(host, port, &socket) == -1) {
+			fprintf(stderr, "connect_tcp_client_socket_or_abort: cannot connect tcp client socket\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return socket;
+	}
+
+    socket_t connect_udp_client_socket_or_abort(char const *host, char const *port) {
+
+		socket_t socket;
+		if (connect_udp_client_socket(host, port, &socket) == -1) {
+			fprintf(stderr, "connect_udp_client_socket_or_abort: cannot connect udp client socket\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return socket;
 	}
 
 	tcp_client_info accept_client(socket_t server_socket) {

@@ -60,6 +60,16 @@ namespace ssl_utils
         return ctx;
     }
 
+    int ssl_fd_or_throw(const SSL* ssl) {
+
+        int socket = SSL_get_fd(ssl);
+
+        if (socket == -1) {
+            throw std::invalid_argument("SSL is not bound to any socket");
+        }
+
+        return socket;
+    }
 
     void free_ssl(SSL *ssl, int *with_error) {
 

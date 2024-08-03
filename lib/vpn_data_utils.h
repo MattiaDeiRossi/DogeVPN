@@ -11,27 +11,47 @@ namespace vpn_data_utils
 
     const unsigned char SIZE_16 = 16;
     const unsigned char SIZE_64 = 64;
-    const unsigned char MESSAGE_SEPARATOR_POINT = '.';
-    const unsigned char MESSAGE_SEPARATOR_DIV = '/';
-    const unsigned char MESSAGE_SEPARATOR_OPEN = '(';
-    const unsigned char MESSAGE_SEPARATOR_CLOSE = ')';
 
-    const unsigned int KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE = 128;
+    const unsigned char MESSAGE_SEPARATOR_POINT =   '.';
+    const unsigned char MESSAGE_SEPARATOR_DIV =     '/';
+    const unsigned char MESSAGE_SEPARATOR_OPEN =    '(';
+    const unsigned char MESSAGE_SEPARATOR_CLOSE =   ')';
+
+    const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE =    128;
+    const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE =          256;
 
     struct key_exchange_from_server_message {
 
+        /* Fields */
         unsigned char key[encryption::MAX_KEY_SIZE];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
+
+        /* Constructors */
+        key_exchange_from_server_message(char *raw_message, size_t raw_message_size);
+
+        /* Methods */
+        void log_key_exchange_from_server_message();
     };
 
-    void log_key_exchange_from_server_message(const key_exchange_from_server_message *message);
+    struct raw_credentials_from_client_message {
 
-    int parse_key_exchange_from_server_message(
-        char *raw_message,
-        size_t raw_message_size,
-        key_exchange_from_server_message *message
-    );
+        /* Fields */
+        size_t actual_size;
+        char raw_message[CREDENTIALS_FROM_CLIENT_MESSAGE];
+
+        /* Constructors */
+        raw_credentials_from_client_message(const char* username, const char* password);
+    };
+
+    struct credentials_from_client_message {
+        char username[CREDENTIALS_FROM_CLIENT_MESSAGE];
+        char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
+    };
+
+    int parse_credentials_from_client_message(const char* data, size_t num, credentials_from_client_message *result);
+
+    void log_credentials_from_client_message(const credentials_from_client_message *result);
 
     struct vpn_client_packet_data {
         unsigned char user_id[SIZE_16];

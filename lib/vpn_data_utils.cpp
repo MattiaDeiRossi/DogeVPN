@@ -5,60 +5,18 @@ namespace vpn_data_utils {
     void print_start_pad(size_t num) {
         for (size_t i = 0; i < num; i++) printf(" ");
     }
+    
+    key_exchange_from_server_message::key_exchange_from_server_message(char *raw_message, size_t raw_message_size) {
 
-    void log_key_exchange_from_server_message(const key_exchange_from_server_message *message) {
+        bzero(key, encryption::MAX_KEY_SIZE);
+        bzero(id, SIZE_16);
+        bzero(tun_ip, SIZE_64);
 
-        size_t key_size = encryption::MAX_KEY_SIZE;
-
-        printf("Key exchange from server:\n");
-        print_start_pad(4);
-        printf("KEY: ");
-
-        for (size_t i = 0; i < key_size; ++i) {
-            if (i % 8 == 7 || i == key_size - 1) {
-                printf("%02X\n", (unsigned char) message->key[i]);
-                if (i != key_size - 1) {
-                    print_start_pad(9);
-                }
-            } else {
-                printf("%02X::", (unsigned char) message->key[i]);
-            }
-        }
-
-        print_start_pad(4);
-        printf("ID: ");
-
-        for (size_t i = 0; i < SIZE_16; ++i) {
-            if (message->id[i]) {
-                printf("%c", message->id[i]);
-            }
-        }
-
-        printf("\n");
-        print_start_pad(4);
-        printf("TUN IP: ");
-
-        for (size_t i = 0; i < SIZE_64; ++i) {
-            if (message->tun_ip[i]) {
-                printf("%c", message->tun_ip[i]);
-            }
-        }
-
-        printf("\n");
-    }
-
-    int parse_key_exchange_from_server_message(
-        char *raw_message,
-        size_t raw_message_size,
-        key_exchange_from_server_message *message
-    ) {
-
+        /* To keep track of current data to parse. */
         unsigned char selector = 0;
 
         size_t user_id_size = 0;
         size_t tun_ip_size = 0;
-
-        bzero(message, sizeof(key_exchange_from_server_message));
 
         for (size_t i = 0; i < raw_message_size; i++) {
 
@@ -69,7 +27,7 @@ namespace vpn_data_utils {
 
             /* Key extraction. */
             if (selector == 0) {
-                message->key[i] = byte_data;
+                key[i] = byte_data;
                 selector = (i == encryption::MAX_KEY_SIZE - 1) ? 1 : selector;
                 continue;
             }
@@ -81,7 +39,7 @@ namespace vpn_data_utils {
                     fprintf(stderr, "parse_key_exchange_from_server_message: id of wrong size\n");
                     break;
                 } else if (is_digit) {
-                    message->id[user_id_size++] = byte_data;
+                    id[user_id_size++] = byte_data;
                 } else if (is_point) {
                     selector = 2;
                     continue;
@@ -98,17 +56,137 @@ namespace vpn_data_utils {
                     fprintf(stderr, "parse_key_exchange_from_server_message: tun ip of wrong size\n");
                     break;
                 } else if (is_digit || is_point || is_div) {
-                    message->tun_ip[tun_ip_size++] = byte_data;
+                    tun_ip[tun_ip_size++] = byte_data;
                 } else {
                     break;
                 }
             }
         }
 
-        return (user_id_size > 0 && tun_ip_size > 0) ? 0 : -1;
+        if (user_id_size == 0 || tun_ip_size == 0) {
+            fprintf(stderr, "parse_key_exchange_from_server_message: invalid message\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
-	
+    void key_exchange_from_server_message::log_key_exchange_from_server_message() {
+        size_t key_size = encryption::MAX_KEY_SIZE;
+
+        printf("Key exchange from server:\n");
+        print_start_pad(4);
+        printf("KEY: ");
+
+        for (size_t i = 0; i < key_size; ++i) {
+            if (i % 8 == 7 || i == key_size - 1) {
+                printf("%02X\n", (unsigned char) key[i]);
+                if (i != key_size - 1) {
+                    print_start_pad(9);
+                }
+            } else {
+                printf("%02X::", (unsigned char) key[i]);
+            }
+        }
+
+        print_start_pad(4);
+        printf("ID: ");
+
+        for (size_t i = 0; i < SIZE_16; ++i) {
+            if (id[i]) {
+                printf("%c", id[i]);
+            }
+        }
+
+        printf("\n");
+        print_start_pad(4);
+        printf("TUN IP: ");
+
+        for (size_t i = 0; i < SIZE_64; ++i) {
+            if (tun_ip[i]) {
+                printf("%c", tun_ip[i]);
+            }
+        }
+
+        printf("\n");
+    }
+
+    raw_credentials_from_client_message::raw_credentials_from_client_message(
+        const char* username, 
+        const char* password
+    ) {
+        
+        size_t username_size = strlen(username);
+        size_t password_size = strlen(password);
+
+        if (username_size + password_size + 1 > sizeof(raw_credentials_from_client_message)) {
+            fprintf(stderr, "build_raw_credentials_from_client_message_or_abort; failing building message\n");
+            exit(EXIT_FAILURE);
+        }
+
+        size_t index = 0;
+        for (size_t i = 0; i < username_size; i++) raw_message[index++] = username[i];
+        raw_message[index++] = MESSAGE_SEPARATOR_POINT;
+        for (size_t i = 0; i < password_size; i++) raw_message[index++] = password[i];
+        actual_size = username_size + password_size + 1;
+    }
+    
+    int parse_credentials_from_client_message(const char* data, size_t num, credentials_from_client_message *result) {
+
+        if (num > CREDENTIALS_FROM_CLIENT_MESSAGE) {
+            fprintf(stderr, "build_or_abort: malformed credentials\n");
+            return -1;
+        }
+
+        bzero(result, sizeof(credentials_from_client_message));
+
+        bool reading_username = true;
+	    char *usr_p = result->username;
+	    char *pwd_p = result->password;
+        size_t username_length = 0;
+        size_t password_length = 0;
+
+        for (size_t i = 0; i < num; ++i) {
+	        
+	        char bdata = data[i];
+	        
+	        if (reading_username) {
+
+	            /* While reading credentilas alway checking if the separator is the current byte. */
+	            if (bdata == MESSAGE_SEPARATOR_POINT) {
+	                reading_username = false;
+	            } else {
+	                *usr_p = bdata;
+	                usr_p++;
+                    username_length++;
+	            }
+	        } else {
+
+	            /* From now on the data that is being read represents the password. */
+	            *pwd_p = bdata;
+	            pwd_p++;
+	            password_length++;
+	        }
+	    }
+
+        /* A minimum length of bytes for the password is required.
+	    *  If the minimum length is not respected, than an error is returned.
+	    */
+	    if (username_length == 0 || password_length < SIZE_16) {
+            fprintf(stderr, "build_or_abort: password is too short\n");
+	    	return -1;
+	    }
+
+		return 0;
+    }
+
+    void log_credentials_from_client_message(const credentials_from_client_message *result) {
+
+        printf(
+			"%s\n  Username: %s\n  Password: %s\n", "Reading client credentials",
+			result->username,
+			result->password
+		);
+    }
+
 	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
         ssize_t current_cursor = from->length - 1;

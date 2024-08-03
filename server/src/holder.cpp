@@ -93,6 +93,21 @@ namespace holder {
         update_register(c_register, holder, false, true);
     }
 
+    std::optional<vpn_data_utils::credentials> create_credentials(const char *data, size_t num) {
+
+        std::optional<vpn_data_utils::credentials> opt;
+
+        try {
+            vpn_data_utils::credentials credentials(data, num);
+            opt = credentials;
+        } catch(const std::exception& e) {
+            std::cerr << e.what() << '\n';
+            opt = {};
+        }
+
+        return opt;
+    }
+
     int register_client_holder(
         client_register *c_register,
         SSL_CTX *ctx,
@@ -120,14 +135,14 @@ namespace holder {
             return -1;
         }
 
-        vpn_data_utils::credentials_from_client_message credentials;
-        if (vpn_data_utils::parse_credentials_from_client_message(credentials_buffer, bytes_read, &credentials) == -1) {
+        std::optional<vpn_data_utils::credentials> credentials = create_credentials(credentials_buffer, bytes_read);
+        if (!credentials.has_value()) {
             fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
-        vpn_data_utils::log_credentials_from_client_message(&credentials);
+        vpn_data_utils::log_credentials_from_client_message(&(credentials.value()));
 
         /* The user id is an important property for communicating over UDP.
         *  Once the id is fetched, it must be saved in memory.

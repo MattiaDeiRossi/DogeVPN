@@ -192,15 +192,21 @@ namespace vpn_data_utils {
 		);
     }
 
+    vpn_client_packet_data::vpn_client_packet_data() {
+
+        bzero(user_id, SIZE_16);
+        bzero(iv, encryption::MAX_IV_SIZE);
+        bzero(hash, encryption::SHA_256_SIZE);
+    }
+
 	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
 
-        ssize_t current_cursor = from->length - 1;
-        memset(ret_data, 0, sizeof(vpn_client_packet_data));
+        ssize_t current_cursor = from->size - 1;
 
         int j = 0;
         while (current_cursor >= 0) {
 
-            char bdata = from->message[current_cursor--];
+            char bdata = from->buffer[current_cursor--];
 
             /* Id cannot excedd a specific length.
             *  When dealing with longer id, an error is returned.
@@ -243,9 +249,9 @@ namespace vpn_data_utils {
         // IV extraction.
         if (utils::read_reverse(
             ret_data->iv,
-            from->message,
+            from->buffer,
             encryption::MAX_IV_SIZE,
-            from->length,
+            from->size,
             &current_cursor,
             true
         ) == -1) return -1;
@@ -253,25 +259,25 @@ namespace vpn_data_utils {
         // Hash extraction.
         if (utils::read_reverse(
             ret_data->hash,
-            from->message,
+            from->buffer,
             encryption::SHA_256_SIZE,
-            from->length,
+            from->size,
             &current_cursor,
             true
         ) == -1) return -1;
 
         // Message extraction.
         int packet_length = utils::read_reverse(
-            ret_data->encrypted_packet.message,
-            from->message,
-            encryption::MAX_UDP_MESSAGE_SIZE,
-            from->length,
+            ret_data->encrypted_packet.buffer,
+            from->buffer,
+            encryption::SIZE_32_768,
+            from->size,
             &current_cursor,
             false
         );
 
         if (packet_length == -1) return -1;
-        ret_data->encrypted_packet.length = packet_length;
+        ret_data->encrypted_packet.size = packet_length;
 
         return 0;
     }
@@ -342,8 +348,8 @@ namespace vpn_data_utils {
 
         // Priting packet data.
         encryption::packet *from = &(ret_data->encrypted_packet);
-        printf("Reading encrypted packet from client of size %ld bytes\n", from->length);
-        utils::print_bytes("Printing packet bytes", (const char *) from->message, from->length, 4);
+        printf("Reading encrypted packet from client of size %ld bytes\n", from->size);
+        utils::print_bytes("Printing packet bytes", (const char *) from->buffer, from->size, 4);
     }
 
     void log_vpn_client_packet_data(const encryption::packet *from) {

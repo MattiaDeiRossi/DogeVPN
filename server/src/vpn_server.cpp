@@ -52,10 +52,9 @@ int handle_incoming_udp_packet(
     *  Instead of setting the MSG_PEEK flag, a safe bet is made on how much data to allocate.
     */
     encryption::packet pkt;
-    memset(&pkt, 0, sizeof(encryption::packet));
-    pkt.length = recvfrom(
-        udp_socket, pkt.message,
-        sizeof(pkt.message), 0,
+    pkt.size = recvfrom(
+        udp_socket, pkt.buffer,
+        sizeof(pkt.buffer), 0,
         (struct sockaddr *) &client_address, &client_len
     );
 
@@ -64,7 +63,7 @@ int handle_incoming_udp_packet(
     /* The value of zero is not considered an error.
     *  A connection can be closed by the other peer.
     */
-    if (pkt.length == 0) {
+    if (pkt.size == 0) {
         printf("UDP connection closed by a peer.\n");
         return 0;
     }
@@ -72,7 +71,7 @@ int handle_incoming_udp_packet(
     /* A negative value should never happen.
     *  In this case no actions are performed, just returning the error.
     */
-    if (pkt.length < 0) {
+    if (pkt.size < 0) {
         utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
         return -1;
     }

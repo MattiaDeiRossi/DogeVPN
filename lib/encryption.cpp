@@ -9,6 +9,28 @@ namespace encryption
         abort();
     }
 
+    packet::packet() {
+        
+        bzero(buffer, SIZE_8_192);
+        max_capacity = SIZE_8_192;
+        size = 0;
+    }
+
+    packet::packet(unsigned char *data, size_t num) {
+
+        bzero(buffer, SIZE_8_192);
+        max_capacity = SIZE_8_192;
+        size = 0;
+
+        if (num > SIZE_8_192) {
+            throw std::invalid_argument("Data is too large");
+        }
+
+        for (size_t i = 0; i < num; i++) {
+            buffer[i] = data[i];
+        }
+    }
+
     int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *ciphertext)
     {
@@ -85,16 +107,16 @@ namespace encryption
         /* Checking the length for returning an error in case of an UDP packet too large.
         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
         */
-        size_t ciphertext_len = ((pkt.length / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
-        if (ciphertext_len > MAX_UDP_MESSAGE_SIZE) {
+        size_t ciphertext_len = ((pkt.size / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
+        if (ciphertext_len > SIZE_32_768) {
             return -1;
         }
 
         packet encrypted_pkt;
-        encrypted_pkt.length = encrypt(
-            pkt.message, pkt.length, 
+        encrypted_pkt.size = encrypt(
+            pkt.buffer, pkt.size, 
             enc_data.key, enc_data.iv, 
-            encrypted_pkt.message
+            encrypted_pkt.buffer
         );
 
         *enc_pkt = encrypted_pkt;
@@ -105,10 +127,10 @@ namespace encryption
     {
 
         packet pkt;
-        pkt.length = encryption::decrypt(
-            encrypted_pkt.message, encrypted_pkt.length, 
+        pkt.size = encryption::decrypt(
+            encrypted_pkt.buffer, encrypted_pkt.size, 
             enc_data.key, enc_data.iv, 
-            pkt.message
+            pkt.buffer
         );
 
         return pkt;
@@ -129,7 +151,7 @@ namespace encryption
         }
 
         // Hashes cnt bytes of data at d into the digest context mdCtx
-        if (!EVP_DigestUpdate(mdCtx, pkt.message, pkt.length))
+        if (!EVP_DigestUpdate(mdCtx, pkt.buffer, pkt.size))
         {
             // printf("Message digest update failed.\n");
             EVP_MD_CTX_free(mdCtx);
@@ -158,21 +180,21 @@ namespace encryption
 
     int append(packet *output, unsigned char *data, size_t num) {
 
-        size_t current_size = output->length;
-        if (current_size + num > MAX_UDP_MESSAGE_SIZE) return -1;
+        size_t current_size = output->size;
+        if (current_size + num > SIZE_32_768) return -1;
 
-        for (size_t i = 0; i < num; ++i) output->message[current_size + i] = data[i];
-        output->length = current_size + num;
+        for (size_t i = 0; i < num; ++i) output->buffer[current_size + i] = data[i];
+        output->size = current_size + num;
         return 0;
     }
 
     int append(packet *output, unsigned char data) {
 
-        size_t current_size = output->length;
-        if (current_size + 1 > MAX_UDP_MESSAGE_SIZE) return -1;
+        size_t current_size = output->size;
+        if (current_size + 1 > SIZE_32_768) return -1;
 
-        output->message[current_size] = data;
-        output->length = current_size + 1;
+        output->buffer[current_size] = data;
+        output->size = current_size + 1;
         return 0;
     }
 }

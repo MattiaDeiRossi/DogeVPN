@@ -1,6 +1,7 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,15 +11,22 @@
 namespace encryption
 {
 
-    const int MAX_UDP_MESSAGE_SIZE = 32768;
-    const int MAX_KEY_SIZE = 32;
-    const int MAX_IV_SIZE = 16;
-    const int SHA_256_SIZE = 32;
-    const int AES_256_CBC_PADDING = 16;
+    const int SIZE_32_768           =         32768;
+    const int SIZE_4_096 =          4096;
+    const int SIZE_8_192 =          8192;
+    const int MAX_KEY_SIZE =        32;
+    const int MAX_IV_SIZE =         16;
+    const int SHA_256_SIZE =            32;
+    const int AES_256_CBC_PADDING   = 16;
 
     struct packet {
-        unsigned char message[MAX_UDP_MESSAGE_SIZE];
-        long int length;
+
+        unsigned char buffer[SIZE_8_192];
+        ssize_t size;
+        size_t max_capacity;
+
+        packet();
+        packet(unsigned char *data, size_t num);
     };
 
     struct encryption_data {

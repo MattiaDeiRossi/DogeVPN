@@ -62,6 +62,8 @@ namespace vpn_data_utils {
         unsigned char iv[encryption::MAX_IV_SIZE];
         unsigned char hash[encryption::SHA_256_SIZE];
         encryption::packet encrypted_packet;
+
+        vpn_client_packet_data();
     };
 
     /* This function deals with extracting the information. 

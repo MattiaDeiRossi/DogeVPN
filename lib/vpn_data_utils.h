@@ -45,9 +45,9 @@ namespace vpn_data_utils {
         char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
 
         credentials(const char* data, size_t num);
-    };
 
-    void log_credentials_from_client_message(const credentials *result);
+        void log_credentials_from_client_message();
+    };
 
     struct vpn_client_packet_data {
         unsigned char user_id[SIZE_16];

@@ -180,12 +180,10 @@ namespace vpn_data_utils {
 	    }
     }
 
-    void log_credentials_from_client_message(const credentials *result) {
-
+    void credentials::log_credentials_from_client_message() {
         printf(
-			"%s\n  Username: %s\n  Password: %s\n", "Reading client credentials",
-			result->username,
-			result->password
+			"%s\n  Username: %s\n  Password: %s\n",
+            "Reading client credentials", username, password
 		);
     }
 

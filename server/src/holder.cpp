@@ -142,7 +142,9 @@ namespace holder {
             return -1;
         }
 
-        vpn_data_utils::log_credentials_from_client_message(&(credentials.value()));
+        credentials
+            .value()
+            .log_credentials_from_client_message();
 
         /* The user id is an important property for communicating over UDP.
         *  Once the id is fetched, it must be saved in memory.

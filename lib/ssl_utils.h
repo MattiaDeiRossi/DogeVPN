@@ -39,6 +39,8 @@ namespace ssl_utils
 
     int write(SSL *ssl, char *buffer, size_t num);
 
+    int write_or_throw(SSL *ssl, char *buffer, size_t num);
+
     int generate_rand_32(unsigned char *buffer);
 
     int generate_rand_16(unsigned char *buffer);

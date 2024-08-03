@@ -120,14 +120,14 @@ namespace holder {
             return -1;
         }
 
-        client_credentials_utils::client_credentials credentials;
-        if (client_credentials_utils::initialize(credentials_buffer, bytes_read, &credentials) == -1) {
+        vpn_data_utils::credentials_from_client_message credentials;
+        if (vpn_data_utils::parse_credentials_from_client_message(credentials_buffer, bytes_read, &credentials) == -1) {
             fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
-        client_credentials_utils::log_client_credentials(&credentials);
+        vpn_data_utils::log_credentials_from_client_message(&credentials);
 
         /* The user id is an important property for communicating over UDP.
         *  Once the id is fetched, it must be saved in memory.

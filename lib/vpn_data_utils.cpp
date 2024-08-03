@@ -6,7 +6,7 @@ namespace vpn_data_utils {
         for (size_t i = 0; i < num; i++) printf(" ");
     }
 
-    key_exchange_message::key_exchange_message(char *raw_message, size_t raw_message_size) {
+    key_exchange_data::key_exchange_data(char *raw_message, size_t raw_message_size) {
 
         bzero(key, encryption::MAX_KEY_SIZE);
         bzero(id, SIZE_16);
@@ -68,7 +68,7 @@ namespace vpn_data_utils {
         }
     }
 
-    void key_exchange_message::log_key_exchange_from_server_message() {
+    void key_exchange_data::log_key_exchange_from_server_message() {
 
         size_t key_size = encryption::MAX_KEY_SIZE;
 

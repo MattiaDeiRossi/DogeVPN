@@ -20,13 +20,13 @@ namespace vpn_data_utils {
     const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE =    128;
     const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE =          256;
 
-    struct key_exchange_message {
+    struct key_exchange_data {
 
         unsigned char key[encryption::MAX_KEY_SIZE];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
 
-        key_exchange_message(char *raw_message, size_t raw_message_size);
+        key_exchange_data(char *raw_message, size_t raw_message_size);
 
         void log_key_exchange_from_server_message();
     };

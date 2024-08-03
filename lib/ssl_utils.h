@@ -35,7 +35,7 @@ namespace ssl_utils
 
     int read(SSL *ssl, char *buffer, size_t num);
     
-    int read_or_throw(SSL *ssl, char *buffer, size_t num)
+    int read_or_throw(SSL *ssl, char *buffer, size_t num);
 
     int write(SSL *ssl, char *buffer, size_t num);
 

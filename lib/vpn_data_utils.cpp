@@ -6,6 +6,11 @@ namespace vpn_data_utils {
         for (size_t i = 0; i < num; i++) printf(" ");
     }
 
+    raw_key_exchange_data::raw_key_exchange_data() {
+        bzero(buffer, KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE);
+        buffer_capacity = KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE;
+    }
+
     key_exchange_data::key_exchange_data(char *raw_message, size_t raw_message_size) {
 
         bzero(key, encryption::MAX_KEY_SIZE);

@@ -2,12 +2,12 @@
 #define VPN_DATA_UTILS_H
 
 #include <ctype.h>
+#include <stdexcept>
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
 
-namespace vpn_data_utils
-{
+namespace vpn_data_utils {
 
     const unsigned char SIZE_16 = 16;
     const unsigned char SIZE_64 = 64;
@@ -20,7 +20,7 @@ namespace vpn_data_utils
     const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE =    128;
     const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE =          256;
 
-    struct key_exchange_from_server_message {
+    struct key_exchange_message {
 
         /* Fields */
         unsigned char key[encryption::MAX_KEY_SIZE];
@@ -28,7 +28,7 @@ namespace vpn_data_utils
         unsigned char tun_ip[SIZE_64];
 
         /* Constructors */
-        key_exchange_from_server_message(char *raw_message, size_t raw_message_size);
+        key_exchange_message(char *raw_message, size_t raw_message_size);
 
         /* Methods */
         void log_key_exchange_from_server_message();

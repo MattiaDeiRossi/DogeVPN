@@ -5,8 +5,8 @@ namespace vpn_data_utils {
     void print_start_pad(size_t num) {
         for (size_t i = 0; i < num; i++) printf(" ");
     }
-    
-    key_exchange_from_server_message::key_exchange_from_server_message(char *raw_message, size_t raw_message_size) {
+
+    key_exchange_message::key_exchange_message(char *raw_message, size_t raw_message_size) {
 
         bzero(key, encryption::MAX_KEY_SIZE);
         bzero(id, SIZE_16);
@@ -64,12 +64,12 @@ namespace vpn_data_utils {
         }
 
         if (user_id_size == 0 || tun_ip_size == 0) {
-            fprintf(stderr, "parse_key_exchange_from_server_message: invalid message\n");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("raw_message is malformed");
         }
     }
 
-    void key_exchange_from_server_message::log_key_exchange_from_server_message() {
+    void key_exchange_message::log_key_exchange_from_server_message() {
+
         size_t key_size = encryption::MAX_KEY_SIZE;
 
         printf("Key exchange from server:\n");
@@ -118,8 +118,7 @@ namespace vpn_data_utils {
         size_t password_size = strlen(password);
 
         if (username_size + password_size + 1 > sizeof(raw_credentials_from_client_message)) {
-            fprintf(stderr, "build_raw_credentials_from_client_message_or_abort; failing building message\n");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("credentials message too long");
         }
 
         size_t index = 0;

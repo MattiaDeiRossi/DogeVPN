@@ -22,36 +22,32 @@ namespace vpn_data_utils {
 
     struct key_exchange_message {
 
-        /* Fields */
         unsigned char key[encryption::MAX_KEY_SIZE];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
 
-        /* Constructors */
         key_exchange_message(char *raw_message, size_t raw_message_size);
 
-        /* Methods */
         void log_key_exchange_from_server_message();
     };
 
-    struct raw_credentials_from_client_message {
+    struct raw_credentials {
 
-        /* Fields */
         size_t actual_size;
         char raw_message[CREDENTIALS_FROM_CLIENT_MESSAGE];
 
-        /* Constructors */
-        raw_credentials_from_client_message(const char* username, const char* password);
+        raw_credentials(const char* username, const char* password);
     };
 
-    struct credentials_from_client_message {
+    struct credentials {
+
         char username[CREDENTIALS_FROM_CLIENT_MESSAGE];
         char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
+
+        credentials(const char* data, size_t num);
     };
 
-    int parse_credentials_from_client_message(const char* data, size_t num, credentials_from_client_message *result);
-
-    void log_credentials_from_client_message(const credentials_from_client_message *result);
+    void log_credentials_from_client_message(const credentials *result);
 
     struct vpn_client_packet_data {
         unsigned char user_id[SIZE_16];

@@ -109,7 +109,7 @@ namespace vpn_data_utils {
         printf("\n");
     }
 
-    raw_credentials_from_client_message::raw_credentials_from_client_message(
+    raw_credentials::raw_credentials(
         const char* username, 
         const char* password
     ) {
@@ -117,7 +117,7 @@ namespace vpn_data_utils {
         size_t username_size = strlen(username);
         size_t password_size = strlen(password);
 
-        if (username_size + password_size + 1 > sizeof(raw_credentials_from_client_message)) {
+        if (username_size + password_size + 1 > sizeof(raw_credentials)) {
             throw std::invalid_argument("credentials message too long");
         }
 
@@ -127,19 +127,21 @@ namespace vpn_data_utils {
         for (size_t i = 0; i < password_size; i++) raw_message[index++] = password[i];
         actual_size = username_size + password_size + 1;
     }
-    
-    int parse_credentials_from_client_message(const char* data, size_t num, credentials_from_client_message *result) {
+
+    credentials::credentials(const char* data, size_t num) {
 
         if (num > CREDENTIALS_FROM_CLIENT_MESSAGE) {
-            fprintf(stderr, "build_or_abort: malformed credentials\n");
-            return -1;
+            throw std::invalid_argument("credentials message too long");
         }
 
-        bzero(result, sizeof(credentials_from_client_message));
+        bzero(username, CREDENTIALS_FROM_CLIENT_MESSAGE);
+        bzero(password, CREDENTIALS_FROM_CLIENT_MESSAGE);
 
         bool reading_username = true;
-	    char *usr_p = result->username;
-	    char *pwd_p = result->password;
+
+	    char *usr_p = username;
+	    char *pwd_p = password;
+
         size_t username_length = 0;
         size_t password_length = 0;
 
@@ -169,15 +171,16 @@ namespace vpn_data_utils {
         /* A minimum length of bytes for the password is required.
 	    *  If the minimum length is not respected, than an error is returned.
 	    */
-	    if (username_length == 0 || password_length < SIZE_16) {
-            fprintf(stderr, "build_or_abort: password is too short\n");
-	    	return -1;
+       	if (username_length == 0) {
+            throw std::invalid_argument("username too short");
 	    }
 
-		return 0;
+	    if (username_length == 0 || password_length < SIZE_16) {
+            throw std::invalid_argument("password too short");
+	    }
     }
 
-    void log_credentials_from_client_message(const credentials_from_client_message *result) {
+    void log_credentials_from_client_message(const credentials *result) {
 
         printf(
 			"%s\n  Username: %s\n  Password: %s\n", "Reading client credentials",

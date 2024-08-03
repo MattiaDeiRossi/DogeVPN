@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include "socket_utils.h"
 #include "ssl_utils.h"
-#include "client_credentials_utils.h"
 #include "tun_utils.h"
 #include "vpn_data_utils.h"
 

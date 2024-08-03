@@ -76,10 +76,8 @@ namespace ssl_utils
         }
 
         if (should_shutdown) {
-            int shutdown_completed = 0;
-            while (!shutdown_completed) {
-                shutdown_completed = SSL_shutdown(ssl);
-            }
+            /* The fast shutdown approach can only be used if there is no intention to reuse the underlying connection. */
+            SSL_shutdown(ssl);
         }
 
         SSL_free(ssl);

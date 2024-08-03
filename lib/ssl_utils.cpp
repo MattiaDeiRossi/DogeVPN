@@ -189,6 +189,21 @@ namespace ssl_utils
         return bytes;
     }
 
+    int read_or_throw(SSL *ssl, char *buffer, size_t num) {
+
+        /* The assumption here is that all the data comes from a single read.
+        *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
+        *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
+        */
+        int bytes = SSL_read(ssl, buffer, num);
+        if (bytes < 1) {
+            ssl_utils::free_ssl(ssl, &bytes);
+            throw std::invalid_argument("SSL report failure");
+        }
+
+        return bytes;
+    }
+
     int write(SSL *ssl, char *buffer, size_t num) {
 
         /* Errors can be different.

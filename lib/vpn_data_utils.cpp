@@ -13,7 +13,7 @@ namespace vpn_data_utils {
 
     key_exchange_data::key_exchange_data(char *raw_message, size_t raw_message_size) {
 
-        bzero(key, encryption::MAX_KEY_SIZE);
+        bzero(key, encryption::KEY_SIZE_32);
         bzero(id, SIZE_16);
         bzero(tun_ip, SIZE_64);
 
@@ -33,7 +33,7 @@ namespace vpn_data_utils {
             /* Key extraction. */
             if (selector == 0) {
                 key[i] = byte_data;
-                selector = (i == encryption::MAX_KEY_SIZE - 1) ? 1 : selector;
+                selector = (i == encryption::KEY_SIZE_32 - 1) ? 1 : selector;
                 continue;
             }
 
@@ -75,7 +75,7 @@ namespace vpn_data_utils {
 
     void key_exchange_data::log_key_exchange_from_server_message() {
 
-        size_t key_size = encryption::MAX_KEY_SIZE;
+        size_t key_size = encryption::KEY_SIZE_32;
 
         printf("Key exchange from server:\n");
         print_start_pad(4);
@@ -195,7 +195,7 @@ namespace vpn_data_utils {
     vpn_client_packet_data::vpn_client_packet_data() {
 
         bzero(user_id, SIZE_16);
-        bzero(iv, encryption::MAX_IV_SIZE);
+        bzero(iv, encryption::IV_SIZE_16);
         bzero(hash, encryption::SHA_256_SIZE);
     }
 
@@ -250,7 +250,7 @@ namespace vpn_data_utils {
         if (utils::read_reverse(
             ret_data->iv,
             from->buffer,
-            encryption::MAX_IV_SIZE,
+            encryption::IV_SIZE_16,
             from->size,
             &current_cursor,
             true
@@ -270,7 +270,7 @@ namespace vpn_data_utils {
         int packet_length = utils::read_reverse(
             ret_data->encrypted_packet.buffer,
             from->buffer,
-            encryption::SIZE_32_768,
+            ret_data->encrypted_packet.max_capacity,
             from->size,
             &current_cursor,
             false
@@ -289,9 +289,13 @@ namespace vpn_data_utils {
             return -1;
         }
 
-        encryption::encryption_data e_data;
-        memcpy(e_data.key, key, encryption::MAX_KEY_SIZE);
-        if (ssl_utils::generate_rand_16(e_data.iv) == -1) return -1;
+        unsigned char iv[encryption::IV_SIZE_16];
+        if (ssl_utils::generate_rand_16(iv) == -1) {
+            return -1;
+        }
+
+        encryption::encryption_data e_data((const unsigned char *) key, iv);
+
         if (encryption::encrypt(message, e_data, result) == -1) return -1;
 
         /* Composing the message:
@@ -305,7 +309,7 @@ namespace vpn_data_utils {
         /* Composing the message:
         *   - appending the IV to the packet to send
         */
-        if (encryption::append(result, e_data.iv, encryption::MAX_IV_SIZE) == -1) return -1;
+        if (encryption::append(result, e_data.iv, encryption::IV_SIZE_16) == -1) return -1;
 
         if (user_id != -1) {
 

@@ -30,7 +30,7 @@ namespace vpn_data_utils {
 
     struct key_exchange_data {
 
-        unsigned char key[encryption::MAX_KEY_SIZE];
+        unsigned char key[encryption::KEY_SIZE_32];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
 
@@ -59,7 +59,7 @@ namespace vpn_data_utils {
 
     struct vpn_client_packet_data {
         unsigned char user_id[SIZE_16];
-        unsigned char iv[encryption::MAX_IV_SIZE];
+        unsigned char iv[encryption::IV_SIZE_16];
         unsigned char hash[encryption::SHA_256_SIZE];
         encryption::packet encrypted_packet;
 

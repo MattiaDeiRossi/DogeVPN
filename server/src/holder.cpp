@@ -231,12 +231,13 @@ namespace holder {
 
         std::shared_lock lock(mutex);
 
-        *max_socket = 0;
-        fd_set results;
+        socket_utils::socket_t max = 0;
+        fd_set master;
+        FD_ZERO(&master);
 
         for (auto socket : set) {
-            *max_socket = socket > *max_socket ? socket : *max_socket;
-            FD_SET(socket, &results);
+            FD_SET(socket, &master);
+            max = socket > max ? socket : max;
         }
 
         for (const auto &eachPair : session_per_holder) { 
@@ -247,11 +248,12 @@ namespace holder {
                     .tcp_info
                     .socket;
 
-            *max_socket = c_socket > *max_socket ? c_socket : *max_socket;
-            FD_SET(c_socket, &results);
+            FD_SET(c_socket, &master);
+            max = c_socket > max ? c_socket : max;
         }
 
-        return results;
+        *max_socket = max;
+        return master;
     }
 
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder) {

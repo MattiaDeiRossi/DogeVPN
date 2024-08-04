@@ -227,6 +227,33 @@ namespace holder {
         return 0;
     }
 
+    fd_set client_register::fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket) {
+
+        std::shared_lock lock(mutex);
+
+        *max_socket = 0;
+        fd_set results;
+
+        for (auto socket : set) {
+            *max_socket = socket > *max_socket ? socket : *max_socket;
+            FD_SET(socket, &results);
+        }
+
+        for (const auto &eachPair : session_per_holder) { 
+
+            socket_utils::socket_t c_socket = 
+                eachPair
+                    .second
+                    .tcp_info
+                    .socket;
+
+            *max_socket = c_socket > *max_socket ? c_socket : *max_socket;
+            FD_SET(c_socket, &results);
+        }
+
+        return results;
+    }
+
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder) {
 
         socket_utils::socket_t socket;

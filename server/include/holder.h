@@ -84,6 +84,8 @@ namespace holder {
         *  After a timeout or some error the client socket can be freed along with the thread; this will simplify the whole logic.
         */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info);
+
+        fd_set fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket);
     };
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder);

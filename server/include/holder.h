@@ -87,7 +87,7 @@ namespace holder {
         */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info);
 
-        bool save_client_holder(client_holder holder);
+        bool insert_client_holder(client_holder holder);
 
         /* Erased holder from register if present.
         *  Data within holder should not be considered valid anymore. 

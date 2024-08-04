@@ -93,7 +93,7 @@ namespace holder {
         return 0;
     }
 
-    bool client_register::save_client_holder(client_holder holder) {
+    bool client_register::insert_client_holder(client_holder holder) {
         return update_register(this, holder, true, true) == 0 ? true : false;
     }
 
@@ -174,7 +174,7 @@ namespace holder {
         memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
         
         /* Check error*/
-        if (update_register(this, holder, true, true) == -1) {
+        if (!insert_client_holder(holder)) {
             fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;

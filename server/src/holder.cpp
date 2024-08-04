@@ -93,12 +93,12 @@ namespace holder {
         return 0;
     }
 
-    void save_client_holder(client_register *c_register, client_holder holder) {
-        update_register(c_register, holder, true, true);
+    bool client_register::save_client_holder(client_holder holder) {
+        return update_register(this, holder, true, true) == 0 ? true : false;
     }
 
-    void delete_client_holder(client_register *c_register, client_holder holder) {
-        update_register(c_register, holder, false, true);
+    void client_register::delete_client_holder(client_holder holder) {
+        update_register(this, holder, false, true);
     }
 
     std::optional<vpn_data_utils::credentials> create_credentials(const char *data, size_t num) {

@@ -73,7 +73,9 @@ namespace holder {
 
         std::map<unsigned int, client_holder> session_per_holder;
         std::map<tun_ip, unsigned int> tun_ip_per_session;
+
         tun_utils::ip_pool_t pool;
+
         std::shared_mutex mutex;
 
         client_register(unsigned char third_octet);
@@ -85,6 +87,11 @@ namespace holder {
         */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info);
 
+        bool save_client_holder(client_holder holder);
+
+        /* Once holder gets erased from register, data within holder should not be touched anymore. */
+        void delete_client_holder(client_holder holder);
+
         fd_set fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket);
     };
 
@@ -93,11 +100,6 @@ namespace holder {
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder);
 
     socket_utils::socket_t extract_socket(const socket_holder *wrapper);
-
-    void save_client_holder(client_register *c_register, client_holder holder);
-
-    /* Once holder gets erased from register, data within holder should not be touched anymore. */
-    void delete_client_holder(client_register *c_register, client_holder holder);
 
     int extract_client_key(
         client_register *c_register,

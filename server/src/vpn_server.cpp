@@ -35,7 +35,7 @@ void handle_tcp_client_key_exchange(
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
 */
-std::optional<encryption::packet> decrypt_udp_packet(
+std::optional<encryption::packet> extract_udp_packet(
     socket_utils::socket_t udp_socket, 
     holder::client_register *c_register
 ) {
@@ -149,7 +149,7 @@ int start_doge_vpn() {
                 } else if (socket == udp_socket) {
 
                     std::optional<encryption::packet> received_packet_opt =
-                        decrypt_udp_packet(socket, &c_register);
+                        extract_udp_packet(socket, &c_register);
 
                     if (!received_packet_opt.has_value()) {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");

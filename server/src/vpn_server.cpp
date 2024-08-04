@@ -70,16 +70,16 @@ std::optional<encryption::packet> decrypt_udp_packet(
     *   5. Forward it to the TUN interface
     *  There can be different scenarios for which packets must be rejected.
     */
-    std::optional<vpn_data_utils::vpn_client_packet_data> vpn_data_opt = 
-        vpn_data_utils::vpn_client_packet_data_or_empty(&pkt);
+    std::optional<vpn_data_utils::udp_packet_data> vpn_data_opt = 
+        vpn_data_utils::udp_packet_data(&pkt);
 
     if (!vpn_data_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
         return std::nullopt;
     }
 
-    vpn_data_utils::vpn_client_packet_data vpn_data = vpn_data_opt.value();
-    vpn_data_utils::log_vpn_client_packet_data(&vpn_data);
+    vpn_data_utils::udp_packet_data vpn_data = vpn_data_opt.value();
+    vpn_data.log();
 
     int id_num;
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);

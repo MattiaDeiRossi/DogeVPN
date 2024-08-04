@@ -89,8 +89,12 @@ namespace holder {
 
         bool save_client_holder(client_holder holder);
 
-        /* Once holder gets erased from register, data within holder should not be touched anymore. */
+        /* Erased holder from register if present.
+        *  Data within holder should not be considered valid anymore. 
+        */
         void delete_client_holder(client_holder holder);
+
+        std::optional<client_holder> get_client_holder(unsigned int session_id);
 
         fd_set fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket);
     };
@@ -100,12 +104,6 @@ namespace holder {
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder);
 
     socket_utils::socket_t extract_socket(const socket_holder *wrapper);
-
-    int extract_client_key(
-        client_register *c_register,
-        unsigned int session_id,
-        unsigned char *symmetric_key
-    );
 
     holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp);
 }

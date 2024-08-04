@@ -318,4 +318,12 @@ namespace holder {
 
         return holder;
     }
+
+    std::optional<client_holder> client_register::get_client_holder(unsigned int session_id) {
+
+        std::shared_lock lock(mutex);
+
+        if (session_per_holder.count(session_id) == 0) return std::nullopt;
+        return session_per_holder.at(session_id);
+    }
 }

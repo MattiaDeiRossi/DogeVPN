@@ -79,7 +79,7 @@ namespace vpn_data_utils {
     */
     int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data);
 
-    int build_packet_to_send(encryption::packet from, const char *key, int user_id, encryption::packet *result);
+    std::optional<encryption::packet> build_packet_to_send(encryption::packet from, const char *key, int user_id);
 
     void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
 

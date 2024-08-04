@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include<optional>
+#include<iostream>
 
 namespace socket_utils
 {
@@ -18,9 +20,30 @@ namespace socket_utils
         struct sockaddr_storage address;
     };
 
+    struct raw_udp_client_info {
+
+        char address_service[256];
+
+        raw_udp_client_info();
+
+        bool operator==(const raw_udp_client_info &o) const;
+        bool operator<(const raw_udp_client_info &o) const;
+
+        void log();
+    };
+
     struct udp_client_info {
+
         socklen_t length;
         struct sockaddr_storage address;
+
+        raw_udp_client_info to_raw_info();  
+    };
+    
+    struct recvfrom_result {
+
+        udp_client_info udp_info;
+        ssize_t bytes_read;
     };
 
     int invalid_socket(socket_t socket);
@@ -46,7 +69,7 @@ namespace socket_utils
 
     void log_start_server(bool is_tcp, char const *host, char const *port);
 
-    void log_client_address(struct sockaddr_storage address, socklen_t length);
+    recvfrom_result recvfrom(socket_t fd, void *buf, size_t n);
 }
 
 #endif

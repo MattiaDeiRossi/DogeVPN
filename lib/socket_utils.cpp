@@ -167,10 +167,40 @@ namespace socket_utils {
 	    utils::print("\n", 0);
 	}
 
-	void log_client_address(struct sockaddr_storage address, socklen_t length) {
+	recvfrom_result recvfrom(socket_t fd, void *buf, size_t n) {
 
-    	char address_buffer[256];
-	    char service_buffer[256];
+		struct sockaddr_storage client_address;
+		socklen_t client_len = sizeof(client_address);
+		ssize_t bytes_read = recvfrom(fd, buf, n, 0, (struct sockaddr *) &client_address, &client_len);
+		
+		udp_client_info udp_info;
+		udp_info.address = client_address;
+		udp_info.length = client_len;
+
+		recvfrom_result result;
+		result.udp_info = udp_info;
+		result.bytes_read = bytes_read;
+
+		return result;
+	}
+
+	raw_udp_client_info::raw_udp_client_info() {
+		bzero(address_service, 256);
+	}
+
+	void raw_udp_client_info::log() {
+		std::cout << 
+			"Received packet from:\n" << 
+			address_service << 
+			"\n";
+	}
+
+	raw_udp_client_info udp_client_info::to_raw_info() {
+
+		raw_udp_client_info raw_info;
+
+		char address_buffer[128];
+	    char service_buffer[128];
 
 	    getnameinfo(
 	        (struct sockaddr*) &address, length,
@@ -179,12 +209,30 @@ namespace socket_utils {
 	        NI_NUMERICHOST | NI_NUMERICSERV
 	    );
 
-	    utils::print("Received bytes from:\n", 0);
-	    utils::print("IP address:", 3);
-	    utils::print(address_buffer, 1);
-		utils::print("\n", 0);
-	    utils::print("Port:", 3);
-	    utils::print(service_buffer, 1);
-	    utils::print("\n", 0);
+		size_t index = 0;
+		char *a_ptr = address_buffer;
+		char *s_ptr = service_buffer;
+		
+		while (*a_ptr) {
+			raw_info.address_service[index++] = *a_ptr;
+			a_ptr++;
+		}
+
+		raw_info.address_service[index++] = ':';
+
+		while (*s_ptr) {
+			raw_info.address_service[index++] = *s_ptr;
+			s_ptr++;
+		}
+
+		return raw_info;
 	}
+
+	bool raw_udp_client_info::operator==(const raw_udp_client_info &o) const {
+        return strncmp(address_service, o.address_service, 256) == 0 ? true : false;
+    }
+
+	bool raw_udp_client_info::operator<(const raw_udp_client_info &o) const {
+        return strncmp(address_service, o.address_service, 256) < 0 ? true : false;
+    }
 }

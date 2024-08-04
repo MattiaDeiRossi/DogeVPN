@@ -108,11 +108,7 @@ namespace holder {
         return opt;
     }
 
-    int register_client_holder(
-        client_register *c_register,
-        SSL_CTX *ctx,
-        socket_utils::tcp_client_info *info
-    ) {
+    bool client_register::register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info) {
 
         client_holder holder;
         holder.tcp_info.socket = info->socket;
@@ -170,7 +166,7 @@ namespace holder {
         memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
         
         /* Check error*/
-        if (update_register(c_register, holder, true, true) == -1) {
+        if (update_register(this, holder, true, true) == -1) {
             fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
@@ -191,7 +187,7 @@ namespace holder {
 
         message[start++] = MESSAGE_SEPARATOR_POINT;
 
-        tun_ip tun_ip = extract_tun_ip_or_abort(c_register, holder.session_id);
+        tun_ip tun_ip = extract_tun_ip_or_abort(this, holder.session_id);
         ptr = tun_ip.ip;
         while (*ptr) {
             message[start++] = *ptr;
@@ -207,7 +203,7 @@ namespace holder {
         /* Sending the message to the client securely under a TLS tunnel. */
         if (ssl_utils::write(ssl, message, message_size) == -1) {
             fprintf(stderr, "register_client_holder: first wrote failed between client and server\n");
-            update_register(c_register, holder, false, false);
+            update_register(this, holder, false, false);
             return -1;
         }
 

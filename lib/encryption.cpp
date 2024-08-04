@@ -3,10 +3,136 @@
 namespace encryption
 {
 
-    void handleErrors(void)
+    struct r_engine {
+        std::default_random_engine source;
+
+        r_engine() {
+            std::random_device r;
+            source.seed(r());
+        }
+    } engine;
+
+    int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
+                unsigned char *iv, unsigned char *ciphertext)
     {
-        ERR_print_errors_fp(stderr);
-        abort();
+        EVP_CIPHER_CTX *ctx;
+        int len;
+        int ciphertext_len;
+
+        /* Create and initialise the context */
+        if (!(ctx = EVP_CIPHER_CTX_new())) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Initialise the encryption operation. */
+        if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Provide the message to be encrypted, and obtain the encrypted output.
+         * EVP_EncryptUpdate can be called multiple times if necessary
+         */
+        if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        ciphertext_len = len;
+
+        /* Finalise the encryption. Further ciphertext bytes may be written at
+         * this stage.
+         */
+        if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Clean up */
+        EVP_CIPHER_CTX_free(ctx);
+
+        ciphertext_len += len;
+        return ciphertext_len;
+    }
+
+    int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
+                unsigned char *iv, unsigned char *plaintext)
+    {
+        EVP_CIPHER_CTX *ctx;
+        int len;
+        int plaintext_len;
+
+        /* Create and initialise the context */
+        if (!(ctx = EVP_CIPHER_CTX_new())) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Initialise the decryption operation. */
+        if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Provide the message to be decrypted, and obtain the plaintext output.
+         * EVP_DecryptUpdate can be called multiple times if necessary
+         */
+        if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        plaintext_len = len;
+
+        /* Finalise the decryption. Further plaintext bytes may be written at
+         * this stage.
+         */
+        if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
+            ERR_print_errors_fp(stderr);
+            return -1;
+        }
+
+        /* Clean up */
+        EVP_CIPHER_CTX_free(ctx);
+
+        plaintext_len += len;
+        return plaintext_len;
+    }
+
+    encryption_data::encryption_data(const unsigned char *key) {
+
+        /* Assuming the key follows specifications given (KEY: 32 bytes). */
+        for (size_t i = 0; i < KEY_SIZE_32; i++) this->key[i] = key[i];
+
+        unsigned char _iv[IV_SIZE_16];
+        bzero(_iv, IV_SIZE_16);
+
+        int rand_value = RAND_bytes(_iv, IV_SIZE_16);
+        if (rand_value != 1) {
+
+            /* When RAND_bytes cannot produce secured random bytes, a fallback is made by using
+            *  the random std library.
+            */
+            std::uniform_int_distribution<uint32_t> uint_dist(0, UCHAR_MAX);  
+            for (int i = 0; i < 16; i++) {
+                _iv[i] = uint_dist(encryption::engine.source);
+            }
+
+            std::cerr << "RAND_bytes reported failure" << "\n";
+        }
+
+        memcpy(iv, _iv, IV_SIZE_16);
+    }
+
+    encryption_data::encryption_data(const unsigned char *key, const unsigned char *iv) {
+
+        /* Here we are assuming the key and the iv follows specifications given:
+        *   KEY:    32 bytes
+        *   IV:     16 bytes
+        */
+        for (size_t i = 0; i < KEY_SIZE_32; i++) this->key[i] = key[i];
+        for (size_t i = 0; i < IV_SIZE_16; i++) this->iv[i] = iv[i];
     }
 
     packet::packet() {
@@ -23,7 +149,7 @@ namespace encryption
         size = 0;
 
         if (num > SIZE_8_192) {
-            throw std::invalid_argument("Data is too large");
+            throw std::invalid_argument("data is too large");
         }
 
         for (size_t i = 0; i < num; i++) {
@@ -31,170 +157,93 @@ namespace encryption
         }
     }
 
-    int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-                unsigned char *iv, unsigned char *ciphertext)
-    {
-        EVP_CIPHER_CTX *ctx;
-        int len;
-        int ciphertext_len;
+    std::optional<packet> packet::encrypt(encryption_data enc_data) {
 
-        /* Create and initialise the context */
-        if (!(ctx = EVP_CIPHER_CTX_new()))
-            ERR_print_errors_fp(stderr);
-
-        /* Initialise the encryption operation. */
-        if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
-            ERR_print_errors_fp(stderr);
-
-        /* Provide the message to be encrypted, and obtain the encrypted output.
-         * EVP_EncryptUpdate can be called multiple times if necessary
-         */
-        if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
-            ERR_print_errors_fp(stderr);
-        ciphertext_len = len;
-
-        /* Finalise the encryption. Further ciphertext bytes may be written at
-         * this stage.
-         */
-        if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
-            ERR_print_errors_fp(stderr);
-        ciphertext_len += len;
-
-        /* Clean up */
-        EVP_CIPHER_CTX_free(ctx);
-
-        return ciphertext_len;
-    }
-
-    int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-                unsigned char *iv, unsigned char *plaintext)
-    {
-        EVP_CIPHER_CTX *ctx;
-        int len;
-        int plaintext_len;
-
-        /* Create and initialise the context */
-        if (!(ctx = EVP_CIPHER_CTX_new()))
-            ERR_print_errors_fp(stderr);
-
-        /* Initialise the decryption operation. */
-        if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
-            ERR_print_errors_fp(stderr);
-
-        /* Provide the message to be decrypted, and obtain the plaintext output.
-         * EVP_DecryptUpdate can be called multiple times if necessary
-         */
-        if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
-            ERR_print_errors_fp(stderr);
-        plaintext_len = len;
-
-        /* Finalise the decryption. Further plaintext bytes may be written at
-         * this stage.
-         */
-        if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
-            ERR_print_errors_fp(stderr);
-        plaintext_len += len;
-
-        /* Clean up */
-        EVP_CIPHER_CTX_free(ctx);
-
-        return plaintext_len;
-    }
-
-    int encrypt(packet pkt, encryption_data enc_data, packet *enc_pkt)
-    {
+        packet result;
 
         /* Checking the length for returning an error in case of an UDP packet too large.
         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
         */
-        size_t ciphertext_len = ((pkt.size / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
-        if (ciphertext_len > SIZE_32_768) {
-            return -1;
+        size_t ciphertext_max_size = ((size / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
+        if (ciphertext_max_size > result.max_capacity) return std::nullopt;
+
+        /* check error*/
+        ssize_t ciphertext_size = encryption::encrypt(buffer, size, enc_data.key, enc_data.iv, result.buffer);
+        if (ciphertext_size == -1) return std::nullopt;
+
+        result.size = ciphertext_size;
+        return result;
+    }
+
+    std::optional<packet> packet::decrypt(encryption_data enc_data) {
+
+        packet result;
+        ssize_t plaintext_size = encryption::decrypt(
+            buffer, size, 
+            enc_data.key, enc_data.iv, 
+            result.buffer
+        );
+
+        if (plaintext_size == -1) {
+            return std::nullopt;
         }
 
-        packet encrypted_pkt;
-        encrypted_pkt.size = encrypt(
-            pkt.buffer, pkt.size, 
-            enc_data.key, enc_data.iv, 
-            encrypted_pkt.buffer
-        );
-
-        *enc_pkt = encrypted_pkt;
-        return 0;
+        result.size = plaintext_size;
+        return result;
     }
 
-    packet decrypt(packet encrypted_pkt, encryption_data enc_data)
-    {
-
-        packet pkt;
-        pkt.size = encryption::decrypt(
-            encrypted_pkt.buffer, encrypted_pkt.size, 
-            enc_data.key, enc_data.iv, 
-            pkt.buffer
-        );
-
-        return pkt;
-    }
-
-    int getShaSum(packet pkt, unsigned char *output)
-    {
+    bool packet::getShaSum(unsigned char *output) {
 
         EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();
         unsigned char mdVal[SHA_256_SIZE];
         unsigned int mdLen;
 
-        if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL))
-        {
-            // printf("Message digest initialization failed.\n");
+        if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL)) {
             EVP_MD_CTX_free(mdCtx);
-            return -1;
+            return false;
         }
 
-        // Hashes cnt bytes of data at d into the digest context mdCtx
-        if (!EVP_DigestUpdate(mdCtx, pkt.buffer, pkt.size))
-        {
-            // printf("Message digest update failed.\n");
+        /* Hashes cnt bytes of data at d into the digest context mdCtx. */
+        if (!EVP_DigestUpdate(mdCtx, buffer, size)) {
             EVP_MD_CTX_free(mdCtx);
-            return -1;
+            return false;
         }
 
-        if (!EVP_DigestFinal_ex(mdCtx, mdVal, &mdLen))
-        {
-            // printf("Message digest finalization failed.\n");
+        if (!EVP_DigestFinal_ex(mdCtx, mdVal, &mdLen)) {
             EVP_MD_CTX_free(mdCtx);
-            return -1;
+            return false;
         }
 
         EVP_MD_CTX_free(mdCtx);
         memcpy(output, mdVal, SHA_256_SIZE);
-        return 0;
+        return true;
     }
 
-    int hash_verify(packet decrypted_message, unsigned char *hash) {
+    bool packet::valid_hash(unsigned char *hash) {
 
-        // Creating buffer.
+        /* Creating the buffer with the correct hash size. */
         unsigned char computed_hash[SHA_256_SIZE];
-        if (getShaSum(decrypted_message, computed_hash) == -1) return -1;
-        return strncmp((const char *) computed_hash, (const char *) hash, SHA_256_SIZE) == 0 ? 0 : -1;
+        if (!getShaSum(computed_hash)) return false;
+        return strncmp((const char *) computed_hash, (const char *) hash, SHA_256_SIZE) == 0 ? true : false;
     }
 
-    int append(packet *output, unsigned char *data, size_t num) {
+    bool packet::append(const unsigned char *data, size_t num) {
 
-        size_t current_size = output->size;
-        if (current_size + num > SIZE_32_768) return -1;
+        size_t current_size = size;
+        if (current_size + num > max_capacity) return false;
 
-        for (size_t i = 0; i < num; ++i) output->buffer[current_size + i] = data[i];
-        output->size = current_size + num;
-        return 0;
+        for (size_t i = 0; i < num; ++i) buffer[current_size + i] = data[i];
+        size = current_size + num;
+        return true;
     }
 
-    int append(packet *output, unsigned char data) {
+    bool packet::append(unsigned char data) {
 
-        size_t current_size = output->size;
-        if (current_size + 1 > SIZE_32_768) return -1;
+        size_t current_size = size;
+        if (current_size + 1 > max_capacity) return false;
 
-        output->buffer[current_size] = data;
-        output->size = current_size + 1;
-        return 0;
+        buffer[current_size] = data;
+        size = current_size + 1;
+        return true;
     }
 }

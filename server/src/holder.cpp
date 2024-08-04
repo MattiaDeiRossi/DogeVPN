@@ -14,8 +14,8 @@ namespace holder {
         return c_register->session_per_holder.at(session_id).client_tun_ip;
     }
 
-    void create_client_register_with_c_pool(unsigned char third_octet, client_register *result) {
-        tun_utils::configure_private_class_c_pool(third_octet, &(result->pool));
+    client_register::client_register(unsigned char third_octet) {
+        tun_utils::configure_private_class_c_pool(third_octet, &pool);
     }
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder) {

@@ -76,18 +76,13 @@ namespace holder {
     */
     struct client_register {
 
-        /* Associations. */
         std::map<unsigned int, client_holder> session_per_holder;
         std::map<tun_ip, unsigned int> tun_ip_per_session;
-
-        /* Pool handled by this register. */
         tun_utils::ip_pool_t pool;
-        
-        /* This register must be pretected with mutex. */
         std::shared_mutex mutex;
-    };
 
-    void create_client_register_with_c_pool(unsigned char third_octet, client_register *result);
+        client_register(unsigned char third_octet);
+    };
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder);
 

@@ -199,7 +199,7 @@ namespace vpn_data_utils {
         bzero(hash, encryption::SHA_256_SIZE);
     }
 
-	int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data) {
+	vpn_client_packet_data::vpn_client_packet_data(const encryption::packet *from) {
 
         ssize_t current_cursor = from->size - 1;
 
@@ -212,7 +212,7 @@ namespace vpn_data_utils {
             *  When dealing with longer id, an error is returned.
             */
             if (j == SIZE_16 && bdata != MESSAGE_SEPARATOR_POINT) {
-                return -1;
+                throw std::invalid_argument("malformed packet: id is too long");
             }
             
             if (bdata == MESSAGE_SEPARATOR_POINT) {
@@ -226,10 +226,10 @@ namespace vpn_data_utils {
                 /* An user id contains only digits.
                 *  When a different character is encountered an error value is returned.
                 */
-                return -1;
+                throw std::invalid_argument("malformed packet: id contains invalid characters");
             } else {
 
-                ret_data->user_id[j++] = bdata;
+                user_id[j++] = bdata;
             }
 
         }
@@ -238,48 +238,67 @@ namespace vpn_data_utils {
         *  Id must not be empty.
         */
         if (j == 0) {
-            return -1;
+            throw std::invalid_argument("malformed packet: id is empty");
         }
 
         /* Id has been read in reverse.
         *  In order to extract it correctly, a reverse operation is applied. 
         */
-        utils::reverse_string((char *) ret_data->user_id, j);
+        utils::reverse_string((char *) user_id, j);
 
         // IV extraction.
         if (utils::read_reverse(
-            ret_data->iv,
+            iv,
             from->buffer,
             encryption::IV_SIZE_16,
             from->size,
             &current_cursor,
             true
-        ) == -1) return -1;
+        ) == -1) throw std::invalid_argument("malformed packet: wrong IV");
 
         // Hash extraction.
         if (utils::read_reverse(
-            ret_data->hash,
+            hash,
             from->buffer,
             encryption::SHA_256_SIZE,
             from->size,
             &current_cursor,
             true
-        ) == -1) return -1;
+        ) == -1) throw std::invalid_argument("malformed packet: wrong hash");
 
         // Message extraction.
         int packet_length = utils::read_reverse(
-            ret_data->encrypted_packet.buffer,
+            encrypted_packet.buffer,
             from->buffer,
-            ret_data->encrypted_packet.max_capacity,
+            encrypted_packet.max_capacity,
             from->size,
             &current_cursor,
             false
         );
 
-        if (packet_length == -1) return -1;
-        ret_data->encrypted_packet.size = packet_length;
+        if (packet_length == -1) {
+            throw std::invalid_argument("malformed packet: invalid message");
+        };
 
-        return 0;
+        encrypted_packet.size = packet_length;
+    }
+
+    std::optional<vpn_client_packet_data> vpn_client_packet_data_or_empty(const encryption::packet *from) {
+
+        std::optional<vpn_client_packet_data> opt;
+
+        try {
+            vpn_client_packet_data data(from);
+            opt = data;
+        } catch(const std::exception& e) {
+            std::cerr << 
+                "vpn_client_packet_data_or_empty failed:" <<
+                e.what() << 
+                "\n";
+            opt = std::nullopt;
+        }
+
+        return opt;
     }
 
     std::optional<encryption::packet> build_packet_to_send(encryption::packet message, const char *key, int user_id) {
@@ -354,8 +373,7 @@ namespace vpn_data_utils {
     }
 
     void log_vpn_client_packet_data(const encryption::packet *from) {
-        vpn_client_packet_data data;
-        parse_packet(from, &data);
+        vpn_client_packet_data data(from);
         log_vpn_client_packet_data(&data);
     }
 }

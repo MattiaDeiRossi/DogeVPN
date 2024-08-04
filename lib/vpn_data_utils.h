@@ -64,20 +64,21 @@ namespace vpn_data_utils {
         encryption::packet encrypted_packet;
 
         vpn_client_packet_data();
+
+        /* This function deals with extracting the information. 
+        *  DogeVPN requires the payload to respect the following format:
+        *   1.  First part of the payload is the original encrypted packet.
+        *       The length is variable.
+        *   2.  After the payload there is the hash of the message signed with the exchanged key;
+        *       the main reason to exchange the hashed messsage is to avoid 
+        *       that the user id leak allow everyone to send non-sense packet
+        *   3.  After the hashed part we have the IV
+        *   4.  Then we have the user id: this is needed to decrypt the message with correct key
+        */
+        vpn_client_packet_data(const encryption::packet *from);
     };
 
-    /* This function deals with extracting the information. 
-    *  DogeVPN requires the payload to respect the following format:
-    *   1.  First part of the payload is the original encrypted packet.
-    *       The length is variable.
-    *   2.  After the payload there is the hash of the message signed with the exchanged key.
-    *       The main reason to exchange the hashed messsage is:
-    *           - Avoiding that the user id leak allow everyone to send non-sense packet.
-    *   3.  After the hashed part we have the IV
-    *   4.  Then we have the user id:
-    *           - This is needed to decrypt the message with correct key
-    */
-    int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data);
+    std::optional<vpn_client_packet_data> vpn_client_packet_data_or_empty(const encryption::packet *from);
 
     std::optional<encryption::packet> build_packet_to_send(encryption::packet from, const char *key, int user_id);
 

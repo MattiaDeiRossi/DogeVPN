@@ -110,7 +110,7 @@ namespace holder {
             opt = credentials;
         } catch(const std::exception& e) {
             std::cerr << e.what() << '\n';
-            opt = {};
+            opt = std::nullopt;
         }
 
         return opt;

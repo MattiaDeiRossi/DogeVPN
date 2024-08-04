@@ -35,7 +35,7 @@ void handle_tcp_client_key_exchange(
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
 */
-std::optional<encryption::packet> handle_incoming_udp_packet(
+std::optional<encryption::packet> decrypt_udp_packet(
     socket_utils::socket_t udp_socket, 
     holder::client_register *c_register
 ) {
@@ -70,12 +70,15 @@ std::optional<encryption::packet> handle_incoming_udp_packet(
     *   5. Forward it to the TUN interface
     *  There can be different scenarios for which packets must be rejected.
     */
-    vpn_data_utils::vpn_client_packet_data vpn_data;
-    if (vpn_data_utils::parse_packet(&pkt, &vpn_data) == -1) {
+    std::optional<vpn_data_utils::vpn_client_packet_data> vpn_data_opt = 
+        vpn_data_utils::vpn_client_packet_data_or_empty(&pkt);
+
+    if (!vpn_data_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
         return std::nullopt;
     }
 
+    vpn_data_utils::vpn_client_packet_data vpn_data = vpn_data_opt.value();
     vpn_data_utils::log_vpn_client_packet_data(&vpn_data);
 
     int id_num;
@@ -162,8 +165,10 @@ int start_doge_vpn() {
                     }
                 } else if (socket == udp_socket) {
 
-                    encryption::packet received_packet;
-                    if (!handle_incoming_udp_packet(socket, &c_register).has_value()) {
+                    std::optional<encryption::packet> received_packet_opt =
+                        decrypt_udp_packet(socket, &c_register);
+
+                    if (!received_packet_opt.has_value()) {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
 

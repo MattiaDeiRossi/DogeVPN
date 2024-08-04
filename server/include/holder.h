@@ -22,13 +22,8 @@ namespace holder {
     struct tun_ip {
         char ip[SIZE_32];
 
-        bool operator==(const tun_ip &o) const {
-            return strncmp(ip, o.ip, SIZE_32) == 0 ? true : false;
-        }
-
-        bool operator<(const tun_ip &o)  const {
-            return strncmp(ip, o.ip, SIZE_32) < 0 ? true : false;
-        }
+        bool operator==(const tun_ip &o) const;
+        bool operator<(const tun_ip &o) const;
     };
 
     struct client_holder {

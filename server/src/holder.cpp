@@ -14,6 +14,14 @@ namespace holder {
         return c_register->session_per_holder.at(session_id).client_tun_ip;
     }
 
+    bool tun_ip::operator==(const tun_ip &o) const {
+        return strncmp(ip, o.ip, SIZE_32) == 0 ? true : false;
+    }
+
+    bool tun_ip::operator<(const tun_ip &o) const {
+        return strncmp(ip, o.ip, SIZE_32) < 0 ? true : false;
+    }
+
     client_register::client_register(unsigned char third_octet) {
         tun_utils::configure_private_class_c_pool(third_octet, &pool);
     }

@@ -57,13 +57,13 @@ namespace vpn_data_utils {
         void log_credentials_from_client_message();
     };
 
-    struct vpn_client_packet_data {
+    struct udp_packet_data {
         unsigned char user_id[SIZE_16];
         unsigned char iv[encryption::IV_SIZE_16];
         unsigned char hash[encryption::SHA_256_SIZE];
         encryption::packet encrypted_packet;
 
-        vpn_client_packet_data();
+        udp_packet_data();
 
         /* This function deals with extracting the information. 
         *  DogeVPN requires the payload to respect the following format:
@@ -75,16 +75,16 @@ namespace vpn_data_utils {
         *   3.  After the hashed part we have the IV
         *   4.  Then we have the user id: this is needed to decrypt the message with correct key
         */
-        vpn_client_packet_data(const encryption::packet *from);
+        udp_packet_data(const encryption::packet *from);
+
+        void log();
     };
 
-    std::optional<vpn_client_packet_data> vpn_client_packet_data_or_empty(const encryption::packet *from);
+    std::optional<udp_packet_data> udp_packet_data_or_empty(const encryption::packet *from);
 
     std::optional<encryption::packet> build_packet_to_send(encryption::packet from, const char *key, int user_id);
 
-    void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
-
-    void log_vpn_client_packet_data(const encryption::packet *from);
+    void log_udp_packet_data(const encryption::packet *from);
 }
 
 #endif

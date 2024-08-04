@@ -192,14 +192,14 @@ namespace vpn_data_utils {
 		);
     }
 
-    vpn_client_packet_data::vpn_client_packet_data() {
+    udp_packet_data::udp_packet_data() {
 
         bzero(user_id, SIZE_16);
         bzero(iv, encryption::IV_SIZE_16);
         bzero(hash, encryption::SHA_256_SIZE);
     }
 
-	vpn_client_packet_data::vpn_client_packet_data(const encryption::packet *from) {
+	udp_packet_data::udp_packet_data(const encryption::packet *from) {
 
         ssize_t current_cursor = from->size - 1;
 
@@ -283,12 +283,12 @@ namespace vpn_data_utils {
         encrypted_packet.size = packet_length;
     }
 
-    std::optional<vpn_client_packet_data> vpn_client_packet_data_or_empty(const encryption::packet *from) {
+    std::optional<udp_packet_data> udp_packet_data_or_empty(const encryption::packet *from) {
 
-        std::optional<vpn_client_packet_data> opt;
+        std::optional<udp_packet_data> opt;
 
         try {
-            vpn_client_packet_data data(from);
+            udp_packet_data data(from);
             opt = data;
         } catch(const std::exception& e) {
             std::cerr << 
@@ -343,7 +343,7 @@ namespace vpn_data_utils {
         else return std::nullopt;
     }
 
-    void log_vpn_client_packet_data(vpn_client_packet_data *ret_data) {
+    void udp_packet_data::log() {
 
         printf("Reading VPN data from client packet\n");
 
@@ -351,29 +351,29 @@ namespace vpn_data_utils {
         utils::print_yellow("   user_id");
         printf(":");
         for (int i = 0; i < 8; ++i) {
-            if (ret_data->user_id[i] == 0) break;
-            printf(" %c", ret_data->user_id[i]);
+            if (user_id[i] == 0) break;
+            printf(" %c", user_id[i]);
         }
         printf("\n");
 
         // Id must be long 16 bytes.
         utils::print_yellow("   iv");
         printf(":");
-        utils::print_bytes("", (const char *) ret_data->iv, 16, 0);
+        utils::print_bytes("", (const char *) iv, 16, 0);
 
         // Hash must be long 16 bytes.
         utils::print_yellow("   hash");
         printf(":");
-        utils::print_bytes("", (const char *) ret_data->hash, 32, 0);
+        utils::print_bytes("", (const char *) hash, 32, 0);
 
         // Priting packet data.
-        encryption::packet *from = &(ret_data->encrypted_packet);
+        encryption::packet *from = &(encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->size);
         utils::print_bytes("Printing packet bytes", (const char *) from->buffer, from->size, 4);
     }
 
-    void log_vpn_client_packet_data(const encryption::packet *from) {
-        vpn_client_packet_data data(from);
-        log_vpn_client_packet_data(&data);
+    void log_udp_packet_data(const encryption::packet *from) {
+        udp_packet_data data(from);
+        data.log();
     }
 }

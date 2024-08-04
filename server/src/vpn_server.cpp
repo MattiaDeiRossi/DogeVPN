@@ -11,7 +11,6 @@
 #include "tun_utils.h"
 #include "holder.h"
 #include "selector.h"
-#include "mongo.hpp"
 
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
 *  When handling a new client there is no need to just create the client socket and return.
@@ -22,61 +21,46 @@
 void handle_tcp_client_key_exchange(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,
-    holder::client_register *c_register,
-    selector::selector_set *set
+    holder::client_register *c_register
 ) {
 
-    if (holder::register_client_holder(c_register, ctx, info) == -1) {
-        fprintf(stderr, "handle_tcp_client_key_exchange: registration error\n");
-        return;
+    if (c_register->register_client_holder(ctx, info)) {
+        std::cerr << 
+            "Handle tcp client key exchange: registration error" << 
+            "\n";
     }
-
-    /* change!! Should not be a STATE!! */
-    selector::add(set, info->socket);
 }
 
 /* Errors should be notified to the client peer.
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
 */
-int handle_incoming_udp_packet(
+std::optional<encryption::packet> handle_incoming_udp_packet(
     socket_utils::socket_t udp_socket, 
-    holder::client_register *c_register,
-    encryption::packet *ret_packet
+    holder::client_register *c_register
 ) {
-
-    struct sockaddr_storage client_address;
-    socklen_t client_len = sizeof(client_address);
 
     /* Using the theoretical limit of an UDP packet.
     *  Instead of setting the MSG_PEEK flag, a safe bet is made on how much data to allocate.
     */
     encryption::packet pkt;
-    pkt.size = recvfrom(
-        udp_socket, pkt.buffer,
-        sizeof(pkt.buffer), 0,
-        (struct sockaddr *) &client_address, &client_len
-    );
+    socket_utils::recvfrom_result recv_result = socket_utils::recvfrom(udp_socket, pkt.buffer, pkt.max_capacity);
 
     // TODO: Try delete with address.
-
-    /* The value of zero is not considered an error.
-    *  A connection can be closed by the other peer.
-    */
-    if (pkt.size == 0) {
-        printf("UDP connection closed by a peer.\n");
-        return 0;
-    }
-
     /* A negative value should never happen.
     *  In this case no actions are performed, just returning the error.
     */
-    if (pkt.size < 0) {
+    if (recv_result.bytes_read < 0) {
         utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
-        return -1;
+        return std::nullopt;
     }
 
-    socket_utils::log_client_address(client_address, client_len);
+    pkt.size = recv_result.bytes_read;
+
+    recv_result
+        .udp_info
+        .to_raw_info()
+        .log();
 
     /* Now the main logic of must happen:
     *   1. Extract the the packet
@@ -89,7 +73,7 @@ int handle_incoming_udp_packet(
     vpn_data_utils::vpn_client_packet_data vpn_data;
     if (vpn_data_utils::parse_packet(&pkt, &vpn_data) == -1) {
         fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
-        return -1;
+        return std::nullopt;
     }
 
     vpn_data_utils::log_vpn_client_packet_data(&vpn_data);
@@ -98,30 +82,34 @@ int handle_incoming_udp_packet(
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
     user_id user_id = id_num;
 
-    /* Functions that deals with shared data must always return new data:
-    *   - the client holder is not returned directly since it can be accessed and deleted by another thread
-    *   - in order to avoid race condition, after taking the mutex, a copy of the key is returned
-    */
-    unsigned char key[holder::SIZE_32];
-    if (holder::extract_client_key(c_register, user_id, key) == -1) {
+    std::optional<holder::client_holder> c_holder = c_register->get_client_holder(user_id);
+
+    if (!c_holder.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
-        return -1;
+        return std::nullopt;
     }
 
-    encryption::encryption_data enc_data;
-    memcpy(enc_data.key, key, encryption::MAX_KEY_SIZE);
-    memcpy(enc_data.iv, vpn_data.iv, encryption::MAX_IV_SIZE);
+    std::optional<encryption::packet> d_packet = 
+        vpn_data
+            .encrypted_packet
+            .decrypt(encryption::encryption_data(c_holder.value().symmetric_key, vpn_data.iv));
 
-    encryption::packet decrypted_message = encryption::decrypt(vpn_data.encrypted_packet, enc_data);
-    *ret_packet = decrypted_message;
+    if (!d_packet.has_value()) {
+        return std::nullopt;
+    }
+
+    bool valid_hash = 
+        d_packet
+            .value()
+            .valid_hash(vpn_data.hash);
 
     // With the encrypted packet we must verify the hash.
-    if (encryption::hash_verify(decrypted_message, vpn_data.hash) == -1) {
+    if (!valid_hash) {
         utils::print_error("handle_incoming_udp_packet: wrong hash detected\n");
-        return -1;
+        return std::nullopt;
     }
 
-    return 0;
+    return d_packet;
 }
 
 int start_doge_vpn() {
@@ -129,6 +117,8 @@ int start_doge_vpn() {
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
     holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);
+    holder::client_register c_register(11);
+
 
     /* After tcp and udp sockets are created:
     *   1. extract sockets from holder
@@ -136,18 +126,20 @@ int start_doge_vpn() {
     */
     socket_utils::socket_t tcp_socket = holder::extract_socket(&server_tcp_holder);
     socket_utils::socket_t udp_socket = holder::extract_socket(&server_udp_holder);
-    selector::selector_set s_set = selector::create_set({tcp_socket, udp_socket});
 
-    holder::client_register c_register;
-    holder::create_client_register_with_c_pool(11, &c_register);
+    std::set<socket_utils::socket_t> server_socket_set;
+    server_socket_set.insert(tcp_socket);
+    server_socket_set.insert(udp_socket);
 
     while(true) {
 
-        fd_set reads = selector::wait_select_or_abort(&s_set);
+        socket_utils::socket_t max_socket;
+        fd_set master = c_register.fd_set_merge(server_socket_set, &max_socket);
+        socket_utils::select_or_throw(max_socket + 1, &master);
 
-        for (socket_utils::socket_t socket = 0; socket <= s_set.max_socket; ++socket) {
+        for (socket_utils::socket_t socket = 0; socket <= max_socket; ++socket) {
 
-           if (selector::is_set(&reads, socket)) {
+           if (FD_ISSET(socket, &master)) {
 
                 if (socket == tcp_socket) {
 
@@ -165,25 +157,20 @@ int start_doge_vpn() {
                         *  Instead of blocking the entire server we may want to block only one therad.
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
-                        std::thread th(
-                            handle_tcp_client_key_exchange,
-                            ctx,
-                            &info, 
-                            &c_register,
-                            &s_set
-                        );
-
+                        std::thread th(handle_tcp_client_key_exchange, ctx, &info, &c_register);
                         th.detach();
                     }
                 } else if (socket == udp_socket) {
 
                     encryption::packet received_packet;
-                    if (handle_incoming_udp_packet(socket, &c_register, &received_packet) == -1) {
+                    if (!handle_incoming_udp_packet(socket, &c_register).has_value()) {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
 
                     }
                 } else {
+
+                    //printf("client disconnected!!!\n");
 
                     // if (socket == extract_socket(tun_ss_holder))
 

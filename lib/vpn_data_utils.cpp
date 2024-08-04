@@ -343,6 +343,30 @@ namespace vpn_data_utils {
         else return std::nullopt;
     }
 
+    std::optional<encryption::packet> udp_packet_data::decrypt(const unsigned char *key) {
+
+        std::optional<encryption::packet> d_packet =
+            encrypted_packet
+                .decrypt(encryption::encryption_data(key, iv));
+
+        if (!d_packet.has_value()) return std::nullopt;
+
+        bool valid_hash = 
+            d_packet
+                .value()
+                .valid_hash(hash);
+
+        /* With the encrypted packet we must verify the hash. */
+        if (!valid_hash) {
+            std::cerr 
+                << "handle_incoming_udp_packet: wrong hash detected\n"
+                << std::endl;
+            return std::nullopt;
+        }
+        
+        return d_packet;
+    }
+
     void udp_packet_data::log() {
 
         printf("Reading VPN data from client packet\n");

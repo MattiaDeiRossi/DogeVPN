@@ -92,27 +92,8 @@ std::optional<encryption::packet> decrypt_udp_packet(
         return std::nullopt;
     }
 
-    std::optional<encryption::packet> d_packet = 
-        vpn_data
-            .encrypted_packet
-            .decrypt(encryption::encryption_data(c_holder.value().symmetric_key, vpn_data.iv));
-
-    if (!d_packet.has_value()) {
-        return std::nullopt;
-    }
-
-    bool valid_hash = 
-        d_packet
-            .value()
-            .valid_hash(vpn_data.hash);
-
-    // With the encrypted packet we must verify the hash.
-    if (!valid_hash) {
-        utils::print_error("handle_incoming_udp_packet: wrong hash detected\n");
-        return std::nullopt;
-    }
-
-    return d_packet;
+    return vpn_data
+        .decrypt(c_holder.value().symmetric_key);
 }
 
 int start_doge_vpn() {
@@ -152,7 +133,9 @@ int start_doge_vpn() {
                     if (socket_utils::invalid_info(&info)) {
 
                         /* This could fail when the connections reach the maximum allowed number. */
-                        fprintf(stderr, "start_doge_vpn: cannot accept new client\n");
+                        std::cerr 
+                            << "start_doge_vpn: cannot accept new client" 
+                            << std::endl;
                     } else {
 
                         /* Why do we need to start a new thread when handling a new client?

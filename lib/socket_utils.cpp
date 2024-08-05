@@ -188,16 +188,9 @@ namespace socket_utils {
 		bzero(address_service, 256);
 	}
 
-	void raw_udp_client_info::log() {
-		std::cout << 
-			"Received packet from:\n" << 
-			address_service << 
-			"\n";
-	}
+	raw_udp_client_info::raw_udp_client_info(struct sockaddr_storage address, socklen_t length) {
 
-	raw_udp_client_info udp_client_info::to_raw_info() {
-
-		raw_udp_client_info raw_info;
+		bzero(address_service, 256);
 
 		char address_buffer[128];
 	    char service_buffer[128];
@@ -214,17 +207,34 @@ namespace socket_utils {
 		char *s_ptr = service_buffer;
 		
 		while (*a_ptr) {
-			raw_info.address_service[index++] = *a_ptr;
+			address_service[index++] = *a_ptr;
 			a_ptr++;
 		}
 
-		raw_info.address_service[index++] = ':';
+		address_service[index++] = ':';
 
 		while (*s_ptr) {
-			raw_info.address_service[index++] = *s_ptr;
+			address_service[index++] = *s_ptr;
 			s_ptr++;
 		}
+	}
 
+	void raw_udp_client_info::log() {
+		std::cout << 
+			"Received packet from:\n" << 
+			address_service << 
+			"\n";
+	}
+
+	raw_udp_client_info tcp_client_info::to_raw_info() {
+
+		raw_udp_client_info raw_info(address, length);
+		return raw_info;
+	}
+
+	raw_udp_client_info udp_client_info::to_raw_info() {
+
+		raw_udp_client_info raw_info(address, length);
 		return raw_info;
 	}
 

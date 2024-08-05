@@ -14,22 +14,25 @@ namespace socket_utils
 
     const socket_t invalid_socket_value = -1;
 
-    struct tcp_client_info {
-        socket_t socket;
-        socklen_t length;
-        struct sockaddr_storage address;
-    };
-
     struct raw_udp_client_info {
 
         char address_service[256];
 
         raw_udp_client_info();
+        raw_udp_client_info(struct sockaddr_storage address, socklen_t length);
 
         bool operator==(const raw_udp_client_info &o) const;
         bool operator<(const raw_udp_client_info &o) const;
 
         void log();
+    };
+
+    struct tcp_client_info {
+        socket_t socket;
+        socklen_t length;
+        struct sockaddr_storage address;
+
+        raw_udp_client_info to_raw_info();  
     };
 
     struct udp_client_info {

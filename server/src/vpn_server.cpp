@@ -99,6 +99,8 @@ std::optional<encryption::packet> extract_udp_packet(
     c_holder.udp_info = recv_result.udp_info;
     c_register->update_client_holder(c_holder);
 
+    c_holder.log();
+
     std::optional<encryption::packet> d_packet_opt = 
         vpn_data.decrypt(c_holder.symmetric_key);
 

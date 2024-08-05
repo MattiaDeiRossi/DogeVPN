@@ -313,24 +313,6 @@ namespace holder {
         }
     }
 
-    int extract_client_key(
-        client_register *c_register,
-        unsigned int session_id,
-        unsigned char *symmetric_key
-    ) {
-
-        std::shared_lock lock(c_register->mutex);
-
-        if (c_register->session_per_holder.count(session_id) == 0) {
-            return -1;
-        }
-
-        client_holder c_holder = c_register->session_per_holder.at(session_id);
-        memcpy(symmetric_key, c_holder.symmetric_key, SIZE_32);
-
-        return 0;
-    }
-
     holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp) {
 
         holder::socket_holder holder;
@@ -351,6 +333,17 @@ namespace holder {
 
         std::shared_lock lock(mutex);
 
+        if (session_per_holder.count(session_id) == 0) return std::nullopt;
+        return session_per_holder.at(session_id);
+    }
+
+    std::optional<client_holder> client_register::get_client_holder(tun_ip ip) {
+
+        std::shared_lock lock(mutex);
+
+        if (tun_ip_per_session.count(ip) == 0) return std::nullopt;
+
+        unsigned int session_id = tun_ip_per_session.at(ip);
         if (session_per_holder.count(session_id) == 0) return std::nullopt;
         return session_per_holder.at(session_id);
     }

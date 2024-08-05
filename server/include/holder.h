@@ -100,6 +100,7 @@ namespace holder {
         void delete_client_holder(client_holder holder);
 
         std::optional<client_holder> get_client_holder(unsigned int session_id);
+        std::optional<client_holder> get_client_holder(tun_ip ip);
 
         fd_set fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket);
     };

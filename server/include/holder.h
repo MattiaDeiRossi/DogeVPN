@@ -48,7 +48,9 @@ namespace holder {
 
         /*
         */
-        SSL *ssl;    
+        SSL *ssl;
+
+        void log(); 
     };
 
     struct server_holder {

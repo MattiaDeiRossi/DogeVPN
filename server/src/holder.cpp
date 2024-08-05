@@ -347,4 +347,35 @@ namespace holder {
         if (session_per_holder.count(session_id) == 0) return std::nullopt;
         return session_per_holder.at(session_id);
     }
+
+    void client_holder::log() {
+
+        std::cout 
+            << "Client data:"
+            << std::endl
+            << "  TLS data:"
+            << std::endl
+            << "    SESSION_ID: " << session_id
+            << "    SYMMETRIC_KEY: " << symmetric_key
+            << std::endl;
+
+        std::cout
+            << "  TUN Data:"
+            << "    TUN_ID: " << client_tun_ip_id
+            << "    TUN_IP: " << client_tun_ip.ip
+            << std::endl;
+
+        socket_utils::raw_udp_client_info raw_tcp_info = tcp_info.to_raw_info();
+        std::cout
+            << "  TCP Data:"
+            << "    TCP_SOCKET: " << tcp_info.socket
+            << "    TCP_IP_SERVICE: " << raw_tcp_info.address_service
+            << std::endl;
+        
+        socket_utils::raw_udp_client_info raw_udp_info = udp_info.to_raw_info();
+        std::cout
+            << "  UDP Data:"
+            << "    UDP_IP_SERVICE: " << raw_udp_info.address_service
+            << std::endl;
+    }
 }

@@ -14,6 +14,16 @@ namespace holder {
         return c_register->session_per_holder.at(session_id).client_tun_ip;
     }
 
+    tun_ip::tun_ip() {
+        bzero(ip, SIZE_32);
+    }
+
+    tun_ip::tun_ip(const char *buffer) {
+
+        bzero(ip, SIZE_32);
+        memcpy(ip, buffer, strlen(buffer));
+    }
+
     bool tun_ip::operator==(const tun_ip &o) const {
         return strncmp(ip, o.ip, SIZE_32) == 0 ? true : false;
     }

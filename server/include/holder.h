@@ -24,6 +24,9 @@ namespace holder {
 
         bool operator==(const tun_ip &o) const;
         bool operator<(const tun_ip &o) const;
+
+        tun_ip();
+        tun_ip(const char *buffer);
     };
 
     struct client_holder {

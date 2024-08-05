@@ -107,6 +107,24 @@ namespace holder {
         return update_register(this, holder, true, true) == 0 ? true : false;
     }
 
+    bool client_register::update_client_holder(client_holder holder) {
+
+        std::unique_lock lock(mutex);
+
+        if (session_per_holder.count(holder.session_id) == 0) {
+            std::cout 
+                << "client_register::update_client_holder: client holder was not updated"
+                << std::endl;
+            return false;
+        }
+
+        /* Erase and insert the updated holder */
+        session_per_holder.erase(holder.session_id);
+        session_per_holder.insert({holder.session_id, holder});
+
+        return true;
+    }
+
     void client_register::delete_client_holder(client_holder holder) {
         update_register(this, holder, false, true);
     }

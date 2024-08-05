@@ -92,6 +92,8 @@ namespace holder {
 
         bool insert_client_holder(client_holder holder);
 
+        bool update_client_holder(client_holder holder);
+
         /* Erased holder from register if present.
         *  Data within holder should not be considered valid anymore. 
         */

@@ -12,6 +12,7 @@ RUN apt-get update && \
 WORKDIR /DogeVPN
 ADD lib/ /DogeVPN/lib
 ADD client/  /DogeVPN/client
+ADD config.txt /DogeVPN/.
 
 RUN cd client/DogeVPNGui/;\
     mkdir build;\

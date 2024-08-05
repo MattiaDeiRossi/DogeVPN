@@ -67,6 +67,9 @@ void MainWindow::handleThreadFinished(int result)
 {
     ui->connectionStatus->setText("Disconnected");
     ui->connectionStatus->setStyleSheet("color: red;");
+    if(result<0)
+        QMessageBox::warning(this, tr("Error"), tr("Connection closed woth an error"));
+
     std::cout << result << std::endl;
 }
 
@@ -74,9 +77,7 @@ void MainWindow::on_actionOpen_triggered()
 {
     auto fileName = settingsWidget->loadFromFile();
     if(fileName.isEmpty())
-        ui->file_label->setText("");
-    else
-        ui->file_label->setText("File loaded: " + QFileInfo(fileName).fileName());
+        QMessageBox::warning(this, tr("Error"), tr("FileName is empty"));
 
     if (settingsWidget) {
         settingsWidget->show();
@@ -102,7 +103,24 @@ void MainWindow::on_actionEdit_triggered()
 
 
 void MainWindow::handleSettingsAccepted() {
+    auto settings = settingsWidget->getSettings();
+    auto domain = settings.value("domain").toStdString();
+    auto port= settings.value("port").toStdString();
+    auto dp = domain + ":" + port;
+    auto us = settings.value("username").toStdString().c_str();
+
+    ui->domain_label->setText(dp.c_str());
+    ui->name_label->setText(us);
+
     settingsWidget->close();
+
 }
 
+
+
+void MainWindow::on_actionInfo_triggered()
+{
+    QUrl url("https://github.com/MattiaDeiRossi/DogeVPN");
+    QDesktopServices::openUrl(url);
+}
 

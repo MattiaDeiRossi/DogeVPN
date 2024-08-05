@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QDesktopServices>
+#include <QUrl>
 #include "settingswidget.h"
 #include "thread.h"
 #include "client.h"
@@ -34,6 +36,8 @@ private slots:
     void handleThreadFinished(int result);
 
     void on_actionEdit_triggered();
+
+    void on_actionInfo_triggered();
 
 private:
     Ui::MainWindow *ui;

@@ -202,6 +202,17 @@ namespace encryption
         inet_ntop(AF_INET, &(iphdr->ip_dst), destination_ip, INET_ADDRSTRLEN);
     }
 
+    void ip_addresses::log() {
+
+        std::cout
+            << "Reading source and destination IP addresses:"
+            << std::endl
+            << "Source IP: " << source_ip
+            << std::endl
+            << "Destination IP: " << destination_ip
+            << std::endl;
+    }
+
     ip_addresses packet::get_ip_addresses() {
 
         ip_addresses ips(buffer);

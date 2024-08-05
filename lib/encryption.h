@@ -39,6 +39,8 @@ namespace encryption
         char destination_ip[64];
 
         ip_addresses(unsigned char *buffer);
+
+        void log();
     };
 
     struct packet {

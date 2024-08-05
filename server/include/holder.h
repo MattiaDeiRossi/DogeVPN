@@ -63,11 +63,10 @@ namespace holder {
             SERVER_HOLDER
         } holder_type;
 
-        union {
-            client_holder c_holder;
-            server_holder s_holder;
-        };
+        client_holder c_holder;
+        server_holder s_holder;
     };
+
 
     /* Register of current connected client.
     *  Whenever a client connects or disconnects, this should be properly updated.

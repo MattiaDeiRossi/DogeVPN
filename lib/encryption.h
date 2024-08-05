@@ -11,6 +11,9 @@
 #include <openssl/rand.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/ip.h>
 
 namespace encryption
 {
@@ -30,6 +33,14 @@ namespace encryption
         encryption_data(const unsigned char *key, const unsigned char *iv);
     };
 
+    struct ip_addresses {
+
+        char source_ip[64];
+        char destination_ip[64];
+
+        ip_addresses(unsigned char *buffer);
+    };
+
     struct packet {
 
         unsigned char buffer[SIZE_8_192];
@@ -42,8 +53,11 @@ namespace encryption
         std::optional<packet> encrypt(encryption_data enc_data);
         std::optional<packet> decrypt(encryption_data enc_data);
 
+        ip_addresses get_ip_addresses();
+
         bool getShaSum(unsigned char *output);
         bool valid_hash(unsigned char *hash);
+
         bool append(const unsigned char *data, size_t num);
         bool append(unsigned char data);
     };

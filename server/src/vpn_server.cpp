@@ -85,16 +85,38 @@ std::optional<encryption::packet> extract_udp_packet(
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
     user_id user_id = id_num;
 
-    std::optional<holder::client_holder> c_holder = c_register->get_client_holder(user_id);
+    std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(user_id);
 
-    if (!c_holder.has_value()) {
+    if (!c_holder_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
         return std::nullopt;
     }
 
-    return vpn_data
-        .decrypt(c_holder.value().symmetric_key);
-}
+    /* Since we received the udp info from client, we must save this
+    *  information on order to properly send packets back.
+    */
+    holder::client_holder c_holder = c_holder_opt.value();
+    c_holder.udp_info = recv_result.udp_info;
+    c_register->update_client_holder(c_holder);
+
+    std::optional<encryption::packet> d_packet_opt = 
+        vpn_data.decrypt(c_holder.symmetric_key);
+
+    if (!d_packet_opt.has_value()) {
+        std::cerr
+            << "handle_incoming_udp_packet: packet cannot be decrypted\n"
+            << std::endl;
+        return std::nullopt;
+    }
+
+    encryption::packet d_packet = d_packet_opt.value();
+    return d_packet;
+
+    /*
+    encryption::ip_addresses ips = d_packet.get_ip_addresses();
+    ips.log();
+    */
+ }
 
 int start_doge_vpn() {
 

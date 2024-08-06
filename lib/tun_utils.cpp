@@ -65,7 +65,6 @@ namespace tun_utils {
 
         ssize_t len = read(meta->fd, buffer, MAX_DATA_SIZE);
 
-
         if (len < 0) {
             fprintf(stderr, "failed read from tun\n");
             return NULL;
@@ -174,10 +173,10 @@ namespace tun_utils {
         unsigned int byte_length = 8;
 
         unsigned char ip_bytes[4];
-        bzero(ip_bytes, sizeof(ip_bytes));
+        bzero(ip_bytes, 4);
 
         for (size_t i = 0; i < 4; ++i) {
-            ip_bytes[i] = (ip_to_use | ip_bytes[i]) & mask ;
+            ip_bytes[i] = (ip_to_use | this->ip_bytes[i]) & mask ;
             ip_to_use >>= byte_length;
         }
 
@@ -203,19 +202,6 @@ namespace tun_utils {
                     ptr++;
                 }
             }
-        }
-
-        buffer[start++] = '/';
-
-        char netmask_buffer[4];
-        char *ptr = netmask_buffer;
-        sprintf(netmask_buffer, "%d", netmask);
-
-        for (int i = 0; i < 4; i++) {
-
-            if (!(*ptr)) break;
-            buffer[start++] = *ptr;
-            ptr++;
         }
 
         *next_ip = this->next_ip;

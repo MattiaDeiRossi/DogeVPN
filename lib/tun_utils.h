@@ -26,8 +26,11 @@ namespace tun_utils {
     const unsigned int MAX_DATA_SIZE = 32768;
 
     struct ip_header {
+
         char source_ip[MAX_IP_SIZE];
         char destination_ip[MAX_IP_SIZE];
+
+        void log();
     };
 
     struct tundev_t {
@@ -58,14 +61,17 @@ namespace tun_utils {
 
         std::set<unsigned int> unavailable_ips;
 
+        /* Given a pool of available ip addresses, a call to next returns the next available ip.
+        *  In order to work properly the pool must be properly configured.
+        */
+        const char* next(char *buffer, size_t num, unsigned int *next_ip);
+
         void insert(unsigned int ip);
     };
 
     tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame);
 
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
-
-    void log_ip_header(const ip_header *ret);
 
     int enable_forwarding(bool enable);
 
@@ -74,11 +80,6 @@ namespace tun_utils {
         bool up,
         const char *address
     );
-
-    /* Given a pool of available ip addresses, a call to next returns the next available ip.
-    *  In order to work properly the pool must be properly configured.
-    */
-    const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip);
 
     int configure_private_class_c_pool(unsigned char third_octet, std::set<unsigned int> unavailable_ip_set, ip_pool_t *pool);
 

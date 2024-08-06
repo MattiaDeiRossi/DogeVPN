@@ -88,7 +88,7 @@ namespace holder {
             */
             char tun_ip[SIZE_32];
             unsigned int client_tun_ip_id;
-            if (tun_utils::next(&(c_register->pool), tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL) {
+            if (c_register->pool.next(tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL) {
                 fprintf(stderr, "init_tcp_client_holder: unavailable ip for client\n");
                 return -1;
             }

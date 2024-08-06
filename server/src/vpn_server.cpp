@@ -220,7 +220,7 @@ void test_tun() {
         tun_utils::tundev_frame_t frame;
         tun_utils::ip_header header;
         tun_utils::read_ip_header(tun_utils::tun_read(&meta, &frame), &header);
-        tun_utils::log_ip_header(&header);
+        header.log();
 
         /*if(nread < 0) {
             perror("Reading from interface");
@@ -241,7 +241,7 @@ void test_pool() {
 
     char buffer[512];
     unsigned int nip;
-    while (tun_utils::next(&pool, buffer, 512, &nip)) {
+    while (pool.next(buffer, 512, &nip)) {
         std::cout << buffer << "--" << nip << std::endl;
     }
 }

@@ -2,6 +2,14 @@
 
 namespace tun_utils {
 
+    void ip_header::log() {
+
+        const char *padding = "   ";
+        std::cout << "Logging ip header:" << std::endl;
+        std::cout << padding << "Source ip address: " << source_ip << std::endl;
+        std::cout << padding << "Destination ip address: " << destination_ip << std::endl;
+    }
+
     tundev_t::tundev_t(const char *name) {
 
         bzero(dev, IFNAMSIZ);
@@ -99,14 +107,6 @@ namespace tun_utils {
         return 0;
     }
 
-    void log_ip_header(const ip_header *header) {
-
-        const char *padding = "   ";
-        std::cout << "Logging ip header:" << std::endl;
-        std::cout << padding << "Source ip address: " << header->source_ip << std::endl;
-        std::cout << padding << "Destination ip address: " << header->destination_ip << std::endl;
-    }
-
     int enable_forwarding(bool enable) {
         char command[256];
 		snprintf(command, sizeof(command), "sysctl net.ipv4.ip_forward=%d", enable ? 1 : 0);
@@ -143,12 +143,12 @@ namespace tun_utils {
         return -1;
     }
 
-    const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip) {
+    const char* ip_pool_t::next(char *buffer, size_t num, unsigned int *next_ip) {
 
-        unsigned int host_bits = 32 - pool->netmask;
+        unsigned int host_bits = 32 - netmask;
         unsigned int max_ips = ((int) pow(2, host_bits));
 
-        if (pool->unavailable_ips.size() == max_ips) {
+        if (unavailable_ips.size() == max_ips) {
             std::cerr << "no available ip for the given pool" << std::endl;
             return NULL;
         }
@@ -158,10 +158,10 @@ namespace tun_utils {
             /* Searching for the next available ip.
             *  As soon the next ip is found, it gets added to the already used set.
             */
-            if (pool->unavailable_ips.count(pool->next_ip) != 0) {
-                pool->next_ip = (pool->next_ip + 1) % max_ips;
+            if (unavailable_ips.count(this->next_ip) != 0) {
+                this->next_ip = (this->next_ip + 1) % max_ips;
             } else {
-                pool->unavailable_ips.insert(pool->next_ip);
+                unavailable_ips.insert(this->next_ip);
                 break;
             }
         }
@@ -169,7 +169,7 @@ namespace tun_utils {
         /* Composign the ipv4 address as bytes:
         *   - assuming the call o pool->ip_bytes[i] produce a byte with correct offset
         */
-        unsigned int ip_to_use = pool->next_ip;
+        unsigned int ip_to_use = this->next_ip;
         unsigned int mask = 255;
         unsigned int byte_length = 8;
 
@@ -177,7 +177,7 @@ namespace tun_utils {
         bzero(ip_bytes, sizeof(ip_bytes));
 
         for (size_t i = 0; i < 4; ++i) {
-            ip_bytes[i] = (ip_to_use | pool->ip_bytes[i]) & mask ;
+            ip_bytes[i] = (ip_to_use | ip_bytes[i]) & mask ;
             ip_to_use >>= byte_length;
         }
 
@@ -209,7 +209,7 @@ namespace tun_utils {
 
         char netmask_buffer[4];
         char *ptr = netmask_buffer;
-        sprintf(netmask_buffer, "%d", pool->netmask);
+        sprintf(netmask_buffer, "%d", netmask);
 
         for (int i = 0; i < 4; i++) {
 
@@ -218,7 +218,7 @@ namespace tun_utils {
             ptr++;
         }
 
-        *next_ip = pool->next_ip;
+        *next_ip = this->next_ip;
         return buffer; 
     }
 

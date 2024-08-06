@@ -47,9 +47,11 @@ namespace tun_utils {
     };
 
     struct tundev_frame_t {
+
         struct tun_pi info;
-        size_t size;
+
         char data[MAX_DATA_SIZE];
+        size_t size;
     };
 
     struct ip_pool_t {

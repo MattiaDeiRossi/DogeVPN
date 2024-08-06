@@ -131,8 +131,6 @@ int start_doge_vpn() {
     server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL);
     holder::client_register c_register(server_pool);
 
-
-
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
     holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);

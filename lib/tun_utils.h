@@ -78,6 +78,7 @@ namespace tun_utils {
 
     void insert(ip_pool_t *pool, unsigned int ip);
 
+    int configure_private_class_c_pool(unsigned char third_octet, std::set<unsigned int> unavailable_ip_set, ip_pool_t *pool);
     int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }
 

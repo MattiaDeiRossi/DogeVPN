@@ -5,8 +5,42 @@ namespace tun_utils {
     tundev_t::tundev_t(const char *name) {
 
         bzero(dev, IFNAMSIZ);
-        memcpy(dev, name, strlen(name));
-        flags = IFF_TUN | IFF_NO_PI;
+
+        flags = 
+            IFF_TUN |   /* IFF_TUN to indicate a TUN device (no ethernet headers in the packets) */
+            IFF_NO_PI;  /* The purpose of IFF_NO_PI is to tell the kernel that packets will be "pure" IP packets, with no added bytes */
+
+        fd = open("/dev/net/tun", O_RDWR);
+        if (fd < 0) {
+            throw std::invalid_argument("cannot open TUN interface");
+        };
+
+        struct ifreq ifr;
+        bzero(&ifr, sizeof(ifr));
+        ifr.ifr_flags = flags;
+
+        if (strlen(name)) {
+
+            /* If a device name was specified, put it in the structure.
+            *  If not the kernel will try to allocate the "next" device of the specified type .
+            */
+            strncpy(ifr.ifr_name, name, IFNAMSIZ);
+        }
+
+        /* Trying to create the device.
+        *  If the ioctl() succeeds, the virtual interface is created.
+        *  The file descriptor we had is now associated to it, and can be used to communicate. 
+        */
+        if (ioctl(fd, TUNSETIFF, (void *) &ifr) < 0) {
+            close(fd);
+            throw std::invalid_argument("system call failed: ioctl");
+        }
+
+        /* If the operation was successful, write back the name of the interface to the variable "dev".
+        *  This way the caller can know it: note that the caller MUST reserve space in *dev.
+        */
+        strcpy(dev, ifr.ifr_name);
+
     }
 
     int tun_alloc(tundev_t *meta) {

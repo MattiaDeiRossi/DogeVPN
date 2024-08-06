@@ -4,6 +4,8 @@
 #include <iostream>
 #include <set>
 #include <cmath>
+#include <shared_mutex>
+#include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,8 +18,6 @@
 #include <linux/if_tun.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <shared_mutex>
-#include <mutex>
 
 namespace tun_utils {
 
@@ -35,6 +35,9 @@ namespace tun_utils {
         int	fd;
         int	flags;
 
+        /* Arguments taken by the function:
+        * @param name:  the name of an interface (or '\0'); must have enough space to hold the interface name if '\0' is passed.
+        */
         tundev_t(const char *name);
     };
 
@@ -51,13 +54,6 @@ namespace tun_utils {
         unsigned int next_ip;
         std::set<unsigned int> unavailable_ips;
     };
-
-    /* Arguments taken by the function:
-    *   - char *dev: 
-    *       The name of an interface (or '\0').
-    *       MUST have enough space to hold the interface name if '\0' is passed.
-    */
-    int tun_alloc(tundev_t *meta);
 
     tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame);
 

@@ -209,7 +209,7 @@ void test_tun() {
     bzero(name, sizeof(name));
     snprintf(name, sizeof(name), "tun42");
 
-    tun_utils::tundev_t meta = tun_utils::init_meta_no_pi(name);
+    tun_utils::tundev_t meta(name);
     tun_utils::tun_alloc(&meta);
     tun_utils::enable_forwarding(true);
     tun_utils::configure_interface(&meta, true, "192.168.53.5/24");

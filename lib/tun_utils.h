@@ -34,6 +34,8 @@ namespace tun_utils {
         char dev[IFNAMSIZ];
         int	fd;
         int	flags;
+
+        tundev_t(const char *name);
     };
 
     struct tundev_frame_t {
@@ -49,8 +51,6 @@ namespace tun_utils {
         unsigned int next_ip;
         std::set<unsigned int> unavailable_ips;
     };
-
-    tundev_t init_meta_no_pi(const char *name);
 
     /* Arguments taken by the function:
     *   - char *dev: 

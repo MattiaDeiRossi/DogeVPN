@@ -2,14 +2,11 @@
 
 namespace tun_utils {
 
-    tundev_t init_meta_no_pi(const char *name) {
+    tundev_t::tundev_t(const char *name) {
 
-        tundev_t meta;
-        bzero(&meta, sizeof(tundev_t));
-        memcpy(meta.dev, name, strlen(name));
-        meta.flags = IFF_TUN | IFF_NO_PI;
-
-        return meta;
+        bzero(dev, IFNAMSIZ);
+        memcpy(dev, name, strlen(name));
+        flags = IFF_TUN | IFF_NO_PI;
     }
 
     int tun_alloc(tundev_t *meta) {

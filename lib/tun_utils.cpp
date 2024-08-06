@@ -212,7 +212,7 @@ namespace tun_utils {
         unavailable_ips.erase(ip);
     }
 
-    int configure_private_class_c_pool(unsigned char third_octet, std::set<unsigned int> unavailable_ip_set, ip_pool_t *pool) {
+    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool) {
 
         if (third_octet == 0 || third_octet == 255) {
             fprintf(stderr, "Invalid third_octet; valid range is (1..254)");
@@ -238,15 +238,6 @@ namespace tun_utils {
         pool->unavailable_ips.insert(0);
         pool->unavailable_ips.insert(255);
 
-        for (unsigned int ip : unavailable_ip_set) {
-            pool->unavailable_ips.insert(ip);
-        }
-
         return 0;
-    }
-
-    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool) {
-        std::set<unsigned int> _set;
-        return configure_private_class_c_pool(third_octet, _set, pool);
     }
 }

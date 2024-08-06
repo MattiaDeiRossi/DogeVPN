@@ -142,6 +142,32 @@ namespace tun_utils {
         return -1;
     }
 
+    void ip_pool_t::compose_class_c_pool(unsigned char third_octet) {
+
+        if (third_octet == 0 || third_octet == 255) {
+            throw std::invalid_argument("invalid third_octet; valid range is (1..254)");
+        }
+
+        netmask = 24;
+        ip_bytes[3] = 192;
+        ip_bytes[2] = 168;
+        ip_bytes[1] = third_octet;
+
+        /* Last byte is zero:
+        *   - it will be incremented gradually from one to 254
+        *   - each call to next will update the configured pool 
+        */
+        ip_bytes[0] = 0;
+        next_ip = 0;
+
+        /* Host cannot have ip with special meaning:
+        *   - in binary: host portion all zeros is the subnet address
+        *   - in binary: host portion all ones is the broadcast address
+        */
+        unavailable_ips.insert(0);
+        unavailable_ips.insert(255);
+    }
+
     const char* ip_pool_t::next(char *buffer, size_t num, unsigned int *next_ip) {
 
         unsigned int host_bits = 32 - netmask;
@@ -210,34 +236,5 @@ namespace tun_utils {
 
     void ip_pool_t::insert(unsigned int ip) {
         unavailable_ips.erase(ip);
-    }
-
-    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool) {
-
-        if (third_octet == 0 || third_octet == 255) {
-            fprintf(stderr, "Invalid third_octet; valid range is (1..254)");
-            return -1;
-        }
-
-        pool->netmask = 24;
-        pool->ip_bytes[3] = 192;
-        pool->ip_bytes[2] = 168;
-        pool->ip_bytes[1] = third_octet;
-
-        /* Last byte is zero:
-        *   - it will be incremented gradually from one to 254
-        *   - each call to next will update the configured pool 
-        */
-        pool->ip_bytes[0] = 0;
-        pool->next_ip = 0;
-
-        /* Host cannot have ip with special meaning:
-        *   - in binary host portion all zeros is the subnet address
-        *   - in binary: host portion all ones is the broadcast address
-        */
-        pool->unavailable_ips.insert(0);
-        pool->unavailable_ips.insert(255);
-
-        return 0;
     }
 }

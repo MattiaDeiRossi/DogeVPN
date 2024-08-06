@@ -237,7 +237,7 @@ void test_tun() {
 void test_pool() {
 
     tun_utils::ip_pool_t pool;
-    tun_utils::configure_private_class_c_pool(11, &pool);
+    pool.compose_class_c_pool(11);
 
     char buffer[512];
     unsigned int nip;

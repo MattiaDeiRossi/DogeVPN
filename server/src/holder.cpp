@@ -33,7 +33,7 @@ namespace holder {
     }
 
     client_register::client_register(unsigned char third_octet) {
-        tun_utils::configure_private_class_c_pool(third_octet, &pool);
+        pool.compose_class_c_pool(third_octet);
     }
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder) {

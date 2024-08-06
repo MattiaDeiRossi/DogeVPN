@@ -6,6 +6,7 @@
 #include <cmath>
 #include <shared_mutex>
 #include <mutex>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,6 +64,8 @@ namespace tun_utils {
 
         std::set<unsigned int> unavailable_ips;
 
+        void compose_class_c_pool(unsigned char third_octet);
+
         /* Given a pool of available ip addresses, a call to next returns the next available ip.
         *  In order to work properly the pool must be properly configured.
         */
@@ -82,8 +85,6 @@ namespace tun_utils {
         bool up,
         const char *address
     );
-
-    int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }
 
 #endif

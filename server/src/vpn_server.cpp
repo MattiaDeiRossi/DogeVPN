@@ -122,6 +122,8 @@ std::optional<encryption::packet> extract_udp_packet(
 
 int start_doge_vpn() {
 
+    /* TOD TUN interface */
+
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
     holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);
@@ -179,6 +181,7 @@ int start_doge_vpn() {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
 
+                        /* TODO Send to TUN */
                     }
                 } else {
 

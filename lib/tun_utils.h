@@ -51,7 +51,9 @@ namespace tun_utils {
 
         unsigned char netmask;
         unsigned char ip_bytes[4];
+
         unsigned int next_ip;
+
         std::set<unsigned int> unavailable_ips;
     };
 

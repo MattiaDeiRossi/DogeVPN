@@ -124,10 +124,18 @@ int start_doge_vpn() {
 
     /* TOD TUN interface */
 
+    tun_utils::ip_pool_t server_pool;
+    server_pool.compose_class_c_pool(11);
+
+    char server_tun_ip[holder::SIZE_32];
+    server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL);
+    holder::client_register c_register(server_pool);
+
+
+
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
     holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);
-    holder::client_register c_register(11);
 
 
     /* After tcp and udp sockets are created:

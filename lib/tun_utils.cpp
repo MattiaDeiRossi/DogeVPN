@@ -230,7 +230,10 @@ namespace tun_utils {
             }
         }
 
-        *next_ip = this->next_ip;
+        if (next_ip != NULL) {
+            *next_ip = this->next_ip;
+        }
+        
         return buffer; 
     }
 

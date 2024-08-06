@@ -32,8 +32,8 @@ namespace holder {
         return strncmp(ip, o.ip, SIZE_32) < 0 ? true : false;
     }
 
-    client_register::client_register(unsigned char third_octet) {
-        pool.compose_class_c_pool(third_octet);
+    client_register::client_register(tun_utils::ip_pool_t pool) {
+        this->pool = pool;
     }
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder) {

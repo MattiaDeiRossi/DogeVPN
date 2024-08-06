@@ -40,53 +40,14 @@ namespace tun_utils {
         *  This way the caller can know it: note that the caller MUST reserve space in *dev.
         */
         strcpy(dev, ifr.ifr_name);
-
     }
 
-    int tun_alloc(tundev_t *meta) {
+    bool tundev_t::fd_close() {
 
-        const char *clonedev = "/dev/net/tun";
+        if (fd <= 0) return false;
+        if (close(fd) < 0) return false;
 
-        /* Opening the clone device. */
-        int fd = open(clonedev, O_RDWR);
-        if (fd < 0) return -1;
-
-        /* Preparation of the struct ifr:
-        *   - flags contains the flags that tell the kernel which kind of interface we want (tun or tap)
-        *   - IFF_TUN to indicate a TUN device (no ethernet headers in the packets)
-        *   - IFF_NO_PI tells the kernel to not provide packet information:
-        *       the purpose of IFF_NO_PI is to tell the kernel that packets will be "pure" IP packets, with no added bytes
-        */
-        struct ifreq ifr;
-        memset(&ifr, 0, sizeof(ifr));
-        ifr.ifr_flags = meta->flags;
-
-        if (strlen(meta->dev)) {
-            /* If a device name was specified, put it in the structure.
-            *  If not the kernel will try to allocate the "next" device of the specified type .
-            */
-            strncpy(ifr.ifr_name, meta->dev, IFNAMSIZ);
-        }
-
-        /* Trying to create the device.
-        *  If the ioctl() succeeds, the virtual interface is created.
-        *  The file descriptor we had is now associated to it, and can be used to communicate. 
-        */
-        int err = ioctl(fd, TUNSETIFF, (void *) &ifr);
-        if (err < 0 ) {
-            close(fd);
-            return -1;
-        }
-
-        /* If the operation was successful, write back the name of the interface to the variable "dev".
-        *  This way the caller can know it. 
-        *  Note that the caller MUST reserve space in *dev.
-        */
-         strcpy(meta->dev, ifr.ifr_name);
-        
-        /* This is the special file descriptor that the caller will use to talk with the virtual interface. */
-        meta->fd = fd;
-        return 0;
+        return true;
     }
 
     tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame) {
@@ -122,14 +83,6 @@ namespace tun_utils {
         frame->size = len;
 
 	    return frame;
-    }
-
-    int tun_close(int fd) {
-
-        if (fd <= 0) return -1;
-        if (close(fd) < 0) return -1;
-
-        return 0;
     }
 
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret) {
@@ -269,8 +222,8 @@ namespace tun_utils {
         return buffer; 
     }
 
-    void insert(ip_pool_t *pool, unsigned int ip) {
-        pool->unavailable_ips.erase(ip);
+    void ip_pool_t::insert(unsigned int ip) {
+        unavailable_ips.erase(ip);
     }
 
     int configure_private_class_c_pool(unsigned char third_octet, std::set<unsigned int> unavailable_ip_set, ip_pool_t *pool) {

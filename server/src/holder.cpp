@@ -66,7 +66,7 @@ namespace holder {
             client_holder old_holder = c_register->session_per_holder.at(session_id);
             tun_ip old_client_tun_ip = old_holder.client_tun_ip;
 
-            tun_utils::insert(&(c_register->pool), old_holder.client_tun_ip_id);
+            c_register->pool.insert(old_holder.client_tun_ip_id);
 
             if (c_register->tun_ip_per_session.count(old_client_tun_ip) != 0) {
                 c_register->tun_ip_per_session.erase(old_client_tun_ip);

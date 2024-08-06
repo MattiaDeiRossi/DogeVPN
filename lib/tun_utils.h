@@ -39,6 +39,8 @@ namespace tun_utils {
         * @param name:  the name of an interface (or '\0'); must have enough space to hold the interface name if '\0' is passed.
         */
         tundev_t(const char *name);
+
+        bool fd_close();
     };
 
     struct tundev_frame_t {
@@ -55,11 +57,11 @@ namespace tun_utils {
         unsigned int next_ip;
 
         std::set<unsigned int> unavailable_ips;
+
+        void insert(unsigned int ip);
     };
 
     tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame);
-
-    int tun_close(int fd);
 
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
 
@@ -78,9 +80,8 @@ namespace tun_utils {
     */
     const char* next(ip_pool_t *pool, char *buffer, size_t num, unsigned int *next_ip);
 
-    void insert(ip_pool_t *pool, unsigned int ip);
-
     int configure_private_class_c_pool(unsigned char third_octet, std::set<unsigned int> unavailable_ip_set, ip_pool_t *pool);
+
     int configure_private_class_c_pool(unsigned char third_octet, ip_pool_t *pool);
 }
 

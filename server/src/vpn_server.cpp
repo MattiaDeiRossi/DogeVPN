@@ -122,18 +122,26 @@ std::optional<encryption::packet> extract_udp_packet(
 
 int start_doge_vpn() {
 
-    /* TOD TUN interface */
+    /* Put in other places - they should be configurable */
+    unsigned char third_octet = 11;
+    const char *name = "tun42";
+    const char *public_cert = "certs/cert.pem";
+    const char *private_key = "certs/key.pem";
+    const char *address = "0.0.0.0";
+    const char *port = "8080";
 
+    /**/
     tun_utils::ip_pool_t server_pool;
-    server_pool.compose_class_c_pool(11);
+    server_pool.compose_class_c_pool(third_octet);
 
+    /**/
     char server_tun_ip[holder::SIZE_32];
-    server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL);
-    holder::client_register c_register(server_pool);
+    tun_utils::tundev_t meta(name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL));
+    meta.persist();
 
-    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, "certs/cert.pem", "certs/key.pem");
-    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", true);
-    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort("0.0.0.0", "8080", false);
+    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, public_cert, private_key);
+    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(address, port, true);
+    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(address, port, false);
 
 
     /* After tcp and udp sockets are created:
@@ -146,6 +154,9 @@ int start_doge_vpn() {
     std::set<socket_utils::socket_t> server_socket_set;
     server_socket_set.insert(tcp_socket);
     server_socket_set.insert(udp_socket);
+
+    /**/
+    holder::client_register c_register(server_pool);
 
     while(true) {
 
@@ -188,6 +199,8 @@ int start_doge_vpn() {
                     } else {
 
                         /* TODO Send to TUN */
+                        encryption::packet received_packet = received_packet_opt.value();
+
                     }
                 } else {
 
@@ -215,9 +228,9 @@ void test_tun() {
     bzero(name, sizeof(name));
     snprintf(name, sizeof(name), "tun42");
 
-    tun_utils::tundev_t meta(name);
     tun_utils::enable_forwarding(true);
-    tun_utils::configure_interface(&meta, true, "192.168.53.5/24");
+    tun_utils::tundev_t meta(name, "192.168.53.5");
+    meta.persist();
     
     /* Note that "buffer" should be at least the MTU size of the interface, eg 1500 bytes */
 

@@ -33,7 +33,7 @@ namespace tun_utils {
         void log();
     };
 
-        struct tundev_frame_t {
+    struct tundev_frame_t {
 
         struct tun_pi info;
 

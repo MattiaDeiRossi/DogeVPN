@@ -198,9 +198,8 @@ int start_doge_vpn() {
                         utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
                     } else {
 
-                        /* TODO Send to TUN */
                         encryption::packet received_packet = received_packet_opt.value();
-
+                        meta.write_data(received_packet.buffer, received_packet.size);
                     }
                 } else {
 
@@ -236,9 +235,9 @@ void test_tun() {
 
     while (true) {
 
-        tun_utils::tundev_frame_t frame;
+        tun_utils::tundev_frame_t frame = meta.read_data();
         tun_utils::ip_header header;
-        tun_utils::read_ip_header(tun_utils::tun_read(&meta, &frame), &header);
+        tun_utils::read_ip_header(&frame, &header);
         header.log();
 
         /*if(nread < 0) {

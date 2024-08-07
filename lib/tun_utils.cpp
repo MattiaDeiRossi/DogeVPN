@@ -77,7 +77,37 @@ namespace tun_utils {
     }
 
     tundev_frame_t tundev_t::read_data() {
+
+        tundev_frame_t frame;
+        ssize_t length = read(fd, frame.data, MTU);
+
+        if (length < 0) {
+            throw std::invalid_argument("read from TUN device failed");
+        }
+
+        char *ptr = frame.data;
         
+        if (flags & IFF_NO_PI) {
+            
+            /* If IFF_NO_PI is set, this header is omitted */
+            frame.info.flags = 0;
+            frame.info.proto = 0;
+        } else {
+
+            /* First four bytes are the packet information.
+            *  Protocol is in big-endian format.
+            */
+            memcpy(&(frame.info), ptr, sizeof(frame.info));
+            ptr += sizeof(frame.info);
+            length -= sizeof(frame.info);
+            frame.info.proto = ntohs(frame.info.proto);
+        }
+
+        /* Remaining is the packet data */
+        memcpy(frame.data, ptr, length);
+        frame.size = length;
+
+	    return frame;
     }
 
     bool tundev_t::write_data(const void *buf, size_t count) {
@@ -93,41 +123,11 @@ namespace tun_utils {
         if (fd <= 0) return false;
         if (close(fd) < 0) return false;
 
+        bzero(dev, IFNAMSIZ);
+        bzero(addr, 32);
+        fd = 0;
+
         return true;
-    }
-
-    tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame) {
-
-        uint8_t buffer[MAX_DATA_SIZE];
-        uint8_t* ptr = buffer;
-
-        ssize_t len = read(meta->fd, buffer, MAX_DATA_SIZE);
-
-        if (len < 0) {
-            fprintf(stderr, "failed read from tun\n");
-            return NULL;
-        }
-        
-        /* If IFF_NO_PI is set, this header is omitted. */
-        if ((meta->flags & IFF_NO_PI)) {
-            frame->info.flags = 0;
-            frame->info.proto = 0;
-        } else {
-
-            /* First four bytes are the packet information.
-            *  Protocol is in big-endian format.
-            */
-            memcpy(&(frame->info), ptr, sizeof(frame->info));
-            ptr += sizeof(frame->info);
-            len -= sizeof(frame->info);
-            frame->info.proto = ntohs(frame->info.proto);
-        }
-
-        /* Rest is the packet data. */
-        memcpy(frame->data, ptr, len);
-        frame->size = len;
-
-	    return frame;
     }
 
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret) {

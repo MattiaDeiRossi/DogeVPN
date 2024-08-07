@@ -24,7 +24,6 @@ namespace tun_utils {
 
     const unsigned int MTU = 1500;
     const unsigned int MAX_IP_SIZE = 64;
-    const unsigned int MAX_DATA_SIZE = 32768;
 
     struct ip_header {
 
@@ -32,6 +31,14 @@ namespace tun_utils {
         char destination_ip[MAX_IP_SIZE];
 
         void log();
+    };
+
+        struct tundev_frame_t {
+
+        struct tun_pi info;
+
+        char data[MTU];
+        size_t size;
     };
 
     struct tundev_t {
@@ -56,14 +63,6 @@ namespace tun_utils {
         bool write_data(const void *buf, size_t count);
 
         bool fd_close();
-    };
-
-    struct tundev_frame_t {
-
-        struct tun_pi info;
-
-        char data[MAX_DATA_SIZE];
-        size_t size;
     };
 
     struct ip_pool_t {

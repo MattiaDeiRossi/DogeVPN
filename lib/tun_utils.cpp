@@ -10,9 +10,10 @@ namespace tun_utils {
         std::cout << padding << "Destination ip address: " << destination_ip << std::endl;
     }
 
-    tundev_t::tundev_t(const char *name) {
+    tundev_t::tundev_t(const char *name, const char *address) {
 
-        bzero(dev, IFNAMSIZ);
+        bzero(addr, 32);
+        strcpy(addr, address);
 
         flags = 
             IFF_TUN |   /* IFF_TUN to indicate a TUN device (no ethernet headers in the packets) */
@@ -47,7 +48,32 @@ namespace tun_utils {
         /* If the operation was successful, write back the name of the interface to the variable "dev".
         *  This way the caller can know it: note that the caller MUST reserve space in *dev.
         */
+        bzero(dev, IFNAMSIZ);
         strcpy(dev, ifr.ifr_name);
+    }
+
+    void tundev_t::persist() {
+
+        /* Exit status:
+        *   - 0 if command was successful
+        *   - 1 if there is a syntax error
+        *   - 2 if an error was reported by the kernel
+        */
+        char command[256];
+
+        /* ip link set dev {interface} {up|down} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip link set dev %s up", dev);
+        if (system(command) != 0) {
+            throw std::invalid_argument("failing when setting the TUN device");
+        }
+
+        /* ip a add {ip_addr/mask} dev {interface} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip a add %s/24 dev %s", addr, dev);
+        if (system(command) != 0) {
+            throw std::invalid_argument("failing when assigning address to TUN device");
+        }
     }
 
     bool tundev_t::fd_close() {
@@ -112,36 +138,6 @@ namespace tun_utils {
         return system(command);
     }
     
-    int configure_interface(
-        const tundev_t *meta,
-        bool up,
-        const char *address
-    ) {
-
-        /* Exit status:
-        *   - 0 if command was successful
-        *   - 1 if there is a syntax error
-        *   - 2 if an error was reported by the kernel
-        */
-        char command[256];
-
-        /* ip link set dev {interface} {up|down} */
-        bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip link set dev %s %s", meta->dev, up ? "up" : "down");
-        if (system(command) != 0) goto handle_error;
-
-        /* ip a add {ip_addr/mask} dev {interface} */
-        bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip a add %s dev %s", address, meta->dev);
-        if (system(command) != 0) goto handle_error;
-
-        return 0;
-
-    handle_error:
-        fprintf(stderr, "%s failed", command);
-        return -1;
-    }
-
     void ip_pool_t::compose_class_c_pool(unsigned char third_octet) {
 
         if (third_octet == 0 || third_octet == 255) {

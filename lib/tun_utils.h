@@ -35,14 +35,21 @@ namespace tun_utils {
     };
 
     struct tundev_t {
+
         char dev[IFNAMSIZ];
+        char addr[32];
+
         int	fd;
         int	flags;
 
         /* Arguments taken by the function:
-        * @param name:  the name of an interface (or '\0'); must have enough space to hold the interface name if '\0' is passed.
+        * @param name:      the name of an interface (or '\0'); 
+                            must have enough space to hold the interface name if '\0' is passed.
+        * @param address:   the address that will be used for ip packets
         */
-        tundev_t(const char *name);
+        tundev_t(const char *name, const char *address);
+
+        void persist();
 
         bool fd_close();
     };
@@ -79,12 +86,6 @@ namespace tun_utils {
     int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
 
     int enable_forwarding(bool enable);
-
-    int configure_interface(
-        const tundev_t *meta,
-        bool up,
-        const char *address
-    );
 }
 
 #endif

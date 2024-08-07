@@ -76,6 +76,18 @@ namespace tun_utils {
         }
     }
 
+    tundev_frame_t tundev_t::read_data() {
+        
+    }
+
+    bool tundev_t::write_data(const void *buf, size_t count) {
+
+      ssize_t bytes = write(fd, buf, count);
+
+      if (bytes < 0) return false;
+      else return true;
+    }
+
     bool tundev_t::fd_close() {
 
         if (fd <= 0) return false;

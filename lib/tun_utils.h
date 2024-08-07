@@ -51,6 +51,10 @@ namespace tun_utils {
 
         void persist();
 
+        tundev_frame_t read_data();
+
+        bool write_data(const void *buf, size_t count);
+
         bool fd_close();
     };
 

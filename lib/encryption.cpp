@@ -192,33 +192,6 @@ namespace encryption
         return result;
     }
 
-    ip_addresses::ip_addresses(unsigned char *buffer) {
-
-        bzero(source_ip, 64);
-        bzero(destination_ip, 64);
-
-        struct ip *iphdr = (struct ip *) buffer;
-        inet_ntop(AF_INET, &(iphdr->ip_src), source_ip, INET_ADDRSTRLEN);
-        inet_ntop(AF_INET, &(iphdr->ip_dst), destination_ip, INET_ADDRSTRLEN);
-    }
-
-    void ip_addresses::log() {
-
-        std::cout
-            << "Reading source and destination IP addresses:"
-            << std::endl
-            << "Source IP: " << source_ip
-            << std::endl
-            << "Destination IP: " << destination_ip
-            << std::endl;
-    }
-
-    ip_addresses packet::get_ip_addresses() {
-
-        ip_addresses ips(buffer);
-        return ips;
-    }
-
     bool packet::getShaSum(unsigned char *output) {
 
         EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();

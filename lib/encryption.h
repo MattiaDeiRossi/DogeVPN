@@ -33,16 +33,6 @@ namespace encryption
         encryption_data(const unsigned char *key, const unsigned char *iv);
     };
 
-    struct ip_addresses {
-
-        char source_ip[64];
-        char destination_ip[64];
-
-        ip_addresses(unsigned char *buffer);
-
-        void log();
-    };
-
     struct packet {
 
         unsigned char buffer[SIZE_8_192];
@@ -54,8 +44,6 @@ namespace encryption
 
         std::optional<packet> encrypt(encryption_data enc_data);
         std::optional<packet> decrypt(encryption_data enc_data);
-
-        ip_addresses get_ip_addresses();
 
         bool getShaSum(unsigned char *output);
         bool valid_hash(unsigned char *hash);

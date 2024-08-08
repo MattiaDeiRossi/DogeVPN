@@ -2,12 +2,28 @@
 
 namespace tun_utils {
 
+    ip_header::ip_header() {
+        bzero(source_ip, MAX_IP_SIZE);
+        bzero(destination_ip, MAX_IP_SIZE);
+    }
+
     void ip_header::log() {
 
         const char *padding = "   ";
         std::cout << "Logging ip header:" << std::endl;
         std::cout << padding << "Source ip address: " << source_ip << std::endl;
         std::cout << padding << "Destination ip address: " << destination_ip << std::endl;
+    }
+
+    ip_header tundev_frame_t::get_ip_header() {
+
+        ip_header header;
+
+        struct ip *iphdr = (struct ip *) data;
+        inet_ntop(AF_INET, &(iphdr->ip_src), header.source_ip, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(iphdr->ip_dst), header.destination_ip, INET_ADDRSTRLEN);
+
+        return header;
     }
 
     tundev_t::tundev_t(const char *name, const char *address) {
@@ -74,6 +90,13 @@ namespace tun_utils {
         if (system(command) != 0) {
             throw std::invalid_argument("failing when assigning address to TUN device");
         }
+
+        /* ip link set mtu {number} dev {interface} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip link set mtu %d dev %s", MTU, dev);
+        if (system(command) != 0) {
+            throw std::invalid_argument("failing when assigning MTU to TUN device");
+        }
     }
 
     tundev_frame_t tundev_t::read_data() {
@@ -128,20 +151,6 @@ namespace tun_utils {
         fd = 0;
 
         return true;
-    }
-
-    int read_ip_header(const tundev_frame_t *frame, ip_header *ret) {
-
-        if (!(frame && ret)) {
-            fprintf(stderr, "argument error\n");
-            return -1;
-        }
-
-        struct ip *iphdr = (struct ip *) frame->data;
-        inet_ntop(AF_INET, &(iphdr->ip_src), ret->source_ip, INET_ADDRSTRLEN);
-        inet_ntop(AF_INET, &(iphdr->ip_dst), ret->destination_ip, INET_ADDRSTRLEN);
-
-        return 0;
     }
 
     int enable_forwarding(bool enable) {

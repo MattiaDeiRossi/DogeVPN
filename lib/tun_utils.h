@@ -30,6 +30,8 @@ namespace tun_utils {
         char source_ip[MAX_IP_SIZE];
         char destination_ip[MAX_IP_SIZE];
 
+        ip_header();
+
         void log();
     };
 
@@ -39,6 +41,8 @@ namespace tun_utils {
 
         char data[MTU];
         size_t size;
+
+        ip_header get_ip_header();
     };
 
     struct tundev_t {
@@ -83,10 +87,6 @@ namespace tun_utils {
 
         void insert(unsigned int ip);
     };
-
-    tundev_frame_t* tun_read(const tundev_t *meta, tundev_frame_t *frame);
-
-    int read_ip_header(const tundev_frame_t *frame, ip_header *ret);
 
     int enable_forwarding(bool enable);
 }

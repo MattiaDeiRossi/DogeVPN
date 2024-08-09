@@ -56,12 +56,14 @@ add_library(ssl_utils ../../lib/ssl_utils.cpp)
 add_library(socket_utils ../../lib/socket_utils.cpp)
 add_library(encryption ../../lib/encryption.cpp)
 add_library(vpn_data_utils ../../lib/vpn_data_utils.cpp)
+add_library(tun_utils ../../lib/tun_utils.cpp)
 
 target_link_libraries(DogeVPNGui PUBLIC Qt${QT_VERSION_MAJOR}::Widgets
     utils
     ssl_utils
     socket_utils
     vpn_data_utils
+    tun_utils
     encryption
     crypto
     ssl

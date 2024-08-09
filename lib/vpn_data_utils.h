@@ -23,9 +23,10 @@ namespace vpn_data_utils {
     struct raw_key_exchange_data {
 
         unsigned char buffer[KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE];
+        size_t size;
         size_t buffer_capacity;
 
-        raw_key_exchange_data();
+        raw_key_exchange_data(SSL* ssl_session);
     };
 
     struct key_exchange_data {
@@ -34,9 +35,9 @@ namespace vpn_data_utils {
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
 
-        key_exchange_data(char *raw_message, size_t raw_message_size);
+        key_exchange_data(SSL* ssl_session);
 
-        void log_key_exchange_from_server_message();
+        void log();
     };
 
     struct raw_credentials {
@@ -45,6 +46,8 @@ namespace vpn_data_utils {
         char raw_message[CREDENTIALS_FROM_CLIENT_MESSAGE];
 
         raw_credentials(const char* username, const char* password);
+
+        void send(SSL* ssl_session);
     };
 
     struct credentials {

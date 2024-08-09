@@ -6,16 +6,22 @@ namespace vpn_data_utils {
         for (size_t i = 0; i < num; i++) printf(" ");
     }
 
-    raw_key_exchange_data::raw_key_exchange_data() {
+
+    raw_key_exchange_data::raw_key_exchange_data(SSL* ssl_session) {
+
         bzero(buffer, KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE);
+
         buffer_capacity = KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE;
+        size = ssl_utils::read_or_throw(ssl_session, (char *) buffer, buffer_capacity);
     }
 
-    key_exchange_data::key_exchange_data(char *raw_message, size_t raw_message_size) {
+    key_exchange_data::key_exchange_data(SSL* ssl_session) {
 
         bzero(key, encryption::KEY_SIZE_32);
         bzero(id, SIZE_16);
         bzero(tun_ip, SIZE_64);
+
+        vpn_data_utils::raw_key_exchange_data data(ssl_session);
 
         /* To keep track of current data to parse. */
         unsigned char selector = 0;
@@ -23,9 +29,9 @@ namespace vpn_data_utils {
         size_t user_id_size = 0;
         size_t tun_ip_size = 0;
 
-        for (size_t i = 0; i < raw_message_size; i++) {
+        for (size_t i = 0; i < data.size; i++) {
 
-            char byte_data = raw_message[i];
+            char byte_data = data.buffer[i];
             int is_digit = isdigit(byte_data);
             int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
             int is_div = byte_data == MESSAGE_SEPARATOR_DIV;
@@ -71,9 +77,10 @@ namespace vpn_data_utils {
         if (user_id_size == 0 || tun_ip_size == 0) {
             throw std::invalid_argument("raw_message is malformed");
         }
+
     }
 
-    void key_exchange_data::log_key_exchange_from_server_message() {
+    void key_exchange_data::log() {
 
         size_t key_size = encryption::KEY_SIZE_32;
 
@@ -131,6 +138,10 @@ namespace vpn_data_utils {
         raw_message[index++] = MESSAGE_SEPARATOR_POINT;
         for (size_t i = 0; i < password_size; i++) raw_message[index++] = password[i];
         actual_size = username_size + password_size + 1;
+    }
+
+    void raw_credentials::send(SSL* ssl_session) {
+        ssl_utils::write_or_throw(ssl_session, raw_message, actual_size);
     }
 
     credentials::credentials(const char* data, size_t num) {

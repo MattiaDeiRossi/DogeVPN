@@ -246,6 +246,29 @@ namespace socket_utils {
         return strncmp(address_service, o.address_service, 256) < 0 ? true : false;
     }
 
+	fd_set select_or_throw(std::set<socket_t> sockets) {
+		
+		fd_set master;
+        FD_ZERO(&master);
+
+        socket_t max = 0;
+
+        for (auto socket : sockets) {
+
+            if (socket > max) {
+                max = socket;
+            }
+
+            FD_SET(socket, &master);
+        }
+
+		if (select(max + 1, &master, 0, 0, 0) == -1) {
+            throw std::invalid_argument("call to select failed");
+        }
+		
+        return master;
+	}
+
 	void select_or_throw(socket_t max, fd_set *fd_set_p) {
         if (select(max + 1, fd_set_p, 0, 0, 0) == -1) {
             throw std::invalid_argument("call to select failed");

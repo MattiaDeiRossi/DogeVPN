@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include<optional>
 #include<iostream>
+#include<set>
 
 namespace socket_utils
 {
@@ -73,6 +74,8 @@ namespace socket_utils
     void log_start_server(bool is_tcp, char const *host, char const *port);
 
     recvfrom_result recvfrom(socket_t fd, void *buf, size_t n);
+
+    fd_set select_or_throw(std::set<socket_t> sockets);
 
     void select_or_throw(socket_t max, fd_set *fd_set_p);
 }

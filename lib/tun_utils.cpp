@@ -153,12 +153,13 @@ namespace tun_utils {
 	    return frame;
     }
 
-    bool tundev_t::write_data(const void *buf, size_t count) {
+    void tundev_t::write_data(const void *buf, size_t count) {
 
       ssize_t bytes = write(fd, buf, count);
 
-      if (bytes < 0) return false;
-      else return true;
+      if (bytes < 0) {
+        throw std::invalid_argument("cannot write data for tìthe TUN device");
+      }
     }
 
     bool tundev_t::fd_close() {

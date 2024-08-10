@@ -88,6 +88,8 @@ namespace vpn_data_utils {
 
         std::optional<encryption::packet> decrypt(const unsigned char *key);
 
+        encryption::packet compose_udp_client_message();
+
         void send_or_throw(socket_utils::socket_t udp_socket);
 
         void log();

@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 #include <stdexcept>
+#include <cstdlib>  
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
@@ -36,6 +37,8 @@ namespace vpn_data_utils {
         unsigned char tun_ip[SIZE_64];
 
         key_exchange_data(SSL* ssl_session);
+
+        int id_string_to_i();
 
         void log();
     };

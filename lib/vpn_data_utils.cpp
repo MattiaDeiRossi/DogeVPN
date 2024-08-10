@@ -77,7 +77,10 @@ namespace vpn_data_utils {
         if (user_id_size == 0 || tun_ip_size == 0) {
             throw std::invalid_argument("raw_message is malformed");
         }
+    }
 
+    int key_exchange_data::id_string_to_i() {
+        return atoi((char *) id);
     }
 
     void key_exchange_data::log() {

@@ -79,7 +79,7 @@ namespace vpn_data_utils {
         }
     }
 
-    int key_exchange_data::id_string_to_i() {
+    int key_exchange_data::id_to_i() {
         return atoi((char *) id);
     }
 

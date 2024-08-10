@@ -38,7 +38,7 @@ namespace vpn_data_utils {
 
         key_exchange_data(SSL* ssl_session);
 
-        int id_string_to_i();
+        int id_to_i();
 
         void log();
     };

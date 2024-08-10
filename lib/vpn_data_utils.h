@@ -83,6 +83,8 @@ namespace vpn_data_utils {
         */
         udp_packet_data(const encryption::packet *from);
 
+        udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);
+
         std::optional<encryption::packet> decrypt(const unsigned char *key);
 
         void log();

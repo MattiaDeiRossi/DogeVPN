@@ -297,6 +297,45 @@ namespace vpn_data_utils {
         encrypted_packet.size = packet_length;
     }
 
+    udp_packet_data::udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id) {
+
+        encryption::encryption_data e_data((const unsigned char *) symmetric_key);
+
+        std::optional<encryption::packet> opt_e_packet = from->encrypt(e_data);
+        if (!opt_e_packet.has_value()) {
+            throw std::invalid_argument("packet cannot be encrypted");
+        }
+
+        encryption::packet e_packet = opt_e_packet.value();
+
+        /* Composing the message:
+        *   - hashing the original message
+        *   - appending it to the packet to send
+        *   - append the IV to the message
+        */
+        unsigned char hash[encryption::SHA_256_SIZE];
+        if (!from->getShaSum(hash)) {
+            throw std::invalid_argument("hash cannot be computed");
+        };
+
+        bool append_result = e_packet.append(hash, encryption::SHA_256_SIZE);
+        append_result = append_result && e_packet.append(e_data.iv, encryption::IV_SIZE_16);
+
+        /* Composing the message:
+        *   - appending the separator
+        *   - appending the user id
+        */
+        char user_id_str[16];
+        utils::int_to_string(session_id, (char *) user_id_str, sizeof(user_id_str));
+
+        append_result = append_result && e_packet.append(MESSAGE_SEPARATOR_POINT);
+        append_result = append_result && e_packet.append((const unsigned char *) user_id_str, strlen(user_id_str));
+        
+        if (!append_result) {
+            throw std::invalid_argument("the complete message cannot be created");
+        }
+    }
+
     std::optional<udp_packet_data> udp_packet_data_or_empty(const encryption::packet *from) {
 
         std::optional<udp_packet_data> opt;

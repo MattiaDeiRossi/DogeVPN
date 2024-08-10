@@ -279,7 +279,11 @@ namespace socket_utils {
         return send(udp_socket, buffer, length, 0);
     }
 
-	ssize_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
-		return recv(socket, buffer, length, 0);
+	size_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
+
+		ssize_t bytes = recv(socket, buffer, length, 0);
+
+		if (bytes < 0) throw std::invalid_argument("cannot receive from socket");
+		return bytes;
 	}
 }

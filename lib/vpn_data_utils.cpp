@@ -213,52 +213,56 @@ namespace vpn_data_utils {
         bzero(hash, encryption::SHA_256_SIZE);
     }
 
-	udp_packet_data::udp_packet_data(encryption::packet *from) {
+	udp_packet_data::udp_packet_data(encryption::packet *from, bool from_server) {
 
         ssize_t current_cursor = from->size - 1;
 
         int j = 0;
-        while (current_cursor >= 0) {
 
-            char bdata = from->buffer[current_cursor--];
-
-            /* Id cannot excedd a specific length.
-            *  When dealing with longer id, an error is returned.
-            */
-            if (j == SIZE_16 && bdata != MESSAGE_SEPARATOR_POINT) {
-                throw std::invalid_argument("malformed packet: id is too long");
-            }
+        if (!from_server) {
             
-            if (bdata == MESSAGE_SEPARATOR_POINT) {
+            while (current_cursor >= 0) {
 
-                /* The user id is the last part of the message after the IV vector.
-                *  After encountering it the user id processing must stop.  
+                char bdata = from->buffer[current_cursor--];
+
+                /* Id cannot excedd a specific length.
+                *  When dealing with longer id, an error is returned.
                 */
-                break;
-            } if (!isdigit(bdata)) {
+                if (j == SIZE_16 && bdata != MESSAGE_SEPARATOR_POINT) {
+                    throw std::invalid_argument("malformed packet: id is too long");
+                }
+                
+                if (bdata == MESSAGE_SEPARATOR_POINT) {
 
-                /* An user id contains only digits.
-                *  When a different character is encountered an error value is returned.
-                */
-                throw std::invalid_argument("malformed packet: id contains invalid characters");
-            } else {
+                    /* The user id is the last part of the message after the IV vector.
+                    *  After encountering it the user id processing must stop.  
+                    */
+                    break;
+                } if (!isdigit(bdata)) {
 
-                user_id[j++] = bdata;
+                    /* An user id contains only digits.
+                    *  When a different character is encountered an error value is returned.
+                    */
+                    throw std::invalid_argument("malformed packet: id contains invalid characters");
+                } else {
+
+                    user_id[j++] = bdata;
+                }
+
             }
 
-        }
+            /* Sanity check.
+            *  Id must not be empty.
+            */
+            if (j == 0) {
+                throw std::invalid_argument("malformed packet: id is empty");
+            }
 
-        /* Sanity check.
-        *  Id must not be empty.
-        */
-        if (j == 0) {
-            throw std::invalid_argument("malformed packet: id is empty");
+            /* Id has been read in reverse.
+            *  In order to extract it correctly, a reverse operation is applied. 
+            */
+            utils::reverse_string((char *) user_id, j);
         }
-
-        /* Id has been read in reverse.
-        *  In order to extract it correctly, a reverse operation is applied. 
-        */
-        utils::reverse_string((char *) user_id, j);
 
         // IV extraction.
         if (utils::read_reverse(
@@ -338,12 +342,12 @@ namespace vpn_data_utils {
         return e_packet;
     }
 
-    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from) {
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, bool from_server) {
 
         std::optional<udp_packet_data> opt;
 
         try {
-            udp_packet_data data(from);
+            udp_packet_data data(from, from_server);
             opt = data;
         } catch(const std::exception& e) {
             std::cerr << 

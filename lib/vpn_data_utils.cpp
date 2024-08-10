@@ -213,7 +213,7 @@ namespace vpn_data_utils {
         bzero(hash, encryption::SHA_256_SIZE);
     }
 
-	udp_packet_data::udp_packet_data(const encryption::packet *from) {
+	udp_packet_data::udp_packet_data(encryption::packet *from) {
 
         ssize_t current_cursor = from->size - 1;
 
@@ -325,7 +325,7 @@ namespace vpn_data_utils {
         *   - appending the separator
         *   - appending the user id
         */
-        char user_id_str[16];
+        char user_id_str[SIZE_16];
         utils::int_to_string(session_id, (char *) user_id_str, sizeof(user_id_str));
 
         append_result = append_result && e_packet.append(MESSAGE_SEPARATOR_POINT);
@@ -334,9 +334,15 @@ namespace vpn_data_utils {
         if (!append_result) {
             throw std::invalid_argument("the complete message cannot be created");
         }
+
+        memcpy(this->user_id, user_id_str, SIZE_16);
+        memcpy(this->iv, e_data.iv, encryption::IV_SIZE_16);
+        memcpy(this->hash, hash, encryption::SHA_256_SIZE);
+
+        this->encrypted_packet = e_packet;
     }
 
-    std::optional<udp_packet_data> udp_packet_data_or_empty(const encryption::packet *from) {
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from) {
 
         std::optional<udp_packet_data> opt;
 
@@ -354,46 +360,22 @@ namespace vpn_data_utils {
         return opt;
     }
 
-    std::optional<encryption::packet> build_packet_to_send(encryption::packet message, const char *key, int user_id) {
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, const char *key, int user_id) {
 
-        encryption::encryption_data e_data((const unsigned char *) key);
+        std::optional<udp_packet_data> packet_opt;
 
-        std::optional<encryption::packet> opt_e_packet = message.encrypt(e_data);
-        if (!opt_e_packet.has_value()) {
-            return std::nullopt;
+        try {
+            
+            udp_packet_data data(from, key, user_id);
+            packet_opt = data;
+
+        } catch(const std::exception& e) {
+
+            std::cerr << e.what() << '\n';
+            packet_opt = std::nullopt;
         }
 
-        encryption::packet e_packet = opt_e_packet.value();
-
-        /* Composing the message:
-        *   - hashing the original message
-        *   - appending it to the packet to send
-        *   - append the IV to the message
-        */
-        unsigned char hash[encryption::SHA_256_SIZE];
-        if (!message.getShaSum(hash)) {
-            return std::nullopt;
-        };
-
-        bool append_result = e_packet.append(hash, encryption::SHA_256_SIZE);
-        append_result = append_result && e_packet.append(e_data.iv, encryption::IV_SIZE_16);
-
-        if (user_id != -1) {
-
-            /* Composing the message:
-            *   - appending the separator
-            *   - appending the user id
-            */
-
-            char user_id_str[16];
-            utils::int_to_string(user_id, (char *) user_id_str, sizeof(user_id_str));
-
-            append_result = append_result && e_packet.append(MESSAGE_SEPARATOR_POINT);
-            append_result = append_result && e_packet.append((const unsigned char *) user_id_str, strlen(user_id_str));
-        }
-
-        if (append_result) return e_packet;
-        else return std::nullopt;
+        return packet_opt;
     }
 
     std::optional<encryption::packet> udp_packet_data::decrypt(const unsigned char *key) {
@@ -447,10 +429,5 @@ namespace vpn_data_utils {
         encryption::packet *from = &(encrypted_packet);
         printf("Reading encrypted packet from client of size %ld bytes\n", from->size);
         utils::print_bytes("Printing packet bytes", (const char *) from->buffer, from->size, 4);
-    }
-
-    void log_udp_packet_data(const encryption::packet *from) {
-        udp_packet_data data(from);
-        data.log();
     }
 }

@@ -81,7 +81,7 @@ namespace vpn_data_utils {
         *   3.  After the hashed part we have the IV
         *   4.  Then we have the user id: this is needed to decrypt the message with correct key
         */
-        udp_packet_data(const encryption::packet *from);
+        udp_packet_data(encryption::packet *from);
 
         udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);
 
@@ -90,11 +90,9 @@ namespace vpn_data_utils {
         void log();
     };
 
-    std::optional<udp_packet_data> udp_packet_data_or_empty(const encryption::packet *from);
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from);
 
-    std::optional<encryption::packet> build_packet_to_send(encryption::packet from, const char *key, int user_id);
-
-    void log_udp_packet_data(const encryption::packet *from);
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, const char *key, int user_id);
 }
 
 #endif

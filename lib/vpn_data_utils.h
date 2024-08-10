@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
+#include "socket_utils.h"
 
 namespace vpn_data_utils {
 
@@ -86,6 +87,8 @@ namespace vpn_data_utils {
         udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);
 
         std::optional<encryption::packet> decrypt(const unsigned char *key);
+
+        void send_or_throw(socket_utils::socket_t udp_socket);
 
         void log();
     };

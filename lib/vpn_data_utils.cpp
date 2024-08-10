@@ -402,6 +402,15 @@ namespace vpn_data_utils {
         return d_packet;
     }
 
+    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket) {
+
+        ssize_t bytes = socket_utils::send_upd(udp_socket, encrypted_packet.buffer, encrypted_packet.size);
+
+        if (bytes < 0) {
+            throw std::invalid_argument("cannot send udp packet");
+        }
+    }
+
     void udp_packet_data::log() {
 
         printf("Reading VPN data from client packet\n");

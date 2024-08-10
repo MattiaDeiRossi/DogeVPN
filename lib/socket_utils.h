@@ -79,7 +79,9 @@ namespace socket_utils
 
     void select_or_throw(socket_t max, fd_set *fd_set_p);
 
-    ssize_t send_upd(socket_t udp_socket, const void *buffer, size_t length);
+    ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length);
+
+    ssize_t recv_from_socket(socket_t socket, void *buffer, size_t length);
 }
 
 #endif

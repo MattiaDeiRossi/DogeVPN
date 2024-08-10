@@ -275,7 +275,11 @@ namespace socket_utils {
         }
     }
 
-	ssize_t send_upd(socket_t udp_socket, const void *buffer, size_t length) {
+	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length) {
         return send(udp_socket, buffer, length, 0);
     }
+
+	ssize_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
+		return recv(socket, buffer, length, 0);
+	}
 }

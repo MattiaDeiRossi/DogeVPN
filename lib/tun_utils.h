@@ -25,6 +25,13 @@ namespace tun_utils {
     const unsigned int MTU = 1500;
     const unsigned int MAX_IP_SIZE = 64;
 
+    struct networkmask {
+
+        char network[64];
+
+        networkmask(const char *data);
+    };
+
     struct ip_header {
 
         char source_ip[MAX_IP_SIZE];
@@ -45,22 +52,26 @@ namespace tun_utils {
         ip_header get_ip_header();
     };
 
+    /* Should add the netmask */
     struct tundev_t {
 
         char dev[IFNAMSIZ];
-        char addr[32];
+        char addr[64];
 
         int	fd;
         int	flags;
+        int netmask;
 
         /* Arguments taken by the function:
         * @param name:      the name of an interface (or '\0'); 
                             must have enough space to hold the interface name if '\0' is passed.
         * @param address:   the address that will be used for ip packets
         */
-        tundev_t(const char *name, const char *address);
+        tundev_t(const char *name, const char *address, int netmask);
 
         void persist();
+
+        void add_route(networkmask net);
 
         tundev_frame_t read_data();
 

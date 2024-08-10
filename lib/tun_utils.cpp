@@ -2,6 +2,12 @@
 
 namespace tun_utils {
 
+    networkmask::networkmask(const char *network) {
+
+        bzero(this->network, 64);
+        strcpy(this->network, network);
+    }
+
     ip_header::ip_header() {
         bzero(source_ip, MAX_IP_SIZE);
         bzero(destination_ip, MAX_IP_SIZE);
@@ -26,10 +32,12 @@ namespace tun_utils {
         return header;
     }
 
-    tundev_t::tundev_t(const char *name, const char *address) {
+    tundev_t::tundev_t(const char *name, const char *address, int netmask) {
 
-        bzero(addr, 32);
+        bzero(addr, 64);
         strcpy(addr, address);
+
+        this->netmask = netmask;
 
         flags = 
             IFF_TUN |   /* IFF_TUN to indicate a TUN device (no ethernet headers in the packets) */
@@ -75,7 +83,7 @@ namespace tun_utils {
         *   - 1 if there is a syntax error
         *   - 2 if an error was reported by the kernel
         */
-        char command[256];
+        char command[128];
 
         /* ip link set dev {interface} {up|down} */
         bzero(command, sizeof(command));
@@ -86,7 +94,7 @@ namespace tun_utils {
 
         /* ip a add {ip_addr/mask} dev {interface} */
         bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip a add %s/24 dev %s", addr, dev);
+        snprintf(command, sizeof(command), "ip a add %s/%d dev %s", addr, netmask, dev);
         if (system(command) != 0) {
             throw std::invalid_argument("failing when assigning address to TUN device");
         }
@@ -96,6 +104,18 @@ namespace tun_utils {
         snprintf(command, sizeof(command), "ip link set mtu %d dev %s", MTU, dev);
         if (system(command) != 0) {
             throw std::invalid_argument("failing when assigning MTU to TUN device");
+        }
+    }
+
+    void tundev_t::add_route(networkmask net) {
+
+        char command[128];
+
+        /* ip route add {network/mask} dev {device} */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip route add %s dev %s", net.network, dev);
+        if (system(command) != 0) {
+            throw std::invalid_argument("failing when adding route for this TUN");
         }
     }
 

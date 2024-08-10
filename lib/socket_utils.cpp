@@ -274,4 +274,8 @@ namespace socket_utils {
             throw std::invalid_argument("call to select failed");
         }
     }
+
+	ssize_t send_upd(socket_t udp_socket, const void *buffer, size_t length) {
+        return send(udp_socket, buffer, length, 0);
+    }
 }

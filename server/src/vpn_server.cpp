@@ -71,7 +71,7 @@ std::optional<encryption::packet> handle_udp_packet(
     *  There can be different scenarios for which packets must be rejected.
     */
     std::optional<vpn_data_utils::udp_packet_data> vpn_data_opt = 
-        vpn_data_utils::udp_packet_data_or_empty(&pkt);
+        vpn_data_utils::udp_packet_data_or_empty(&pkt, false);
 
     if (!vpn_data_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");

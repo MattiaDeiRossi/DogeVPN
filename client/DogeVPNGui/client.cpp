@@ -73,9 +73,25 @@ void handle_tun_packet(
     tun_utils::tundev_frame_t frame = tun_device.read_data();
     tun_utils::ip_header header = frame.get_ip_header();
 
+    bool can_forward = false;
 
+    for (auto net : nets) {
+        tun_utils::ipv4_t ipv4(header.destination_ip);
+        can_forward = can_forward || net.same_network(&ipv4);
+    }
+
+    if (!can_forward) {
+
+        std::cout 
+            << header.destination_ip 
+            << "is not among a valid route" 
+            << std::endl;
+
+        return;
+    }
+
+    /**/
     encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
-
     vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
         .send_or_throw(udp_socket);
 }

@@ -1,61 +1,9 @@
-// Compile with gcc aes.c client.c -lssl -lcrypto -o client
-//https://github.com/davlxd/simple-vpn-demo/blob/master/vpn.c#L29
 #include "client.h"
-
-// *** Start macros ***
-#define IS_VALID_SOCKET(s) ((s) >= 0)
-#define CLOSE_SOCKET(s) close(s)
-#define GET_SOCKET_ERRNO() (errno)
-#define PANIC_EXIT() exit(GET_SOCKET_ERRNO())
-// *** End macros ***
-
-// *** Start constants ***
-#define TRUE 1
-#define AUTH_FAILED "AuthFailed"
-// *** End constants ***
-
-#define SA struct sockaddr
-
-typedef int SOCKET;
 
 bool stop_flag = false;
 
 void set_stop_flag(bool status) {
     stop_flag = status;
-}
-
-int udp_exchange_data(socket_utils::socket_t *udp_socket, unsigned char* secret_key) {
-    int ret_val = 0;
-
-    unsigned char* crypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
-    unsigned char* decrypted_message = (unsigned char *)malloc(sizeof(char) * 1500);
-    bzero(crypted_message, sizeof(crypted_message));
-    bzero(decrypted_message, sizeof(decrypted_message));
-    unsigned char* send_message = (unsigned char *) "CIAO";
-    unsigned char iv[16];
-    int len_e = encryption::encrypt(send_message, strlen((const char *) send_message), secret_key, iv, crypted_message);
-    crypted_message[len_e] = 0;
-
-    std::cout<<"*** Send UDP message ***"<<std::endl;
-    if (!send(*udp_socket, crypted_message, strlen((const char *) crypted_message), 0)) {
-        utils::print_error("UDP_SEND_ERROR");
-        return UDP_SEND_ERROR;
-    }
-
-    unsigned char* read_message = (unsigned char *)malloc(sizeof(char) * 1500);
-
-    bzero(read_message, sizeof(read_message));
-    std::cout<<"*** Read udp message ***"<<std::endl;
-    if (!read(*udp_socket, read_message, sizeof(read_message))) {
-        utils::print_error("UDP_READ_ERROR");
-        return UDP_READ_ERROR;
-    }
-
-    int len_d = encryption::decrypt(read_message, strlen((const char *) read_message), secret_key, iv, decrypted_message);
-    decrypted_message[len_d] = 0;
-    std::cout<<"Data received decrypted: "<< decrypted_message<<std::endl;
-
-    return ret_val;
 }
 
 void generate_test_string(char *secret_key, encryption::packet *result) {
@@ -201,5 +149,4 @@ int start_doge_vpn(
 
     return ret_val;
 }
-
 

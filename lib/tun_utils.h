@@ -7,6 +7,8 @@
 #include <shared_mutex>
 #include <mutex>
 #include <stdexcept>
+#include <cstdlib>
+#include <climits>  
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,11 +27,38 @@ namespace tun_utils {
     const unsigned int MTU = 1500;
     const unsigned int MAX_IP_SIZE = 64;
 
-    struct networkmask {
+    struct ipv4_t {
 
-        char network[64];
+        char ipv4_str[32];
 
-        networkmask(const char *data);
+        unsigned int ipv4_parts[4];
+        unsigned int flatten_ip;
+
+        ipv4_t();
+        ipv4_t(const char *data);
+    };
+
+    struct netmask_t {
+
+        char netmask_str[4];
+
+        unsigned int netmask;
+        unsigned int flatten_netmask;
+
+        netmask_t();
+        netmask_t(unsigned int mask);
+    };
+
+    struct ipv4_netmask_t {
+
+        ipv4_t ipv4;
+        netmask_t netmask;
+
+        ipv4_netmask_t(const char *, unsigned int);
+
+        const char * combine(char *, size_t);
+
+        bool same_network(ipv4_t *);
     };
 
     struct ip_header {
@@ -71,7 +100,7 @@ namespace tun_utils {
 
         void persist();
 
-        void add_route(networkmask net);
+        void add_route(ipv4_netmask_t);
 
         tundev_frame_t read_data();
 

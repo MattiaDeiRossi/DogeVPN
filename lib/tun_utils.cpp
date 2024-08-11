@@ -2,10 +2,151 @@
 
 namespace tun_utils {
 
-    networkmask::networkmask(const char *network) {
+    ipv4_t::ipv4_t() {
 
-        bzero(this->network, 64);
-        strcpy(this->network, network);
+        bzero(ipv4_str, 32);
+        bzero(ipv4_parts, 4);
+        
+        flatten_ip = 0;
+    }
+
+    ipv4_t::ipv4_t(const char *data) {
+
+        char current_part[8];
+        size_t current_part_index = 0;
+        size_t ipv4_str_index = 0;
+
+        unsigned char section = 0;
+
+        bool stop = false;
+
+        bzero(ipv4_str, 32);
+        bzero(ipv4_parts, 4);
+        bzero(current_part, 8);
+        
+        flatten_ip = 0;
+
+        while(!stop) {
+
+            ipv4_str[ipv4_str_index++] = *data;
+
+            if (!(*data)) {
+
+                size_t part_size = strlen(current_part);
+
+                if (section != 3) {
+                    const char *error_message = "the given ipv4 address is too short";
+                    throw std::invalid_argument(error_message);
+                }
+
+                if (part_size < 1 || part_size > 3 || atoi(current_part) > 255) {
+                    
+                    const char *error_message = "invalid part for the given ipv4 address";
+                    throw std::invalid_argument(error_message);
+                }
+
+                ipv4_parts[section] = atoi(current_part);
+                stop = true;
+            } else if (*data == '.') {
+
+                size_t part_size = strlen(current_part);
+
+                if (part_size < 1 || part_size > 3 || atoi(current_part) > 255) {
+
+                    const char *error_message = "invalid part for the given ipv4 address";
+                    throw std::invalid_argument(error_message);
+                }
+
+                if (section == 3) {
+                    const char *error_message = "too many dots for the given ipv4 address";
+                    throw std::invalid_argument(error_message);
+                }
+
+                ipv4_parts[section] = atoi(current_part);
+
+                bzero(current_part, 8);
+                section = section + 1;
+                current_part_index = 0;
+                data = data + 1;
+            } else if (isdigit(*data)) {
+
+                current_part[current_part_index] = *data;
+                current_part_index = current_part_index + 1;
+                data = data + 1;
+            } else {
+
+                const char *error_message = "invalid char for the given ipv4 address";
+                throw std::invalid_argument(error_message);
+            }
+        }
+        
+        for (ssize_t i = 3; i >= 0; i--) {
+            ssize_t steps = -(i - 3);
+            flatten_ip = flatten_ip | (ipv4_parts[i] << (steps * 8));
+        }   
+    }
+
+    netmask_t::netmask_t() {
+
+        bzero(netmask_str, 4);
+        
+        netmask = 0;
+        flatten_netmask = 0;
+    }
+
+    netmask_t::netmask_t(unsigned int mask) {
+
+        bzero(netmask_str, 4);
+        
+        netmask = 0;
+        flatten_netmask = 0;
+
+        if (mask > 32) {
+            const char *error_message = "invalid netmask";
+            throw std::invalid_argument(error_message);
+        }
+
+        sprintf(netmask_str, "%d", mask);
+        netmask = mask;
+        flatten_netmask = UINT_MAX << 32 - mask;
+    }
+
+    ipv4_netmask_t::ipv4_netmask_t(const char *ip, unsigned int mask) {
+
+        ipv4 = ipv4_t(ip);
+        netmask = netmask_t(mask);
+    }
+
+    bool ipv4_netmask_t::same_network(ipv4_t *ip) {
+
+        unsigned int mask = netmask.flatten_netmask;
+        return (ipv4.flatten_ip & mask) == (ip->flatten_ip & mask);
+    }
+
+    const char * ipv4_netmask_t::combine(char *buffer, size_t num) {
+
+        size_t buffer_index = 0;
+
+        const char *ip_ptr = ipv4.ipv4_str;
+        const char *mask_ptr = netmask.netmask_str;
+
+        bzero(buffer, num);
+
+        while (*ip_ptr) {
+            buffer[buffer_index] = *ip_ptr;
+            buffer_index = buffer_index + 1;
+            ip_ptr = ip_ptr + 1; 
+        }
+
+        buffer[buffer_index++] = '/';
+
+        while (*mask_ptr) {
+            buffer[buffer_index] = *mask_ptr;
+            buffer_index = buffer_index + 1;
+            mask_ptr = mask_ptr + 1; 
+        }
+
+        return buffer;
     }
 
     ip_header::ip_header() {
@@ -107,13 +248,16 @@ namespace tun_utils {
         }
     }
 
-    void tundev_t::add_route(networkmask net) {
+    void tundev_t::add_route(ipv4_netmask_t route) {
 
         char command[128];
+        char buffer[128];
+
+        bzero(command, sizeof(command));
+        bzero(command, sizeof(buffer));
 
         /* ip route add {network/mask} dev {device} */
-        bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip route add %s dev %s", net.network, dev);
+        snprintf(command, sizeof(command), "ip route add %s dev %s", route.combine(buffer, sizeof(buffer)), dev);
         if (system(command) != 0) {
             throw std::invalid_argument("failing when adding route for this TUN");
         }

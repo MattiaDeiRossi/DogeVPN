@@ -66,15 +66,18 @@ void handle_udp_packet(
 void handle_tun_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t tun_device,
-    vpn_data_utils::key_exchange_data key_exchange
+    vpn_data_utils::key_exchange_data key_exchange,
+    std::vector<tun_utils::ipv4_netmask_t> nets
 ) {
 
-    printf("Reading from TUN !!!!!");
-    /*tun_utils::tundev_frame_t frame = tun_device.read_data();
+    tun_utils::tundev_frame_t frame = tun_device.read_data();
+    tun_utils::ip_header header = frame.get_ip_header();
+
+
     encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
 
     vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
-        .send_or_throw(udp_socket);*/
+        .send_or_throw(udp_socket);
 }
 
 int start_doge_vpn(
@@ -87,8 +90,8 @@ int start_doge_vpn(
     /* Move */
     const char *dev_name = "DogeVpnTun";
 
-    std::vector<tun_utils::networkmask> nets;
-    nets.push_back(tun_utils::networkmask("192.168.53.0/24"));
+    std::vector<tun_utils::ipv4_netmask_t> nets;
+    nets.push_back(tun_utils::ipv4_netmask_t("192.168.53.0", 24));
 
     int ret_val = 0;
 
@@ -118,7 +121,7 @@ int start_doge_vpn(
     tun_device.persist();
     
     for (auto net : nets) {
-        tun_device.add_route(net.network);
+        tun_device.add_route(net);
     }
 
     std::set<socket_utils::socket_t> client_sockets;
@@ -139,7 +142,7 @@ int start_doge_vpn(
                 printf("DC: %d\n", socket);
                 if (socket == tcp_socket) handle_tcp_packet(ssl_session);
                 else if (socket == udp_socket) handle_udp_packet(udp_socket, tun_device, key_exchange);
-                else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange);
+                else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
             }
         }
     }

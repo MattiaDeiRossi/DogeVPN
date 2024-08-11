@@ -155,7 +155,6 @@ int start_doge_vpn(
 
             if (FD_ISSET(socket, &master)) {
 
-                printf("DC: %d\n", socket);
                 if (socket == tcp_socket) handle_tcp_packet(ssl_session);
                 else if (socket == udp_socket) handle_udp_packet(udp_socket, tun_device, key_exchange);
                 else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange, nets);

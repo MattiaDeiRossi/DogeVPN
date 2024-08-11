@@ -117,7 +117,8 @@ std::optional<encryption::packet> handle_udp_packet(
 
  void handle_tun_packet(tun_utils::tundev_frame_t frame) {
 
-    frame.get_ip_header();
+    frame
+        .get_ip_header();
 
  }
 

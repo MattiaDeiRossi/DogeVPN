@@ -2,43 +2,108 @@
 #define VPN_DATA_UTILS_H
 
 #include <ctype.h>
+#include <stdexcept>
+#include <cstdlib>  
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
+#include "socket_utils.h"
 
-namespace vpn_data_utils
-{
+namespace vpn_data_utils {
 
-    const int MAX_ID_SIZE = 16;
-    const char IV_ID_SEPARATOR = '.';
+    const unsigned char SIZE_16 = 16;
+    const unsigned char SIZE_64 = 64;
 
-    struct vpn_client_packet_data {
-        unsigned char user_id[MAX_ID_SIZE];
-        unsigned char iv[encryption::MAX_IV_SIZE];
-        unsigned char hash[encryption::SHA_256_SIZE];
-        encryption::packet encrypted_packet;
+    const unsigned char MESSAGE_SEPARATOR_POINT =   '.';
+    const unsigned char MESSAGE_SEPARATOR_DIV =     '/';
+    const unsigned char MESSAGE_SEPARATOR_OPEN =    '(';
+    const unsigned char MESSAGE_SEPARATOR_CLOSE =   ')';
+
+    const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE =    128;
+    const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE =          256;
+
+    struct raw_key_exchange_data {
+
+        unsigned char buffer[KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE];
+        size_t size;
+        size_t buffer_capacity;
+
+        raw_key_exchange_data(SSL* ssl_session);
     };
 
-    typedef struct vpn_client_packet_data vpn_client_packet_data;
+    struct key_exchange_data {
 
-    /* This function deals with extracting the information. 
-    *  DogeVPN requires the payload to respect the following format:
-    *   1.  First part of the payload is the original encrypted packet.
-    *       The length is variable.
-    *   2.  After the payload there is the hash of the message signed with the exchanged key.
-    *       The main reason to exchange the hashed messsage is:
-    *           - Avoiding that the user id leak allow everyone to send non-sense packet.
-    *   3.  After the hashed part we have the IV
-    *   4.  Then we have the user id:
-    *           - This is needed to decrypt the message with correct key
-    */
-    int parse_packet(const encryption::packet *from, vpn_client_packet_data *ret_data);
+        unsigned char key[encryption::KEY_SIZE_32];
+        unsigned char id[SIZE_16];
+        unsigned char tun_ip[SIZE_64];
 
-    int build_packet_to_send(encryption::packet from, const char *key, int user_id, encryption::packet *result);
+        key_exchange_data(SSL* ssl_session);
 
-    void log_vpn_client_packet_data(vpn_client_packet_data *ret_data);
+        int id_to_i();
 
-    void log_vpn_client_packet_data(const encryption::packet *from);
+        void log();
+    };
+
+    struct raw_credentials {
+
+        size_t actual_size;
+        char raw_message[CREDENTIALS_FROM_CLIENT_MESSAGE];
+
+        raw_credentials(const char* username, const char* password);
+
+        void send(SSL* ssl_session);
+    };
+
+    struct credentials {
+
+        char username[CREDENTIALS_FROM_CLIENT_MESSAGE];
+        char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
+
+        credentials(const char* data, size_t num);
+
+        void log_credentials_from_client_message();
+    };
+
+    struct udp_packet_data {
+        unsigned char user_id[SIZE_16];
+        unsigned char iv[encryption::IV_SIZE_16];
+        unsigned char hash[encryption::SHA_256_SIZE];
+        encryption::packet encrypted_packet;
+
+        udp_packet_data();
+
+        /* This function deals with extracting the information. 
+        *  DogeVPN requires the payload to respect the following format:
+        *   1.  First part of the payload is the original encrypted packet.
+        *       The length is variable.
+        *   2.  After the payload there is the hash of the message signed with the exchanged key;
+        *       the main reason to exchange the hashed messsage is to avoid 
+        *       that the user id leak allow everyone to send non-sense packet
+        *   3.  After the hashed part we have the IV
+        *   4.  Then we have the user id: this is needed to decrypt the message with correct key
+        */
+        udp_packet_data(encryption::packet *from, bool from_server);
+
+        udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);
+
+        udp_packet_data(encryption::packet *from, const char *symmetric_key);
+
+        std::optional<encryption::packet> decrypt(const unsigned char *key);
+
+        encryption::packet compose_udp_client_message();
+
+        encryption::packet compose_udp_server_message();
+
+        void send_or_throw(socket_utils::socket_t udp_socket);
+
+        void send_or_throw(socket_utils::socket_t, socket_utils::udp_client_info);
+
+        void log();
+    };
+
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, bool from_server);
+
+    std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, const char *key, int user_id);
 }
 
 #endif

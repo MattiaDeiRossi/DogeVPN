@@ -12,9 +12,9 @@ namespace utils
     int read_reverse(
         unsigned char *dst, 
         const unsigned char *src, 
-        size_t dst_size, 
-        size_t src_size, 
-        int *current_index,
+        ssize_t dst_size, 
+        ssize_t src_size, 
+        ssize_t *current_index, 
         bool strict_size
     );
 
@@ -43,6 +43,8 @@ namespace utils
     void print(const char *message, int left_padding);
 
     void int_to_string(int digit, char *buffer, size_t num);
+
+    int run_sys_command(const char *command);
 }
 
 #endif

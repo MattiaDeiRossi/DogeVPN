@@ -45,6 +45,32 @@ namespace ssl_utils
         return 0;
     }
 
+    SSL_CTX *create_ssl_context_or_abort(
+        bool is_server,
+        const char *pub_cert_path,
+        const char *pri_cert_path
+    ) {
+
+        SSL_CTX *ctx = NULL;
+        if (ssl_utils::init_ssl(&ctx, is_server, pub_cert_path, pri_cert_path) == -1) {
+            fprintf(stderr, "create_ssl_context_or_abort: ssl context cannot be created\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return ctx;
+    }
+
+    int ssl_fd_or_throw(const SSL* ssl) {
+
+        int socket = SSL_get_fd(ssl);
+
+        if (socket == -1) {
+            throw std::invalid_argument("SSL is not bound to any socket");
+        }
+
+        return socket;
+    }
+
     void free_ssl(SSL *ssl, int *with_error) {
 
         // Nothing can be done.
@@ -60,10 +86,8 @@ namespace ssl_utils
         }
 
         if (should_shutdown) {
-            int shutdown_completed = 0;
-            while (!shutdown_completed) {
-                shutdown_completed = SSL_shutdown(ssl);
-            }
+            /* The fast shutdown approach can only be used if there is no intention to reuse the underlying connection. */
+            SSL_shutdown(ssl);
         }
 
         SSL_free(ssl);
@@ -72,6 +96,10 @@ namespace ssl_utils
         if (socket != -1) {
             socket_utils::close_socket(socket);
         }
+    }
+
+    void ssl_context_free(SSL_CTX *ctx) {
+        if (ctx != NULL) SSL_CTX_free(ctx);
     }
 
     int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server) {
@@ -125,6 +153,17 @@ namespace ssl_utils
         return 0;
     }
 
+    SSL *bind_client_ssl_or_abort(SSL_CTX *ctx, socket_utils::socket_t socket) {
+
+        SSL *ssl_pointer;
+        if (bind_ssl(ctx, socket, &ssl_pointer, false) == -1) {
+            fprintf(stderr, "bind_client_ssl_or_abort: client socket cannot be bound to ssl object\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return ssl_pointer;
+    }
+
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length) {
 
         char buffer[512];
@@ -134,7 +173,6 @@ namespace ssl_utils
         /* Logging client IP address.
         *  Logging the established cipher.
         */
-        utils::println_sep(0);
         utils::print("Connection established:\n", 0);
         utils::print("From:", 3);
         utils::print(" ", 0);
@@ -144,7 +182,6 @@ namespace ssl_utils
         utils::print(" ", 0);
         utils::print(SSL_get_cipher(ssl), 0);
         utils::print("\n", 0);
-        utils::println_sep(0);
     }
 
     int read(SSL *ssl, char *buffer, size_t num) {
@@ -162,6 +199,16 @@ namespace ssl_utils
         return bytes;
     }
 
+    int read_or_throw(SSL *ssl, char *buffer, size_t num) {
+
+        int bytes = read(ssl, buffer, num);
+        if (bytes == -1) {
+            throw std::invalid_argument("SSL report read failure");
+        }
+
+        return bytes;
+    }
+
     int write(SSL *ssl, char *buffer, size_t num) {
 
         /* Errors can be different.
@@ -171,6 +218,16 @@ namespace ssl_utils
         if (bytes < 1) {
             ssl_utils::free_ssl(ssl, &bytes);
             return -1;
+        }
+
+        return bytes;
+    }
+
+    int write_or_throw(SSL *ssl, char *buffer, size_t num) {
+
+        int bytes = write(ssl, buffer, num);
+        if (bytes == -1) {
+            throw std::invalid_argument("SSL report write failure");
         }
 
         return bytes;

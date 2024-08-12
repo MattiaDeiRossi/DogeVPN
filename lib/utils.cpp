@@ -17,9 +17,9 @@ namespace utils {
 	int read_reverse(
         unsigned char *dst, 
         const unsigned char *src, 
-        size_t dst_size, 
-        size_t src_size, 
-        int *current_index, 
+        ssize_t dst_size, 
+        ssize_t src_size, 
+        ssize_t *current_index, 
         bool strict_size
     ) {
 
@@ -158,5 +158,12 @@ namespace utils {
 
 	void int_to_string(int digit, char *buffer, size_t num) {
 		snprintf(buffer, num, "%d", digit);
+	}
+
+	int run_sys_command(const char *command) {
+
+		// Passing a NULL value is considered a valid fast return even though this is useless.
+		if (command == NULL) return 0;
+		return system(command);
 	}
 }

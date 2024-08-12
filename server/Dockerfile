@@ -8,7 +8,8 @@ RUN apt install -y \
     curl\
     python3\
     build-essential\
-    libssl-dev
+    libssl-dev\
+    iproute2
 
 # installing mongocxx driver - connects c++ to mongo
 RUN cd ~ \
@@ -25,6 +26,4 @@ RUN cd ~ \
 WORKDIR /server
 ADD lib/ /lib
 ADD server/ .
-RUN mkdir build; cd build/ \
-    && cmake .. \
-    && make
+RUN rm build/ -r; mkdir build; cd build; cmake ..; make; cd ..

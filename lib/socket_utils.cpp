@@ -70,6 +70,10 @@ namespace socket_utils {
 		// No address succeeded.
         if (ba_p == NULL) return -1;
 
+
+		/* A UDP socket does not need to set itself to a listen state.
+		*  Just up to bind. 
+		*/
 	    if (is_tcp && is_server) {
 
 		    /* Listen put the socket in a state where it listens for new connections.
@@ -96,17 +100,60 @@ namespace socket_utils {
 		return create_socket(host, port, false, true, ret_socket);
 	}
 
-	int bind_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
 		return create_socket(host, port, true, false, ret_socket);
 	}
 
-	int bind_udp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_udp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
 		return create_socket(host, port, false, false, ret_socket);
 	}
 
-	void log_start_server(bool is_tcp, char const *host, char const *port) {
+	socket_t connect_tcp_client_socket_or_abort(char const *host, char const *port) {
 
-		utils::println_sep(0);
+		socket_t socket;
+		if (connect_tcp_client_socket(host, port, &socket) == -1) {
+			fprintf(stderr, "connect_tcp_client_socket_or_abort: cannot connect tcp client socket\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return socket;
+	}
+
+    socket_t connect_udp_client_socket_or_abort(char const *host, char const *port) {
+
+		socket_t socket;
+		if (connect_udp_client_socket(host, port, &socket) == -1) {
+			fprintf(stderr, "connect_udp_client_socket_or_abort: cannot connect udp client socket\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return socket;
+	}
+
+	tcp_client_info accept_client(socket_t server_socket) {
+
+		struct sockaddr_storage client_address;
+        socklen_t client_length = sizeof(client_address);
+
+		socket_utils::socket_t client_socket = accept(
+			server_socket,
+			(struct sockaddr*) &client_address,
+			&client_length
+		);
+
+		tcp_client_info info;
+		info.socket = client_socket;
+		info.address = client_address;
+		info.length = client_length;
+
+		return info;
+	}
+
+    bool invalid_info(const tcp_client_info *info) {
+		return socket_utils::invalid_socket(info->socket);
+	}
+
+	void log_start_server(bool is_tcp, char const *host, char const *port) {
 
 		if (is_tcp) utils::print("Server can now listen for new TCP connections\n", 0);
 		else utils::print("Server can now receive UDP packets\n", 0);
@@ -118,13 +165,35 @@ namespace socket_utils {
 	    utils::print("Port:", 3);
 	    utils::print(port, 1);
 	    utils::print("\n", 0);
-	    utils::println_sep(0);
 	}
 
-	void log_client_address(struct sockaddr_storage address, socklen_t length) {
+	recvfrom_result recvfrom(socket_t fd, void *buf, size_t n) {
 
-    	char address_buffer[256];
-	    char service_buffer[256];
+		struct sockaddr_storage client_address;
+		socklen_t client_len = sizeof(client_address);
+		ssize_t bytes_read = recvfrom(fd, buf, n, 0, (struct sockaddr *) &client_address, &client_len);
+		
+		udp_client_info udp_info;
+		udp_info.address = client_address;
+		udp_info.length = client_len;
+
+		recvfrom_result result;
+		result.udp_info = udp_info;
+		result.bytes_read = bytes_read;
+
+		return result;
+	}
+
+	raw_client_info::raw_client_info() {
+		bzero(address_service, 256);
+	}
+
+	raw_client_info::raw_client_info(struct sockaddr_storage address, socklen_t length) {
+
+		bzero(address_service, 256);
+
+		char address_buffer[128];
+	    char service_buffer[128];
 
 	    getnameinfo(
 	        (struct sockaddr*) &address, length,
@@ -133,14 +202,96 @@ namespace socket_utils {
 	        NI_NUMERICHOST | NI_NUMERICSERV
 	    );
 
-	    utils::println_sep(0);
-	    utils::print("Received bytes from:\n", 0);
-	    utils::print("IP address:", 3);
-	    utils::print(address_buffer, 1);
-		utils::print("\n", 0);
-	    utils::print("Port:", 3);
-	    utils::print(service_buffer, 1);
-	    utils::print("\n", 0);
-		utils::println_sep(0);
+		size_t index = 0;
+		char *a_ptr = address_buffer;
+		char *s_ptr = service_buffer;
+		
+		while (*a_ptr) {
+			address_service[index++] = *a_ptr;
+			a_ptr++;
+		}
+
+		address_service[index++] = ':';
+
+		while (*s_ptr) {
+			address_service[index++] = *s_ptr;
+			s_ptr++;
+		}
+	}
+
+	void raw_client_info::log() {
+		std::cout << 
+			"Received packet from:\n" << 
+			address_service << 
+			"\n";
+	}
+
+	raw_client_info tcp_client_info::to_raw_info() {
+
+		raw_client_info raw_info(address, length);
+		return raw_info;
+	}
+
+	raw_client_info udp_client_info::to_raw_info() {
+
+		raw_client_info raw_info(address, length);
+		return raw_info;
+	}
+
+	bool raw_client_info::operator==(const raw_client_info &o) const {
+        return strncmp(address_service, o.address_service, 256) == 0 ? true : false;
+    }
+
+	bool raw_client_info::operator<(const raw_client_info &o) const {
+        return strncmp(address_service, o.address_service, 256) < 0 ? true : false;
+    }
+
+	fd_set select_or_throw(std::set<socket_t> sockets) {
+		
+		fd_set master;
+        FD_ZERO(&master);
+
+        socket_t max = 0;
+
+        for (auto socket : sockets) {
+
+            if (socket > max) {
+                max = socket;
+            }
+
+            FD_SET(socket, &master);
+        }
+
+		if (select(max + 1, &master, 0, 0, 0) == -1) {
+            throw std::invalid_argument("call to select failed");
+        }
+		
+        return master;
+	}
+
+	void select_or_throw(socket_t max, fd_set *fd_set_p) {
+        if (select(max + 1, fd_set_p, 0, 0, 0) == -1) {
+            throw std::invalid_argument("call to select failed");
+        }
+    }
+
+	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length) {
+        return send_to_socket(udp_socket, buffer, length, NULL, 0);
+    }
+
+	size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len) {
+
+		ssize_t bytes = sendto(udp_socket, buffer, length, 0, addr, addr_len);
+
+		if (bytes < 0) throw std::invalid_argument("cannot write to socket");
+		return bytes;
+    }
+
+	size_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
+
+		ssize_t bytes = recv(socket, buffer, length, 0);
+
+		if (bytes < 0) throw std::invalid_argument("cannot receive from socket");
+		return bytes;
 	}
 }

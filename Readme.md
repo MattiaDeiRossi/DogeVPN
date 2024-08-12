@@ -19,6 +19,7 @@ docker compose build
 ```bash
 xhost +local:docker
 ```
+
 ```bash
 docker compose up -d
 ```

@@ -10,7 +10,7 @@ services:
       MONGO_INITDB_DATABASE: vpndb
     networks:
       internal_network:
-        ipv4_address: 192.168.0.5
+        ipv4_address: 192.168.42.5
     ports:
     - "27017:27017"
     volumes:
@@ -30,23 +30,7 @@ services:
       - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
     networks:
       external_network:
-        ipv4_address: 10.5.0.15
+        ipv4_address: 10.5.42.15
       internal_network:
-        ipv4_address: 192.168.0.15
-
+        ipv4_address: 192.168.42.15
     command: ./build/vpnserver
-
-# networks:
-#   external_network:
-#     driver: bridge
-#     ipam:
-#      config:
-#       - subnet: 10.5.0.0/24
-#         gateway: 10.5.0.1
-
-#   internal_network:
-#     driver: bridge
-#     ipam:
-#      config:
-#       - subnet: 192.168.0.0/24
-#         gateway: 192.168.0.1

@@ -13,14 +13,11 @@ services:
       - ~/.Xauthority:/root/.Xauthority
     networks:
       external_network:
-        ipv4_address: 10.5.0.7
+        ipv4_address: 10.5.42.7
 
   vpnclient2:
     tty: true
     image: dogevpn-vpnclient
-    # build:
-    #   context: ../
-    #   dockerfile: client/Dockerfile
     container_name: client2
     environment:
       - DISPLAY=${DISPLAY}
@@ -29,14 +26,6 @@ services:
       - ~/.Xauthority:/root/.Xauthority
     networks:
       external_network:
-        ipv4_address: 10.5.0.8
+        ipv4_address: 10.5.42.8
     depends_on:
       - vpnclient
-
-# networks:
-#   external_network:
-#     driver: bridge
-#     ipam:
-#      config:
-#       - subnet: 10.5.0.0/24
-#         gateway: 10.5.0.15

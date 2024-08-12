@@ -53,8 +53,7 @@ namespace ssl_utils
 
         SSL_CTX *ctx = NULL;
         if (ssl_utils::init_ssl(&ctx, is_server, pub_cert_path, pri_cert_path) == -1) {
-            fprintf(stderr, "create_ssl_context_or_abort: ssl context cannot be created\n");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("ssl context cannot be created");
         }
 
         return ctx;
@@ -157,8 +156,7 @@ namespace ssl_utils
 
         SSL *ssl_pointer;
         if (bind_ssl(ctx, socket, &ssl_pointer, false) == -1) {
-            fprintf(stderr, "bind_client_ssl_or_abort: client socket cannot be bound to ssl object\n");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("client socket cannot be bound to ssl object");
         }
 
         return ssl_pointer;

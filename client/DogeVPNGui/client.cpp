@@ -52,7 +52,7 @@ void handle_tun_packet(
         /**/
         encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
         vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
-            .send_or_throw(udp_socket, false);
+            .send_or_throw(udp_socket);
     }
 }
 

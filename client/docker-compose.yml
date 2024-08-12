@@ -2,6 +2,10 @@ services:
   
   vpnclient:
     tty: true
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    cap_add:
+      - ALL
     build:
       context: ../
       dockerfile: client/Dockerfile
@@ -17,6 +21,10 @@ services:
 
   vpnclient2:
     tty: true
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    cap_add:
+      - ALL
     image: dogevpn-vpnclient
     container_name: client2
     environment:

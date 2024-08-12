@@ -112,8 +112,7 @@ namespace socket_utils {
 
 		socket_t socket;
 		if (connect_tcp_client_socket(host, port, &socket) == -1) {
-			fprintf(stderr, "connect_tcp_client_socket_or_abort: cannot connect tcp client socket\n");
-			exit(EXIT_FAILURE);
+			throw std::invalid_argument("cannot connect tcp client socket");
 		}
 
 		return socket;
@@ -123,8 +122,7 @@ namespace socket_utils {
 
 		socket_t socket;
 		if (connect_udp_client_socket(host, port, &socket) == -1) {
-			fprintf(stderr, "connect_udp_client_socket_or_abort: cannot connect udp client socket\n");
-			exit(EXIT_FAILURE);
+			throw std::invalid_argument("cannot connect udp client socket");
 		}
 
 		return socket;

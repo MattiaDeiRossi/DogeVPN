@@ -8,6 +8,7 @@
 #include<optional>
 #include<iostream>
 #include<set>
+#include<stdexcept>
 
 namespace socket_utils
 {

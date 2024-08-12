@@ -86,11 +86,17 @@ namespace vpn_data_utils {
 
         udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);
 
+        udp_packet_data(encryption::packet *from, const char *symmetric_key);
+
         std::optional<encryption::packet> decrypt(const unsigned char *key);
 
         encryption::packet compose_udp_client_message();
 
-        void send_or_throw(socket_utils::socket_t udp_socket, bool is_server);
+        encryption::packet compose_udp_server_message();
+
+        void send_or_throw(socket_utils::socket_t udp_socket);
+
+        void send_or_throw(socket_utils::socket_t, socket_utils::udp_client_info);
 
         void log();
     };

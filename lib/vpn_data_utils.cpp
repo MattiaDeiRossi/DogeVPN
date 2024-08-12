@@ -326,6 +326,27 @@ namespace vpn_data_utils {
         this->encrypted_packet = e_packet;
     }
 
+    udp_packet_data::udp_packet_data(encryption::packet *from, const char *symmetric_key) {
+
+        encryption::encryption_data e_data((const unsigned char *) symmetric_key);
+        encryption::packet e_packet = from->encrypt(e_data).value();
+
+        unsigned char hash[encryption::SHA_256_SIZE];
+        if (!from->getShaSum(hash)) {
+            throw std::invalid_argument("hash cannot be computed");
+        };
+
+        bzero(this->user_id, SIZE_16);
+
+        bzero(this->iv, encryption::IV_SIZE_16);
+        memcpy(this->iv, e_data.iv, encryption::IV_SIZE_16);
+
+        bzero(this->hash, encryption::SHA_256_SIZE);
+        memcpy(this->hash, hash, encryption::SHA_256_SIZE);
+
+        this->encrypted_packet = e_packet;
+    }
+
     encryption::packet udp_packet_data::compose_udp_client_message() {
 
         encryption::packet e_packet = encrypted_packet;
@@ -342,11 +363,26 @@ namespace vpn_data_utils {
         return e_packet;
     }
 
+    encryption::packet udp_packet_data::compose_udp_server_message() {
+
+        encryption::packet e_packet = encrypted_packet;
+
+        bool append_result = e_packet.append(hash, encryption::SHA_256_SIZE);
+        append_result = append_result && e_packet.append(iv, encryption::IV_SIZE_16);
+
+        if (!append_result) {
+            throw std::invalid_argument("the complete message cannot be created");
+        }
+
+        return e_packet;
+    }
+
     std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, bool from_server) {
 
         std::optional<udp_packet_data> opt;
 
         try {
+
             udp_packet_data data(from, from_server);
             opt = data;
         } catch(const std::exception& e) {
@@ -400,20 +436,24 @@ namespace vpn_data_utils {
         return d_packet;
     }
 
-    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket, bool is_server) {
+    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket) {
 
-        // TODO
-        if (is_server) {
-            throw std::invalid_argument("not yet implemented");
-        } else {
+        encryption::packet packet = compose_udp_client_message();
+        ssize_t bytes = socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size);
 
-            encryption::packet packet = compose_udp_client_message();
-            ssize_t bytes = socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size);
+        if (bytes < 0) {
+            throw std::invalid_argument("cannot send udp packet");
+        }  
+    }
 
-            if (bytes < 0) {
-                throw std::invalid_argument("cannot send udp packet");
-            }  
-        }
+    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket, socket_utils::udp_client_info) {
+
+        encryption::packet packet = compose_udp_server_message();
+        ssize_t bytes = socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size);
+
+        if (bytes < 0) {
+            throw std::invalid_argument("cannot send udp packet");
+        }  
     }
 
     void udp_packet_data::log() {

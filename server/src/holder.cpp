@@ -378,7 +378,7 @@ namespace holder {
             << "    TUN_IP: " << client_tun_ip.ip
             << std::endl;
 
-        socket_utils::raw_udp_client_info raw_tcp_info = tcp_info.to_raw_info();
+        socket_utils::raw_client_info raw_tcp_info = tcp_info.to_raw_info();
         std::cout
             << "  TCP Data:"
             << std::endl
@@ -387,7 +387,7 @@ namespace holder {
             << "    TCP_IP_SERVICE: " << raw_tcp_info.address_service
             << std::endl;
         
-        socket_utils::raw_udp_client_info raw_udp_info = udp_info.to_raw_info();
+        socket_utils::raw_client_info raw_udp_info = udp_info.to_raw_info();
         std::cout
             << "  UDP Data:"
             << std::endl

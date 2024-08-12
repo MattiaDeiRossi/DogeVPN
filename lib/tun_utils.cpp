@@ -108,7 +108,7 @@ namespace tun_utils {
 
         sprintf(netmask_str, "%d", mask);
         netmask = mask;
-        flatten_netmask = UINT_MAX << 32 - mask;
+        flatten_netmask = UINT_MAX << (32 - mask);
     }
 
     ipv4_netmask_t::ipv4_netmask_t(const char *ip, unsigned int mask) {

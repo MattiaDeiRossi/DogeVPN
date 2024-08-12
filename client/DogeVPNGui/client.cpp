@@ -6,37 +6,6 @@ void set_stop_flag(bool status) {
     stop_flag = status;
 }
 
-void generate_test_string(char *secret_key, encryption::packet *result) {
-
-     const char *test = "TEST_STRING";
-
-     encryption::packet message;
-     bzero(&message, sizeof(encryption::packet));
-
-     message.append((unsigned char *) test, strlen(test));
-
-     vpn_data_utils::udp_packet_data data = 
-        vpn_data_utils::udp_packet_data(&message, secret_key, 42);
-
-     data.log();
-
-     *result = data.compose_udp_client_message();
-}
-
-void test(int udp_socket, char *key) {
-    while (true) {
-        encryption::packet result;
-        generate_test_string(key, &result);
-
-        printf("*** Send UDP message ***\n");
-        if (!send(udp_socket, result.buffer, result.size, 0)) {
-            utils::print_error("UDP_SEND_ERROR");
-        }
-
-        sleep(3600);
-    }
-}
-
 void handle_tcp_packet(SSL *ssl_session) {}
 
 void handle_udp_packet(

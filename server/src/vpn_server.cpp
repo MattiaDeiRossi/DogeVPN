@@ -1,16 +1,11 @@
-#include "standards.h"
-#include "defines.h"
-#include "data_structures.h"
-#include "encryption.h"
-#include "utils.h"
-#include "ssl_utils.h"
-#include "socket_utils.h"
-#include "client_credentials_utils.h"
-#include "udp_client_info_utils.h"
-#include "vpn_data_utils.h"
-#include "tun_utils.h"
-#include "holder.h"
-#include "selector.h"
+#include <encryption.h>
+#include <ssl_utils.h>
+#include <socket_utils.h>
+#include <vpn_data_utils.h>
+#include <tun_utils.h>
+#include <holder.h>
+#include <thread>
+#include "config.h"
 
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
 *  When handling a new client there is no need to just create the client socket and return.
@@ -80,9 +75,8 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
 
     int id_num;
     sscanf((const char *) vpn_data.user_id, "%d", &id_num);
-    user_id user_id = id_num;
 
-    std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(user_id);
+    std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(id_num);
 
     if (!c_holder_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
@@ -141,30 +135,22 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
 
 void start_doge_vpn() {
 
-    /* Put in other places - they should be configurable */
-    unsigned char third_octet = 11;
-    const char *name = "tun42";
-    const char *public_cert = "certs/cert.pem";
-    const char *private_key = "certs/key.pem";
-    const char *address = "0.0.0.0";
-    const char *port = "8080";
-
     /* Server pool.
     *  By using a pool of ip, for each client a unique address gets selected.
     */
     tun_utils::ip_pool_t server_pool;
-    server_pool.compose_class_c_pool(third_octet);
+    server_pool.compose_class_c_pool(config::third_octet);
 
     /* TUN device.
     *  By configuring the TUN device, raw ip 
     */
     char server_tun_ip[holder::SIZE_32];
-    tun_utils::tundev_t device(name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
+    tun_utils::tundev_t device(config::name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
     device.persist();
 
-    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, public_cert, private_key);
-    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(address, port, true);
-    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(address, port, false);
+    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, config::public_cert, config::private_key);
+    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(config::address, config::port, true);
+    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(config::address, config::port, false);
 
     /* After tcp and udp sockets are created:
     *   1. extract sockets from holder

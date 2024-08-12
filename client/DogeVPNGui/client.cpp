@@ -80,20 +80,18 @@ void handle_tun_packet(
         can_forward = can_forward || net.same_network(&ipv4);
     }
 
-    if (!can_forward) {
+    if (can_forward) {
 
         std::cout 
-            << header.destination_ip 
-            << "is not among a valid route" 
+            << "sending to "
+            << header.destination_ip
             << std::endl;
 
-        return;
+        /**/
+        encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
+        vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
+            .send_or_throw(udp_socket, false);
     }
-
-    /**/
-    encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
-    vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
-        .send_or_throw(udp_socket);
 }
 
 int start_doge_vpn(
@@ -155,9 +153,16 @@ int start_doge_vpn(
 
             if (FD_ISSET(socket, &master)) {
 
-                if (socket == tcp_socket) handle_tcp_packet(ssl_session);
-                else if (socket == udp_socket) handle_udp_packet(udp_socket, tun_device, key_exchange);
-                else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
+                try {
+
+                    if (socket == tcp_socket) handle_tcp_packet(ssl_session);
+                    else if (socket == udp_socket) handle_udp_packet(udp_socket, tun_device, key_exchange);
+                    else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
+                } catch(const std::exception& e) {
+
+                    std::cerr << e.what() << '\n';
+                    set_stop_flag(true);
+                }
             }
         }
     }

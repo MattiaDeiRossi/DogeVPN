@@ -350,10 +350,8 @@ namespace vpn_data_utils {
             udp_packet_data data(from, from_server);
             opt = data;
         } catch(const std::exception& e) {
-            std::cerr << 
-                "vpn_client_packet_data_or_empty failed:" <<
-                e.what() << 
-                "\n";
+
+            std::cerr << e.what() << std::endl;
             opt = std::nullopt;
         }
 
@@ -402,12 +400,19 @@ namespace vpn_data_utils {
         return d_packet;
     }
 
-    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket) {
+    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket, bool is_server) {
 
-        ssize_t bytes = socket_utils::send_to_socket(udp_socket, encrypted_packet.buffer, encrypted_packet.size);
+        // TODO
+        if (is_server) {
+            throw std::invalid_argument("not yet implemented");
+        } else {
 
-        if (bytes < 0) {
-            throw std::invalid_argument("cannot send udp packet");
+            encryption::packet packet = compose_udp_client_message();
+            ssize_t bytes = socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size);
+
+            if (bytes < 0) {
+                throw std::invalid_argument("cannot send udp packet");
+            }  
         }
     }
 

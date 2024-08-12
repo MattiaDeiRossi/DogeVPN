@@ -246,4 +246,11 @@ namespace encryption
         size = current_size + 1;
         return true;
     }
+
+    void packet::log() {
+
+        std::cout
+            << "Size of packet: " << size
+            << std::endl;
+    }
 }

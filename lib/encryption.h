@@ -50,6 +50,8 @@ namespace encryption
 
         bool append(const unsigned char *data, size_t num);
         bool append(unsigned char data);
+
+        void log();
     };
 
     int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,

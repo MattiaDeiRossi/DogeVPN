@@ -90,7 +90,7 @@ namespace vpn_data_utils {
 
         encryption::packet compose_udp_client_message();
 
-        void send_or_throw(socket_utils::socket_t udp_socket);
+        void send_or_throw(socket_utils::socket_t udp_socket, bool is_server);
 
         void log();
     };

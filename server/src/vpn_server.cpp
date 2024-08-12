@@ -213,10 +213,7 @@ int start_doge_vpn() {
                     tun_utils::tundev_frame_t frame = meta.read_data();
                     handle_tun_packet(frame);
                 } else {
-                    //printf("client disconnected!!!\n");
-
-                    // if (socket == extract_socket(tun_ss_holder))
-
+                
                     /* This section should handle specific client packets by using the TCP connection.
                     *  The TCP connection should be kept in order to perform reliable actions.
                     */

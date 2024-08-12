@@ -1,0 +1,4 @@
+domain: 10.5.0.15
+port: 8080
+username: username
+password: passwordda22c

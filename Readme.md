@@ -14,5 +14,11 @@ Authors:
 ## How to build and run
 ```bash
 docker compose build
+```
+
+```bash
+xhost +local:docker
+```
+```bash
 docker compose up -d
 ```

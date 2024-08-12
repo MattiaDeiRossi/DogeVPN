@@ -75,7 +75,7 @@ void SettingsWidget::togglePasswordVisibility() {
 }
 
 QString SettingsWidget::loadFromFile(){
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Apri file di testo"), "", tr("File di testo (*.txt);;Tutti i file (*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Apri file di testo"), "/DogeVPN", tr("File di testo (*.txt);;Tutti i file (*.*)"));
 
     if (fileName.isEmpty())
         return "";
@@ -110,6 +110,7 @@ QString SettingsWidget::loadFromFile(){
 
 void SettingsWidget::setSettings(){
     settings_.insert(domainServerLabel->text().toLower(), domainServerLineEdit->text());
+    settings_.insert(portServerLabel->text().toLower(), portServerLineEdit->text());
     settings_.insert(userLabel->text().toLower(), userLineEdit->text());
     settings_.insert(passwordLabel->text().toLower(), passwordLineEdit->text());
 }
@@ -120,6 +121,7 @@ const QMap<QString, QString> SettingsWidget::getSettings() const {
 void SettingsWidget::fillFields(){
     if(!settings_.empty()){
         domainServerLineEdit->setText(settings_.value("domain"));
+        portServerLineEdit->setText(settings_.value("port"));
         userLineEdit->setText(settings_.value("username"));
         passwordLineEdit->setText(settings_.value("password"));
     }
@@ -134,7 +136,7 @@ void SettingsWidget::onOkClicked() {
 }
 
 void SettingsWidget::onSaveClicked(){
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Open text file"), "", tr("Text files (*.txt);;All files (*.*)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Save text file"), "/DogeVPN", tr("Text files (*.txt);;All files (*.*)"));
 
     if (fileName.isEmpty())
         return;
@@ -150,6 +152,7 @@ void SettingsWidget::onSaveClicked(){
 
     setSettings();
     out << "domain: " << settings_.value("domain") << "\n";
+    out << "port: " << settings_.value("port") << "\n";
     out << "username: " << settings_.value("username") << "\n";
     out << "password: " << settings_.value("password") << "\n";
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>250</width>
-    <height>300</height>
+    <width>252</width>
+    <height>333</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <x>10</x>
       <y>10</y>
       <width>221</width>
-      <height>241</height>
+      <height>271</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -67,80 +67,56 @@
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>218</width>
+         <width>40</width>
          <height>20</height>
         </size>
        </property>
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label_2">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Stats</string>
+        <string>Profile</string>
        </property>
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="label_3">
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Bytes in</string>
+          <string>Domain</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QLabel" name="label_5">
+       <item row="0" column="1">
+        <widget class="QLabel" name="domain_label">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
          <property name="text">
-          <string>-</string>
+          <string/>
          </property>
         </widget>
        </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_4">
-       <item>
+       <item row="1" column="0">
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Bytes out</string>
+          <string>Username</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QLabel" name="label_6">
-         <property name="enabled">
-          <bool>true</bool>
+       <item row="1" column="1">
+        <widget class="QLabel" name="name_label">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="text">
-          <string>-</string>
+          <string/>
          </property>
         </widget>
        </item>
       </layout>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>218</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QLabel" name="file_label">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
      </item>
     </layout>
    </widget>
@@ -150,7 +126,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>250</width>
+     <width>252</width>
      <height>22</height>
     </rect>
    </property>
@@ -166,6 +142,7 @@
     <property name="title">
      <string>Help</string>
     </property>
+    <addaction name="actionInfo"/>
    </widget>
    <addaction name="menuConfiguration"/>
    <addaction name="menuHelp"/>
@@ -184,6 +161,11 @@
   <action name="actionEdit">
    <property name="text">
     <string>Edit</string>
+   </property>
+  </action>
+  <action name="actionInfo">
+   <property name="text">
+    <string>Info</string>
    </property>
   </action>
  </widget>

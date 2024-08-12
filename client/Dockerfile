@@ -15,6 +15,7 @@ ADD client/  /DogeVPN/client
 ADD config.txt /DogeVPN/.
 
 RUN cd client/DogeVPNGui/;\
+    rm build/ -r;\
     mkdir build;\
     cd build;\
     cmake ..;\

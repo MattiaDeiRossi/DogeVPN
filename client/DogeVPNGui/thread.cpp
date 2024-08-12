@@ -1,3 +1,4 @@
+#include <iostream>
 #include "thread.h"
 #include "client.h"
 Thread::Thread(QObject *parent)

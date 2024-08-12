@@ -302,7 +302,7 @@ namespace tun_utils {
       ssize_t bytes = write(fd, buf, count);
 
       if (bytes < 0) {
-        throw std::invalid_argument("cannot write data for tìthe TUN device");
+        throw std::invalid_argument("cannot write data for this TUN device");
       }
     }
 

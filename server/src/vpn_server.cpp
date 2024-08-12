@@ -18,7 +18,7 @@
 *  After a timeout or some error the client socket can be freed along with the thread.
 *  This will simplify the whole logic.
 */
-void handle_tcp_packet(
+void handle_tls_handshake(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,
     holder::client_register *c_register
@@ -35,10 +35,7 @@ void handle_tcp_packet(
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
 */
-std::optional<encryption::packet> handle_udp_packet(
-    socket_utils::socket_t udp_socket, 
-    holder::client_register *c_register
-) {
+void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t device, holder::client_register *c_register) {
 
     /* Using the theoretical limit of an UDP packet.
     *  Instead of setting the MSG_PEEK flag, a safe bet is made on how much data to allocate.
@@ -52,7 +49,7 @@ std::optional<encryption::packet> handle_udp_packet(
     */
     if (recv_result.bytes_read < 0) {
         utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
-        return std::nullopt;
+        return;
     }
 
     pkt.size = recv_result.bytes_read;
@@ -75,7 +72,7 @@ std::optional<encryption::packet> handle_udp_packet(
 
     if (!vpn_data_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
-        return std::nullopt;
+        return;
     }
 
     vpn_data_utils::udp_packet_data vpn_data = vpn_data_opt.value();
@@ -89,7 +86,7 @@ std::optional<encryption::packet> handle_udp_packet(
 
     if (!c_holder_opt.has_value()) {
         fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
-        return std::nullopt;
+        return;
     }
 
     /* Since we received the udp info from client, we must save this
@@ -108,21 +105,41 @@ std::optional<encryption::packet> handle_udp_packet(
         std::cerr
             << "handle_incoming_udp_packet: packet cannot be decrypted\n"
             << std::endl;
-        return std::nullopt;
+        return;
     }
 
     encryption::packet d_packet = d_packet_opt.value();
-    return d_packet;
+    device.write_data(d_packet.buffer, d_packet.size);
  }
 
- void handle_tun_packet(tun_utils::tundev_frame_t frame) {
+ void handle_tun_packet(
+    socket_utils::socket_t socket,
+    tun_utils::tundev_t device,
+    holder::client_register *c_register
+) {
+    
+    tun_utils::tundev_frame_t frame = device.read_data();
+    tun_utils::ip_header header = frame.get_ip_header();
 
-    frame
-        .get_ip_header();
+    std::optional<holder::client_holder> holder_opt = 
+        c_register->get_client_holder(holder::tun_ip(header.destination_ip));
 
+    if (holder_opt.has_value()) {
+
+        holder::client_holder holder = holder_opt.value();
+
+        encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
+        vpn_data_utils::udp_packet_data(&tun_pkt, holder.symmetric_key)
+            .send_or_throw(socket, holder.udp_info);
+    }
  }
 
-int start_doge_vpn() {
+/* This section should handle specific client packets by using the TCP connection.
+*  The TCP connection should be kept in order to perform reliable actions.
+*/
+ void handle_tcp_packet() {}
+
+void start_doge_vpn() {
 
     /* Put in other places - they should be configurable */
     unsigned char third_octet = 11;
@@ -142,8 +159,8 @@ int start_doge_vpn() {
     *  By configuring the TUN device, raw ip 
     */
     char server_tun_ip[holder::SIZE_32];
-    tun_utils::tundev_t meta(name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
-    meta.persist();
+    tun_utils::tundev_t device(name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
+    device.persist();
 
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, public_cert, private_key);
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(address, port, true);
@@ -159,20 +176,18 @@ int start_doge_vpn() {
     std::set<socket_utils::socket_t> server_socket_set;
     server_socket_set.insert(tcp_socket);
     server_socket_set.insert(udp_socket);
-    server_socket_set.insert(meta.fd);
+    server_socket_set.insert(device.fd);
 
     /**/
     holder::client_register c_register(server_pool);
 
     while(true) {
 
-        socket_utils::socket_t max_socket;
-        fd_set master = c_register.fd_set_merge(server_socket_set, &max_socket);
-        socket_utils::select_or_throw(max_socket + 1, &master);
+        holder::select_result result = c_register.merge_select(server_socket_set);
 
-        for (socket_utils::socket_t socket = 0; socket <= max_socket; ++socket) {
+        for (auto socket : result.sockets) {
 
-           if (FD_ISSET(socket, &master)) {
+           if (FD_ISSET(socket, &result.fdset)) {
 
                 if (socket == tcp_socket) {
 
@@ -192,85 +207,19 @@ int start_doge_vpn() {
                         *  Instead of blocking the entire server we may want to block only one therad.
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
-                        std::thread th(handle_tcp_packet, ctx, &info, &c_register);
-                        th.detach();
+                        std::thread(handle_tls_handshake, ctx, &info, &c_register)
+                            .detach();
                     }
-                } else if (socket == udp_socket) {
-
-                    std::optional<encryption::packet> received_packet_opt =
-                        handle_udp_packet(socket, &c_register);
-
-                    if (!received_packet_opt.has_value()) {
-                        utils::print_error("start_doge_vpn: udp packet of client cannot be verified\n");
-                    } else {
-
-                        //encryption::packet received_packet = received_packet_opt.value();
-                        //meta.write_data(received_packet.buffer, received_packet.size);
-                    }
-                } else if (socket == meta.fd) {
-
-                    tun_utils::tundev_frame_t frame = meta.read_data();
-                    handle_tun_packet(frame);
-                } else {
-                
-                    /* This section should handle specific client packets by using the TCP connection.
-                    *  The TCP connection should be kept in order to perform reliable actions.
-                    */
-                }
+                } 
+                else if (socket == udp_socket) handle_udp_packet(udp_socket, device, &c_register);
+                else if (socket == device.fd) handle_tun_packet(udp_socket, device, &c_register);
+                else handle_tcp_packet();
             }
         }
-    }
-
-    fprintf(stderr, "start_doge_vpn: something wrong occurred and server must be stopped\n");
-    ssl_utils::ssl_context_free(ctx);
-
-	return 0;
-}
-
-void test_tun() {
-
-    char name[500];
-    bzero(name, sizeof(name));
-    snprintf(name, sizeof(name), "tun42");
-
-    tun_utils::enable_forwarding(true);
-    tun_utils::tundev_t meta(name, "192.168.53.5", 24);
-    meta.persist();
-    
-    /* Note that "buffer" should be at least the MTU size of the interface, eg 1500 bytes */
-
-    while (true) {
-
-        tun_utils::tundev_frame_t frame = meta.read_data();
-        tun_utils::ip_header header = frame.get_ip_header();
-        header.log();
-
-        /*if(nread < 0) {
-            perror("Reading from interface");
-            close(meta.fd);
-            exit(1);
-        }*/
-
-        /* Do whatever with the data */
-       // printf("Read %d bytes from device %s\n", nread, name);
-
-    }
-}
-
-void test_pool() {
-
-    tun_utils::ip_pool_t pool;
-    pool.compose_class_c_pool(11);
-
-    char buffer[512];
-    unsigned int nip;
-    while (pool.next(buffer, 512, &nip)) {
-        std::cout << buffer << "--" << nip << std::endl;
     }
 }
 
 int main() {
-    //test_pool();
-    //test_tun();
-	return start_doge_vpn();
+	start_doge_vpn();
+    return 0;
 }

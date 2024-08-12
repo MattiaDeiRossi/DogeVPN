@@ -69,6 +69,12 @@ namespace holder {
         server_holder s_holder;
     };
 
+    struct select_result {
+
+        fd_set fdset;
+        std::set<socket_utils::socket_t> sockets;
+    };
+
 
     /* Register of current connected client.
     *  Whenever a client connects or disconnects, this should be properly updated.
@@ -103,7 +109,7 @@ namespace holder {
         std::optional<client_holder> get_client_holder(unsigned int session_id);
         std::optional<client_holder> get_client_holder(tun_ip ip);
 
-        fd_set fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket);
+        select_result merge_select(std::set<socket_utils::socket_t> set);
     };
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder);

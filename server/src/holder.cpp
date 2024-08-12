@@ -255,16 +255,20 @@ namespace holder {
         return 0;
     }
 
-    fd_set client_register::fd_set_merge(std::set<socket_utils::socket_t> set, socket_utils::socket_t *max_socket) {
-
+    select_result client_register::merge_select(std::set<socket_utils::socket_t> set) {
+        
         std::shared_lock lock(mutex);
 
         socket_utils::socket_t max = 0;
+        std::set<socket_utils::socket_t> sockets;
+
         fd_set master;
         FD_ZERO(&master);
 
         for (auto socket : set) {
+
             FD_SET(socket, &master);
+            sockets.insert(socket);
             max = socket > max ? socket : max;
         }
 
@@ -277,11 +281,17 @@ namespace holder {
                     .socket;
 
             FD_SET(c_socket, &master);
+            sockets.insert(c_socket);
             max = c_socket > max ? c_socket : max;
         }
 
-        *max_socket = max;
-        return master;
+        socket_utils::select_or_throw(max + 1, &master);
+
+        select_result result;
+        result.fdset = master;
+        result.sockets = sockets;
+
+        return result;
     }
 
     int init_udp_server_holder(char const *host, char const *port, socket_holder *holder) {

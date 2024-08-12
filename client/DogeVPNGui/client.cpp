@@ -143,8 +143,6 @@ int start_doge_vpn(
     client_sockets.insert(udp_socket);
     client_sockets.insert(tcp_socket);
 
-    // test(udp_socket, (char *) key_exchange.key);
-
     while (!stop_flag) {
 
         fd_set master = socket_utils::select_or_throw(client_sockets);

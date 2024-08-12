@@ -276,7 +276,7 @@ namespace socket_utils {
     }
 
 	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length) {
-        return send(udp_socket, buffer, length, 0);
+        return send_to_socket(udp_socket, buffer, length, NULL, 0);
     }
 
 	size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len) {

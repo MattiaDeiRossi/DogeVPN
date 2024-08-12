@@ -279,6 +279,14 @@ namespace socket_utils {
         return send(udp_socket, buffer, length, 0);
     }
 
+	size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len) {
+
+		ssize_t bytes = sendto(udp_socket, buffer, length, 0, addr, addr_len);
+
+		if (bytes < 0) throw std::invalid_argument("cannot write to socket");
+		return bytes;
+    }
+
 	size_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
 
 		ssize_t bytes = recv(socket, buffer, length, 0);

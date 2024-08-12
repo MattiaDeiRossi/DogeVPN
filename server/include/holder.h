@@ -5,6 +5,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <stdlib.h>
 #include "socket_utils.h"
 #include "ssl_utils.h"

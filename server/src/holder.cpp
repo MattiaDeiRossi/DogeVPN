@@ -7,8 +7,7 @@ namespace holder {
         std::shared_lock lock(c_register->mutex);
 
         if (c_register->session_per_holder.count(session_id) == 0) {
-            fprintf(stderr, "extract_tun_ip: ip cannot be extracted\n");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("ip cannot be extracted");
         }
 
         return c_register->session_per_holder.at(session_id).client_tun_ip;
@@ -332,8 +331,7 @@ namespace holder {
             holder::init_udp_server_holder(ip, port, &holder);
 
         if (result == -1) {
-            fprintf(stderr, "create_server_holder_or_abort: %s server cannot start\n", is_tcp ? "tcp" : "udp");
-            exit(EXIT_FAILURE);
+            throw std::invalid_argument("server cannot start");
         }
 
         return holder;

@@ -21,6 +21,8 @@ services:
       context: ../
       dockerfile: server/Dockerfile
     tty: true
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
     cap_add:
       - ALL
     sysctls:

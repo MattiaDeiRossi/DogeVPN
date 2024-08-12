@@ -17,18 +17,11 @@ void handle_udp_packet(
     encryption::packet e_packet;
     e_packet.size = socket_utils::recv_from_socket(udp_socket, e_packet.buffer, e_packet.max_capacity);
 
-    vpn_data_utils::udp_packet_data data(&e_packet, true);
-    data.log();
+    encryption::packet d_packet = 
+        vpn_data_utils::udp_packet_data(&e_packet, true)
+            .decrypt(key_exchange.key)
+            .value();
 
-    std::optional<encryption::packet> d_packet_opt = data.decrypt(key_exchange.key);
-
-    if (!d_packet_opt.has_value()) {
-
-        std::cerr << "cannot decrypt packet from server" << std::endl;
-        return;
-    }
-
-    encryption::packet d_packet = d_packet_opt.value();
     tun_device.write_data(d_packet.buffer, d_packet.size);
 }
 
@@ -95,7 +88,6 @@ int start_doge_vpn(
     */
     vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
-    key_exchange.log();
 
     /* TODO: netmask should be send by server */
     tun_utils::tundev_t tun_device(dev_name, (const char *) key_exchange.tun_ip, 24);
@@ -134,11 +126,15 @@ int start_doge_vpn(
         }
     }
 
-    /**/
+    /* Freeing SSL objects.
+    *  The TCP socket will be closed along with the SSL session.
+    *  Closing the UDP socket along with the TUN device.
+    */
     ssl_utils::free_ssl(ssl_session, NULL);
     ssl_utils::ssl_context_free(ctx);
 
-    /**/
+    socket_utils::close_socket(udp_socket);
+    
     tun_device.free();
 
     return 0;

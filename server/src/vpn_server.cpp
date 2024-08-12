@@ -149,7 +149,6 @@ int start_doge_vpn() {
     holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(address, port, true);
     holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(address, port, false);
 
-
     /* After tcp and udp sockets are created:
     *   1. extract sockets from holder
     *   2. update selector_set

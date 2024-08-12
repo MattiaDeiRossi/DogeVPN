@@ -131,7 +131,7 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
 /* This section should handle specific client packets by using the TCP connection.
 *  The TCP connection should be kept in order to perform reliable actions.
 */
- void handle_tcp_packet() {}
+void handle_tcp_packet() {}
 
 void start_doge_vpn() {
 

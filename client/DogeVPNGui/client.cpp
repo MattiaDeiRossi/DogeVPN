@@ -110,7 +110,9 @@ int start_doge_vpn(
     client_sockets.insert(udp_socket);
     client_sockets.insert(tcp_socket);
 
-    while (!stop_flag) {
+    bool client_errors = false;
+
+    while (!(stop_flag || client_errors)) {
 
         fd_set master = socket_utils::select_or_throw(client_sockets);
 
@@ -126,7 +128,7 @@ int start_doge_vpn(
                 } catch(const std::exception& e) {
 
                     std::cerr << e.what() << '\n';
-                    set_stop_flag(true);
+                    client_errors = true;
                 }
             }
         }

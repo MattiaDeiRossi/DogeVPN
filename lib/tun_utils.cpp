@@ -306,16 +306,18 @@ namespace tun_utils {
       }
     }
 
-    bool tundev_t::fd_close() {
+    void tundev_t::free() {
 
-        if (fd <= 0) return false;
-        if (close(fd) < 0) return false;
+        if (fd <= 0) return;
+
+        close(fd);
 
         bzero(dev, IFNAMSIZ);
         bzero(addr, 32);
-        fd = 0;
 
-        return true;
+        fd = 0;
+        flags = 0;
+        netmask = 0;
     }
 
     int enable_forwarding(bool enable) {

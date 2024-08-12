@@ -76,8 +76,6 @@ int start_doge_vpn(
     std::vector<tun_utils::ipv4_netmask_t> nets;
     nets.push_back(tun_utils::ipv4_netmask_t("192.168.53.0", 24));
 
-    int ret_val = 0;
-
     /* No need to continue with computation if context cannot be created. */
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
 
@@ -134,9 +132,13 @@ int start_doge_vpn(
         }
     }
 
+    /**/
     ssl_utils::free_ssl(ssl_session, NULL);
     ssl_utils::ssl_context_free(ctx);
 
-    return ret_val;
+    /**/
+    tun_device.free();
+
+    return 0;
 }
 

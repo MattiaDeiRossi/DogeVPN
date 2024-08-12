@@ -106,7 +106,7 @@ namespace tun_utils {
 
         void write_data(const void *buf, size_t count);
 
-        bool fd_close();
+        void free();
     };
 
     struct ip_pool_t {

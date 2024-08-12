@@ -15,15 +15,15 @@ namespace socket_utils
 
     const socket_t invalid_socket_value = -1;
 
-    struct raw_udp_client_info {
+    struct raw_client_info {
 
         char address_service[256];
 
-        raw_udp_client_info();
-        raw_udp_client_info(struct sockaddr_storage address, socklen_t length);
+        raw_client_info();
+        raw_client_info(struct sockaddr_storage address, socklen_t length);
 
-        bool operator==(const raw_udp_client_info &o) const;
-        bool operator<(const raw_udp_client_info &o) const;
+        bool operator==(const raw_client_info &o) const;
+        bool operator<(const raw_client_info &o) const;
 
         void log();
     };
@@ -33,7 +33,7 @@ namespace socket_utils
         socklen_t length;
         struct sockaddr_storage address;
 
-        raw_udp_client_info to_raw_info();  
+        raw_client_info to_raw_info();  
     };
 
     struct udp_client_info {
@@ -41,7 +41,7 @@ namespace socket_utils
         socklen_t length;
         struct sockaddr_storage address;
 
-        raw_udp_client_info to_raw_info();  
+        raw_client_info to_raw_info();  
     };
     
     struct recvfrom_result {

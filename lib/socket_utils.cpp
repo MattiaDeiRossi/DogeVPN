@@ -184,11 +184,11 @@ namespace socket_utils {
 		return result;
 	}
 
-	raw_udp_client_info::raw_udp_client_info() {
+	raw_client_info::raw_client_info() {
 		bzero(address_service, 256);
 	}
 
-	raw_udp_client_info::raw_udp_client_info(struct sockaddr_storage address, socklen_t length) {
+	raw_client_info::raw_client_info(struct sockaddr_storage address, socklen_t length) {
 
 		bzero(address_service, 256);
 
@@ -219,30 +219,30 @@ namespace socket_utils {
 		}
 	}
 
-	void raw_udp_client_info::log() {
+	void raw_client_info::log() {
 		std::cout << 
 			"Received packet from:\n" << 
 			address_service << 
 			"\n";
 	}
 
-	raw_udp_client_info tcp_client_info::to_raw_info() {
+	raw_client_info tcp_client_info::to_raw_info() {
 
-		raw_udp_client_info raw_info(address, length);
+		raw_client_info raw_info(address, length);
 		return raw_info;
 	}
 
-	raw_udp_client_info udp_client_info::to_raw_info() {
+	raw_client_info udp_client_info::to_raw_info() {
 
-		raw_udp_client_info raw_info(address, length);
+		raw_client_info raw_info(address, length);
 		return raw_info;
 	}
 
-	bool raw_udp_client_info::operator==(const raw_udp_client_info &o) const {
+	bool raw_client_info::operator==(const raw_client_info &o) const {
         return strncmp(address_service, o.address_service, 256) == 0 ? true : false;
     }
 
-	bool raw_udp_client_info::operator<(const raw_udp_client_info &o) const {
+	bool raw_client_info::operator<(const raw_client_info &o) const {
         return strncmp(address_service, o.address_service, 256) < 0 ? true : false;
     }
 

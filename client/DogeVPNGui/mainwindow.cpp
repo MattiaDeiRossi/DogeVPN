@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -26,26 +27,37 @@ MainWindow::~MainWindow()
 void MainWindow::on_connectButton_clicked()
 {
     auto settings = settingsWidget->getSettings();
-    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
-        qDebug("%s: %s",it.key().toStdString().c_str(), it.value().toStdString().c_str());
-    }
 
     if(settings.empty()){
         QMessageBox::warning(this, tr("Error"), tr("Settings are empty"));
         return;
     }
 
-    auto domain = settings.value("domain").toStdString().c_str();
-    auto port = settings.value("port").toStdString().c_str();
-    auto us = settings.value("username").toStdString().c_str();
-    auto psw = settings.value("password").toStdString().c_str();
-    std::cout<< "Sending: "<< us << " "<< psw <<std::endl;
+    std::string domain;
+    std::string port;
+    std::string us;
+    std::string psw;
+
+    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
+
+        qDebug("%s: %s",it.key().toStdString().c_str(), it.value().toStdString().c_str());
+
+        if (strcmp(it.key().toStdString().c_str(), "domain") == 0) {
+            domain = it.value().toStdString();
+        } else if (strcmp(it.key().toStdString().c_str(), "port") == 0) {
+            port = it.value().toStdString();
+        } else if (strcmp(it.key().toStdString().c_str(), "username") == 0) {
+            us = it.value().toStdString();
+        } else if (strcmp(it.key().toStdString().c_str(), "password") == 0) {
+            psw = it.value().toStdString();
+        }
+    }
 
     if(!client_thread_){
         client_thread_ = new Thread(this);
     }
 
-    client_thread_->setParams(domain, port, us, psw);
+    client_thread_->setParams(domain.c_str(), port.c_str(), us.c_str(), psw.c_str());
     client_thread_->start();
     ui->connectionStatus->setText("Connected");
     ui->connectionStatus->setStyleSheet("color: green;");

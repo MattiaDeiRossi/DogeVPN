@@ -36,3 +36,18 @@ services:
       internal_network:
         ipv4_address: 192.168.42.15
     command: ./build/vpnserver
+
+  server_host_a:
+    build: 
+      context: .
+      dockerfile: hosts/Dockerfile
+    tty: true
+    cap_add:
+      - ALL
+    container_name: server_host_a
+    networks:
+      internal_network:
+        ipv4_address: 192.168.42.16
+    depends_on:
+      - vpnserver
+

@@ -8,7 +8,7 @@ namespace config {
     const char *name = "serverTUN";
     const char *public_cert = "certs/cert.pem";
     const char *private_key = "certs/key.pem";
-    const char *address = "0.0.0.0";
+    const char *address = "10.5.42.15";
     const char *port = "8080";
 }
 

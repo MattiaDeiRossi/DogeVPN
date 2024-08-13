@@ -5,11 +5,12 @@ RUN apt install -y \
     g++ \
     cmake \
     git \
-    curl\
-    python3\
-    build-essential\
-    libssl-dev\
-    iproute2
+    curl \
+    python3 \
+    build-essential \
+    libssl-dev \
+    iproute2 \
+    iputils-ping
 
 # installing mongocxx driver - connects c++ to mongo
 RUN cd ~ \

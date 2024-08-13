@@ -8,6 +8,7 @@ RUN apt-get update && \
     qtbase5-dev \
     libssl-dev \
     iproute2 \
+    iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /DogeVPN

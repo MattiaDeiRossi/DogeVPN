@@ -72,7 +72,7 @@ int start_doge_vpn(
     const char *dev_name = "DogeVpnTun";
 
     std::vector<tun_utils::ipv4_netmask_t> nets;
-    nets.push_back(tun_utils::ipv4_netmask_t("192.168.53.0", 24));
+    nets.push_back(tun_utils::ipv4_netmask_t("192.168.42.0", 24));
 
     /* No need to continue with computation if context cannot be created. */
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);

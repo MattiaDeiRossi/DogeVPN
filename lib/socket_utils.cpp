@@ -68,8 +68,9 @@ namespace socket_utils {
 		freeaddrinfo(bind_address);
 
 		// No address succeeded.
-        if (ba_p == NULL) return -1;
-
+        if (ba_p == NULL) {
+			return -1;
+		}
 
 		/* A UDP socket does not need to set itself to a listen state.
 		*  Just up to bind. 

@@ -7,6 +7,7 @@ RUN apt-get update && \
     build-essential \
     qtbase5-dev \
     libssl-dev \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /DogeVPN

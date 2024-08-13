@@ -1,8 +1,9 @@
 #include <iostream>
 #include "thread.h"
 #include "client.h"
+
 Thread::Thread(QObject *parent)
-    : QThread(parent), user_(nullptr), pwd_(nullptr)
+    : QThread(parent)
 {
 }
 
@@ -24,10 +25,10 @@ void Thread::setParams(const char *domain, const char *port, const char *user, c
     bzero(user_, bytes);
     bzero(pwd_, bytes);
 
-    strcpy(domain_, domain, max_bytes);
-    strcpy(port_, port, max_bytes);
-    strcpy(user_, user, max_bytes);
-    strcpy(pwd_, pwd, max_bytes);
+    strncpy(domain_, domain, max_bytes);
+    strncpy(port_, port, max_bytes);
+    strncpy(user_, user, max_bytes);
+    strncpy(pwd_, pwd, max_bytes);
 }
 
 void Thread::run()

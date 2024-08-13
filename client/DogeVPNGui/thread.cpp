@@ -16,11 +16,18 @@ Thread::~Thread()
 
 void Thread::setParams(const char *domain, const char *port, const char *user, const char *pwd)
 {
-    domain_ = domain;
-    port_ = port;
-    user_ = user;
-    pwd_ = pwd;
+    size_t bytes = 256;
+    size_t max_bytes = 255;
 
+    bzero(domain_, bytes);
+    bzero(port_, bytes);
+    bzero(user_, bytes);
+    bzero(pwd_, bytes);
+
+    strcpy(domain_, domain, max_bytes);
+    strcpy(port_, port, max_bytes);
+    strcpy(user_, user, max_bytes);
+    strcpy(pwd_, pwd, max_bytes);
 }
 
 void Thread::run()

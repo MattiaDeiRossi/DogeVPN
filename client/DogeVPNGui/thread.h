@@ -20,7 +20,10 @@ protected:
     void run() override;
 
 private:
-    const char *user_, *pwd_, *domain_, *port_;
+    char user_[256];
+    char pwd_[256];
+    char domain_[256];
+    char port_[256];
 };
 
 #endif // THREAD_H

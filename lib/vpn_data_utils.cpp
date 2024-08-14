@@ -446,10 +446,12 @@ namespace vpn_data_utils {
         }  
     }
 
-    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket, socket_utils::udp_client_info) {
+    void udp_packet_data::send_or_throw(socket_utils::socket_t udp_socket, socket_utils::udp_client_info info) {
 
         encryption::packet packet = compose_udp_server_message();
-        ssize_t bytes = socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size);
+        
+        ssize_t bytes = 
+            socket_utils::send_to_socket(udp_socket, packet.buffer, packet.size, (const sockaddr *) &(info.address), info.length);
 
         if (bytes < 0) {
             throw std::invalid_argument("cannot send udp packet");

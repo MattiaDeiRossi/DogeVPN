@@ -48,7 +48,7 @@ namespace socket_utils
     struct recvfrom_result {
 
         udp_client_info udp_info;
-        ssize_t bytes_read;
+        size_t bytes_read;
     };
 
     int invalid_socket(socket_t socket);

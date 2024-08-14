@@ -171,6 +171,14 @@ namespace socket_utils {
 		struct sockaddr_storage client_address;
 		socklen_t client_len = sizeof(client_address);
 		ssize_t bytes_read = recvfrom(fd, buf, n, 0, (struct sockaddr *) &client_address, &client_len);
+
+		if (bytes_read < 0) {
+
+			/* A negative value should never happen.
+			*  In this case no actions are performed, just throwing the exception.
+			*/
+			throw std::invalid_argument("recvfrom failed, cannot read bytes");
+		}
 		
 		udp_client_info udp_info;
 		udp_info.address = client_address;

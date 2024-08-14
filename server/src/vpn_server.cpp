@@ -66,7 +66,8 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
         vpn_data_utils::udp_packet_data_or_empty(&pkt, false);
 
     if (!vpn_data_opt.has_value()) {
-        fprintf(stderr, "handle_incoming_udp_packet: vpn data cannot be extracted\n");
+
+        std::cerr << "handle_incoming_udp_packet: vpn data cannot be extracted" << std::endl;
         return;
     }
 
@@ -79,7 +80,8 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
     std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(id_num);
 
     if (!c_holder_opt.has_value()) {
-        fprintf(stderr, "handle_incoming_udp_packet: failing during key extraction\n");
+
+        std::cerr << "handle_incoming_udp_packet: failing during key extraction" << std::endl;
         return;
     }
 

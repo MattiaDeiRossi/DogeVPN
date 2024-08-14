@@ -146,7 +146,7 @@ namespace encryption
 
         bzero(buffer, SIZE_8_192);
         max_capacity = SIZE_8_192;
-        size = 0;
+        size = num;
 
         if (num > SIZE_8_192) {
             throw std::invalid_argument("data is too large");

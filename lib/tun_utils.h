@@ -127,8 +127,6 @@ namespace tun_utils {
 
         void insert(unsigned int ip);
     };
-
-    int enable_forwarding(bool enable);
 }
 
 #endif

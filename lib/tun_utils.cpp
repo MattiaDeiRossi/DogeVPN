@@ -319,12 +319,6 @@ namespace tun_utils {
         flags = 0;
         netmask = 0;
     }
-
-    int enable_forwarding(bool enable) {
-        char command[256];
-		snprintf(command, sizeof(command), "sysctl net.ipv4.ip_forward=%d", enable ? 1 : 0);
-        return system(command);
-    }
     
     void ip_pool_t::compose_class_c_pool(unsigned char third_octet) {
 

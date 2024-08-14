@@ -37,24 +37,34 @@ void handle_tun_packet(
     std::vector<tun_utils::ipv4_netmask_t> nets
 ) {
 
+    bool can_forward = false;
+
     tun_utils::tundev_frame_t frame = tun_device.read_data();
     tun_utils::ip_header header = frame.get_ip_header();
 
-    bool can_forward = false;
-
+    /* When receiving frames from the TUN interface, only appropriate ones are sent to
+    *  the server; that is only those frames that belong to the registered routes.
+    */
     for (auto net : nets) {
+
         tun_utils::ipv4_t ipv4(header.destination_ip);
         can_forward = can_forward || net.same_network(&ipv4);
     }
 
+    /* Ignore empty frames */
+    if (frame.size == 0) {
+        
+        std::cout << "received an empty frame" << std::endl;
+        can_forward = false;
+    }
+
     if (can_forward) {
 
-        std::cout 
-            << "sending to "
-            << header.destination_ip
-            << std::endl;
+        std::cout << "sending to " << header.destination_ip << std::endl;
 
-        /**/
+        /* Build encrypted packet to send to the server.
+        *  It is encrypted with the received key. 
+        */
         encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
         vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
             .send_or_throw(udp_socket);

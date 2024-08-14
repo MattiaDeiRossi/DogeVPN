@@ -12,6 +12,7 @@ public:
     ~Thread();
 
     void setParams(const char *domain, const char *port, const char *user, const char *pwd);
+    void stop();
 
 signals:
     void threadFinished(int result);

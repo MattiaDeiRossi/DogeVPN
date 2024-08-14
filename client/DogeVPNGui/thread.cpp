@@ -9,10 +9,7 @@ Thread::Thread(QObject *parent)
 
 Thread::~Thread()
 {
-    if (isRunning()) {
-        terminate();
-        wait();
-    }
+    stop();
 }
 
 void Thread::setParams(const char *domain, const char *port, const char *user, const char *pwd)
@@ -38,5 +35,13 @@ void Thread::run()
         emit threadFinished(result);
     } else {
         std::cerr << "Errore: Parametri non impostati correttamente" << std::endl;
+    }
+}
+
+void Thread::stop() {
+    if (isRunning()) {
+        set_stop_flag(true);
+        wait();
+        set_stop_flag(false);
     }
 }

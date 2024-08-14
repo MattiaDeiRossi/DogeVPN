@@ -30,7 +30,12 @@ void handle_tls_handshake(
 *  This should be done by using the initial TCP connection. 
 *  This version does not include any error notification.
 */
-void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t device, holder::client_register *c_register) {
+void handle_udp_packet(
+    socket_utils::socket_t udp_socket,
+    tun_utils::tundev_t device,
+    tun_utils::ipv4_netmask_t ip_net,
+    holder::client_register *c_register
+) {
 
     /* Using the theoretical limit of an UDP packet.
     *  Instead of setting the MSG_PEEK flag, a safe bet is made on how much data to allocate.
@@ -111,11 +116,24 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
  void handle_tun_packet(
     socket_utils::socket_t socket,
     tun_utils::tundev_t device,
+    tun_utils::ipv4_netmask_t ip_net,
     holder::client_register *c_register
 ) {
 
     tun_utils::tundev_frame_t frame = device.read_data();
     tun_utils::ip_header header = frame.get_ip_header();
+    tun_utils::ipv4_t ipv4(header.destination_ip);
+
+    if (!ip_net.same_network(&ipv4)) {
+
+        /* The only piece of memory shared by different threads is the
+        *  client_register. Since the TUN device receive lots of frames that should not
+        *  be sent to clients, the same network_check function is called to verify if
+        *  the destination matches the netmask_address. This avoid lock the client_register
+        *  mutex multiple times, increasing the overall efficiency.
+        */
+        return;
+    }
 
     std::optional<holder::client_holder> holder_opt = 
         c_register->get_client_holder(holder::tun_ip(header.destination_ip));
@@ -128,7 +146,7 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
         vpn_data_utils::udp_packet_data udp_packet(&tun_pkt, (const char *) holder.symmetric_key);
         udp_packet.send_or_throw(socket, holder.udp_info);
     }
- }
+}
 
 /* This section should handle specific client packets by using the TCP connection.
 *  The TCP connection should be kept in order to perform reliable actions.
@@ -142,6 +160,9 @@ void start_doge_vpn() {
     */
     tun_utils::ip_pool_t server_pool;
     server_pool.compose_class_c_pool(config::third_octet);
+
+    /**/
+    tun_utils::ipv4_netmask_t ipv4_netmask = server_pool.compose_ipv4_netmask();
 
     /* TUN device.
     *  By configuring the TUN device, raw ip 
@@ -199,8 +220,8 @@ void start_doge_vpn() {
                             .detach();
                     }
                 } 
-                else if (socket == udp_socket) handle_udp_packet(udp_socket, device, &c_register);
-                else if (socket == device.fd) handle_tun_packet(udp_socket, device, &c_register);
+                else if (socket == udp_socket) handle_udp_packet(udp_socket, device, ipv4_netmask, &c_register);
+                else if (socket == device.fd) handle_tun_packet(udp_socket, device, ipv4_netmask, &c_register);
                 else handle_tcp_packet();
             }
         }

@@ -3,4 +3,6 @@ RUN apt -y update
 
 RUN apt install -y \
     iproute2 \
-    iputils-ping
+    iputils-ping \
+    tcpdump \
+    net-tools

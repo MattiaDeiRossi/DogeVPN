@@ -299,11 +299,11 @@ namespace tun_utils {
 
     void tundev_t::write_data(const void *buf, size_t count) {
 
-      ssize_t bytes = write(fd, buf, count);
+        ssize_t bytes = write(fd, buf, count);
 
-      if (bytes < 0) {
-        throw std::invalid_argument("cannot write data for this TUN device");
-      }
+        if (bytes < 0) {
+            throw std::invalid_argument("cannot write data for this TUN device");
+        }
     }
 
     void tundev_t::free() {

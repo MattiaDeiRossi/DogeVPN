@@ -308,21 +308,10 @@ namespace tun_utils {
 
     void tundev_t::free() {
 
-        char command[128];
-
         if (fd <= 0) return;
 
         /* Close the file descriptor associated with the TUN device */
         close(fd);
-        
-        /* Force delete of TUN interface:
-        *   - ip link delete tun2
-        */
-        bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip link delete %s", dev);
-        if (system(command) != 0) {
-            throw std::invalid_argument("failing when deleting TUN interface");
-        }
 
         bzero(dev, IFNAMSIZ);
         bzero(addr, 32);

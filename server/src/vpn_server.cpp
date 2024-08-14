@@ -42,16 +42,6 @@ void handle_udp_packet(
     */
     encryption::packet pkt;
     socket_utils::recvfrom_result recv_result = socket_utils::recvfrom(udp_socket, pkt.buffer, pkt.max_capacity);
-
-    // TODO: Try delete with address.
-    /* A negative value should never happen.
-    *  In this case no actions are performed, just returning the error.
-    */
-    if (recv_result.bytes_read < 0) {
-        utils::print_error("handle_incoming_udp_packet: invalid packet length\n");
-        return;
-    }
-
     pkt.size = recv_result.bytes_read;
 
     recv_result
@@ -72,7 +62,7 @@ void handle_udp_packet(
 
     if (!vpn_data_opt.has_value()) {
 
-        std::cerr << "handle_incoming_udp_packet: vpn data cannot be extracted" << std::endl;
+        std::cerr << "vpn data cannot be extracted" << std::endl;
         return;
     }
 

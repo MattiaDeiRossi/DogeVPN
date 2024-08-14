@@ -66,8 +66,7 @@ void MainWindow::on_connectButton_clicked()
 void MainWindow::on_disconnectButton_clicked()
 {
     if (client_thread_->isRunning()) {
-        client_thread_->terminate();
-        client_thread_->wait();
+        client_thread_->stop();
     }else{
         QMessageBox::warning(this, tr("Error"), tr("Client is not connected"));
         return;

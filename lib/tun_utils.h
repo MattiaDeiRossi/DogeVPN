@@ -126,6 +126,8 @@ namespace tun_utils {
         const char* next(char *buffer, size_t num, unsigned int *next_ip);
 
         void insert(unsigned int ip);
+
+        ipv4_netmask_t compose_ipv4_netmask();
     };
 }
 

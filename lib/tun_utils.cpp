@@ -308,9 +308,21 @@ namespace tun_utils {
 
     void tundev_t::free() {
 
+        char command[128];
+
         if (fd <= 0) return;
 
+        /* Close the file descriptor associated with the TUN device */
         close(fd);
+        
+        /* Force delete of TUN interface:
+        *   - ip link delete tun2
+        */
+        bzero(command, sizeof(command));
+        snprintf(command, sizeof(command), "ip link delete %s", dev);
+        if (system(command) != 0) {
+            throw std::invalid_argument("failing when deleting TUN interface");
+        }
 
         bzero(dev, IFNAMSIZ);
         bzero(addr, 32);
@@ -417,5 +429,39 @@ namespace tun_utils {
 
     void ip_pool_t::insert(unsigned int ip) {
         unavailable_ips.erase(ip);
+    }
+
+    ipv4_netmask_t ip_pool_t::compose_ipv4_netmask() {
+
+        char buffer[128];
+        size_t buffer_index;
+
+        bzero(buffer, sizeof(buffer));
+        buffer_index = 0;
+
+        for (int i = 3; i >= 0; i--) {
+
+            char ip_digit[16];
+            bzero(ip_digit, sizeof(ip_digit));
+            sprintf(ip_digit, "%d", ip_bytes[i]);
+
+            char *ip_digit_ptr = ip_digit;
+
+            while (*ip_digit_ptr) {
+
+                buffer[buffer_index] = *ip_digit_ptr;
+                buffer_index = buffer_index + 1;
+                ip_digit_ptr = ip_digit_ptr + 1;
+            }
+
+            if (i > 0) {
+
+                buffer[buffer_index] = '.';
+                buffer_index = buffer_index + 1;
+            }
+        }
+
+        ipv4_netmask_t ipv4_netmask(buffer, netmask);
+        return ipv4_netmask;
     }
 }

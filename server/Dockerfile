@@ -10,6 +10,8 @@ RUN apt install -y \
     build-essential \
     libssl-dev \
     iproute2 \
+    tcpdump \
+    net-tools \
     iputils-ping
 
 # installing mongocxx driver - connects c++ to mongo

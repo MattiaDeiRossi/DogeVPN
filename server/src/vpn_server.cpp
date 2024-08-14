@@ -206,6 +206,14 @@ void start_doge_vpn() {
 }
 
 int main() {
+
+    /*encryption::packet pkt;
+    encryption::encryption_data ed((const unsigned char *)"key");
+
+    pkt.append((const unsigned char *) "hello", strlen("hello"));
+    encryption::packet e_pkt = pkt.encrypt(ed).value();
+    printf("??: %s", e_pkt.decrypt(ed).value().buffer);*/
+
 	start_doge_vpn();
     return 0;
 }

@@ -113,7 +113,7 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
     tun_utils::tundev_t device,
     holder::client_register *c_register
 ) {
-    
+
     tun_utils::tundev_frame_t frame = device.read_data();
     tun_utils::ip_header header = frame.get_ip_header();
 
@@ -125,8 +125,8 @@ void handle_udp_packet(socket_utils::socket_t udp_socket, tun_utils::tundev_t de
         holder::client_holder holder = holder_opt.value();
 
         encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
-        vpn_data_utils::udp_packet_data(&tun_pkt, holder.symmetric_key)
-            .send_or_throw(socket, holder.udp_info);
+        vpn_data_utils::udp_packet_data udp_packet(&tun_pkt, (const char *) holder.symmetric_key);
+        udp_packet.send_or_throw(socket, holder.udp_info);
     }
  }
 

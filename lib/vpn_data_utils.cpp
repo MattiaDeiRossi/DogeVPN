@@ -215,6 +215,10 @@ namespace vpn_data_utils {
 
 	udp_packet_data::udp_packet_data(encryption::packet *from, bool from_server) {
 
+        bzero(user_id, SIZE_16);
+        bzero(iv, encryption::IV_SIZE_16);
+        bzero(hash, encryption::SHA_256_SIZE);
+
         ssize_t current_cursor = from->size - 1;
 
         int j = 0;
@@ -329,22 +333,20 @@ namespace vpn_data_utils {
     udp_packet_data::udp_packet_data(encryption::packet *from, const char *symmetric_key) {
 
         encryption::encryption_data e_data((const unsigned char *) symmetric_key);
-        encryption::packet e_packet = from->encrypt(e_data).value();
+        encrypted_packet = from->encrypt(e_data).value();
 
-        unsigned char hash[encryption::SHA_256_SIZE];
-        if (!from->getShaSum(hash)) {
+        unsigned char hash_[encryption::SHA_256_SIZE];
+        if (!from->getShaSum(hash_)) {
             throw std::invalid_argument("hash cannot be computed");
         };
 
-        bzero(this->user_id, SIZE_16);
+        bzero(user_id, SIZE_16);
 
-        bzero(this->iv, encryption::IV_SIZE_16);
-        memcpy(this->iv, e_data.iv, encryption::IV_SIZE_16);
+        bzero(iv, encryption::IV_SIZE_16);
+        memcpy(iv, e_data.iv, encryption::IV_SIZE_16);
 
-        bzero(this->hash, encryption::SHA_256_SIZE);
-        memcpy(this->hash, hash, encryption::SHA_256_SIZE);
-
-        this->encrypted_packet = e_packet;
+        bzero(hash, encryption::SHA_256_SIZE);
+        memcpy(hash, hash_, encryption::SHA_256_SIZE);
     }
 
     encryption::packet udp_packet_data::compose_udp_client_message() {
@@ -463,13 +465,15 @@ namespace vpn_data_utils {
         printf("Reading VPN data from client packet\n");
 
         // Id must be long no more than 8 bytes.
-        utils::print_yellow("   user_id");
-        printf(":");
-        for (int i = 0; i < 8; ++i) {
-            if (user_id[i] == 0) break;
-            printf(" %c", user_id[i]);
+        if (strlen((const char *) user_id) > 0) {
+            utils::print_yellow("   user_id");
+            printf(":");
+            for (int i = 0; i < strlen((const char *) user_id); ++i) {
+                if (user_id[i] == 0) break;
+                printf(" %c", user_id[i]);
+            }
+            printf("\n");
         }
-        printf("\n");
 
         // Id must be long 16 bytes.
         utils::print_yellow("   iv");

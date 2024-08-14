@@ -65,6 +65,7 @@ namespace vpn_data_utils {
     };
 
     struct udp_packet_data {
+
         unsigned char user_id[SIZE_16];
         unsigned char iv[encryption::IV_SIZE_16];
         unsigned char hash[encryption::SHA_256_SIZE];

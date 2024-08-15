@@ -33,35 +33,21 @@ void handle_tls_handshake(
 void handle_udp_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t device,
-    tun_utils::ipv4_netmask_t ip_net,
     holder::client_register *c_register
 ) {
 
-    /* Using the theoretical limit of an UDP packet.
-    *  Instead of setting the MSG_PEEK flag, a safe bet is made on how much data to allocate.
-    */
     encryption::packet pkt;
     socket_utils::recvfrom_result recv_result = socket_utils::recvfrom(udp_socket, pkt.buffer, pkt.max_capacity);
     pkt.size = recv_result.bytes_read;
 
-    recv_result
-        .udp_info
-        .to_raw_info()
-        .log();
-
-    /* Now the main logic of must happen:
-    *   1. Extract the the packet
-    *   2. Check the presence of the id within the shared map
-    *   3. Get the connection info to verify some UDP connection property
-    *   4. Decrypt the packet
-    *   5. Forward it to the TUN interface
-    *  There can be different scenarios for which packets must be rejected.
-    */
     std::optional<vpn_data_utils::udp_packet_data> vpn_data_opt = 
         vpn_data_utils::udp_packet_data_or_empty(&pkt, false);
 
     if (!vpn_data_opt.has_value()) {
 
+        /* In order to continue with the processing, all the metadata need to
+        *  be extracted from the message.
+        */
         std::cerr << "vpn data cannot be extracted" << std::endl;
         return;
     }
@@ -69,14 +55,12 @@ void handle_udp_packet(
     vpn_data_utils::udp_packet_data vpn_data = vpn_data_opt.value();
     vpn_data.log();
 
-    int id_num;
-    sscanf((const char *) vpn_data.user_id, "%d", &id_num);
-
-    std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(id_num);
+    std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(vpn_data.id_to_i());
 
     if (!c_holder_opt.has_value()) {
 
-        std::cerr << "handle_incoming_udp_packet: failing during key extraction" << std::endl;
+        /* There is no need to proceed if the client has not been registred */
+        std::cerr << "client is not registered" << std::endl;
         return;
     }
 
@@ -84,8 +68,12 @@ void handle_udp_packet(
     *  information on order to properly send packets back.
     */
     holder::client_holder c_holder = c_holder_opt.value();
-    c_holder.udp_info = recv_result.udp_info;
-    c_register->update_client_holder(c_holder);
+
+    if (c_holder.udp_info.empty()) {
+
+        c_holder.udp_info = recv_result.udp_info;
+        c_register->update_client_holder(c_holder);
+    }
 
     c_holder.log();
 
@@ -93,9 +81,9 @@ void handle_udp_packet(
         vpn_data.decrypt(c_holder.symmetric_key);
 
     if (!d_packet_opt.has_value()) {
-        std::cerr
-            << "handle_incoming_udp_packet: packet cannot be decrypted\n"
-            << std::endl;
+
+        /**/
+        std::cerr << "packet cannot be decrypted" << std::endl;
         return;
     }
 
@@ -210,7 +198,7 @@ void start_doge_vpn() {
                             .detach();
                     }
                 } 
-                else if (socket == udp_socket) handle_udp_packet(udp_socket, device, ipv4_netmask, &c_register);
+                else if (socket == udp_socket) handle_udp_packet(udp_socket, device, &c_register);
                 else if (socket == device.fd) handle_tun_packet(udp_socket, device, ipv4_netmask, &c_register);
                 else handle_tcp_packet();
             }

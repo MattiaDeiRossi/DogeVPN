@@ -8,8 +8,8 @@
 #include <mongocxx/stdx.hpp>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/exception/bulk_write_exception.hpp>
-
-#include "standards.h"
+#include <sstream>
+#include <cassert>
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_array;

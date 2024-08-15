@@ -123,8 +123,8 @@ namespace holder {
         return true;
     }
 
-    void client_register::delete_client_holder(client_holder holder) {
-        update_register(this, holder, false, true);
+    void client_register::delete_client_holder(client_holder holder, bool free_old_ssl) {
+        update_register(this, holder, false, free_old_ssl);
     }
 
     std::optional<vpn_data_utils::credentials> create_credentials(const char *data, size_t num) {
@@ -378,6 +378,24 @@ namespace holder {
         unsigned int session_id = tun_ip_per_session.at(ip);
         if (session_per_holder.count(session_id) == 0) return std::nullopt;
         return session_per_holder.at(session_id);
+    }
+
+    std::optional<client_holder> client_register::find_by_socket(socket_utils::socket_t socket) {
+
+        std::shared_lock lock(mutex);
+
+        std::optional<client_holder> holder_opt = std::nullopt;
+
+        for (const auto &eachPair : session_per_holder) {
+
+            /**/
+            if (eachPair.second.tcp_info.socket == socket) {
+                holder_opt = eachPair.second;
+                break;
+            }
+        }
+
+        return holder_opt;
     }
 
     void client_holder::log() {

@@ -106,10 +106,12 @@ namespace holder {
         /* Erased holder from register if present.
         *  Data within holder should not be considered valid anymore. 
         */
-        void delete_client_holder(client_holder holder);
+        void delete_client_holder(client_holder holder, bool free_old_ssl);
 
         std::optional<client_holder> get_client_holder(unsigned int session_id);
         std::optional<client_holder> get_client_holder(tun_ip ip);
+        
+        std::optional<client_holder> find_by_socket(socket_utils::socket_t socket);
 
         select_result merge_select(std::set<socket_utils::socket_t> set);
     };

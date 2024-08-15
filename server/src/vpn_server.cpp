@@ -127,7 +127,29 @@ void handle_udp_packet(
 /* This section should handle specific client packets by using the TCP connection.
 *  The TCP connection should be kept in order to perform reliable actions.
 */
-void handle_tcp_packet() {}
+void handle_tcp_packet(socket_utils::socket_t socket, holder::client_register *c_register) {
+
+    std::optional<holder::client_holder> holder_opt = c_register->find_by_socket(socket);
+
+    if (holder_opt.has_value()) {
+
+        holder::client_holder holder = holder_opt.value();
+
+        /* This version does not include any exchange of messages to modify the ongoing connections, however
+        *  as soon as a TCP packet is ready, this is interpreted as the desire for the client of closing the connection.
+        *  This is the reason why the close buffer has size 4.
+        */
+        char close_buffer[4];
+        if (ssl_utils::read(holder.ssl, close_buffer, sizeof(close_buffer)) == -1) {
+
+            /* Since read automatically takes care of freeeing the ssl resource in case of failure,
+            *  when deleting the client holder a call to free should not be done.
+            */
+            c_register->delete_client_holder(holder, false);
+        }
+    }
+    
+}
 
 void start_doge_vpn(std::map<std::string, std::string> config) {
 
@@ -186,9 +208,7 @@ void start_doge_vpn(std::map<std::string, std::string> config) {
                     if (socket_utils::invalid_info(&info)) {
 
                         /* This could fail when the connections reach the maximum allowed number. */
-                        std::cerr 
-                            << "start_doge_vpn: cannot accept new client" 
-                            << std::endl;
+                        std::cerr << "start_doge_vpn: cannot accept new client" << std::endl;
                     } else {
 
                         /* Why do we need to start a new thread when handling a new client?
@@ -202,7 +222,7 @@ void start_doge_vpn(std::map<std::string, std::string> config) {
                 } 
                 else if (socket == udp_socket) handle_udp_packet(udp_socket, device, &c_register);
                 else if (socket == device.fd) handle_tun_packet(udp_socket, device, ipv4_netmask, &c_register);
-                else handle_tcp_packet();
+                else handle_tcp_packet(socket, &c_register);
             }
         }
     }

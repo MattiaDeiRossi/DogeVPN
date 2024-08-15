@@ -1,0 +1,2 @@
+username:user1:session_id:0:password:password_12345678_test
+username:user2:session_id:1:password:password_12345678_test

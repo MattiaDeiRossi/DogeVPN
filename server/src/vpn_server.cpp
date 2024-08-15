@@ -5,7 +5,6 @@
 #include <tun_utils.h>
 #include <holder.h>
 #include <thread>
-#include "config.h"
 
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
 *  When handling a new client there is no need to just create the client socket and return.
@@ -16,13 +15,12 @@
 void handle_tls_handshake(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,
-    holder::client_register *c_register
+    holder::client_register *c_register,
+    const char *file_path
 ) {
 
-    if (c_register->register_client_holder(ctx, info)) {
-        std::cerr << 
-            "Handle tcp client key exchange: registration error" << 
-            "\n";
+    if (c_register->register_client_holder(ctx, info, file_path)) {
+        std::cerr << "Handle tcp client key exchange: registration error" << std::endl;
     }
 }
 
@@ -131,13 +129,13 @@ void handle_udp_packet(
 */
 void handle_tcp_packet() {}
 
-void start_doge_vpn() {
+void start_doge_vpn(std::map<std::string, std::string> config) {
 
     /* Server pool.
     *  By using a pool of ip, for each client a unique address gets selected.
     */
     tun_utils::ip_pool_t server_pool;
-    server_pool.compose_class_c_pool(config::third_octet);
+    server_pool.compose_class_c_pool(stoi(config["third_octet"]));
 
     /**/
     tun_utils::ipv4_netmask_t ipv4_netmask = server_pool.compose_ipv4_netmask();
@@ -146,12 +144,12 @@ void start_doge_vpn() {
     *  By configuring the TUN device, raw ip 
     */
     char server_tun_ip[holder::SIZE_32];
-    tun_utils::tundev_t device(config::name, server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
+    tun_utils::tundev_t device(config["name"].c_str(), server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
     device.persist();
 
-    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, config::public_cert, config::private_key);
-    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(config::address, config::port, true);
-    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(config::address, config::port, false);
+    SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, config["public_cert"].c_str(), config["private_key"].c_str());
+    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), true);
+    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), false);
 
     /* After tcp and udp sockets are created:
     *   1. extract sockets from holder
@@ -194,7 +192,7 @@ void start_doge_vpn() {
                         *  Instead of blocking the entire server we may want to block only one therad.
                         *  This thread is in charge of establish a TLS connection and exchange a key for UDP.
                         */
-                        std::thread(handle_tls_handshake, ctx, &info, &c_register)
+                        std::thread(handle_tls_handshake, ctx, &info, &c_register, config["users"].c_str())
                             .detach();
                     }
                 } 
@@ -208,6 +206,6 @@ void start_doge_vpn() {
 
 int main() {
 
-	start_doge_vpn();
+	start_doge_vpn(file_utils::parse_key_value_lines("config.txt"));
     return 0;
 }

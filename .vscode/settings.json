@@ -69,6 +69,22 @@
     "typeinfo": "cpp",
     "future": "cpp",
     "shared_mutex": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "any": "cpp",
+    "barrier": "cpp",
+    "charconv": "cpp",
+    "codecvt": "cpp",
+    "coroutine": "cpp",
+    "csetjmp": "cpp",
+    "csignal": "cpp",
+    "cuchar": "cpp",
+    "regex": "cpp",
+    "source_location": "cpp",
+    "latch": "cpp",
+    "ranges": "cpp",
+    "scoped_allocator": "cpp",
+    "span": "cpp",
+    "syncstream": "cpp",
+    "valarray": "cpp"
   }
 }

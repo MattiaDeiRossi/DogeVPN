@@ -22,6 +22,7 @@ add_library(utils ../lib/utils.cpp)
 add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
 add_library(tun_utils ../lib/tun_utils.cpp)
 add_library(holder src/holder.cpp)
+add_library(file_utils src/file_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 
@@ -46,6 +47,7 @@ target_link_libraries(vpnserver
   holder
   vpn_data_utils
   tun_utils
+  file_utils
   crypto
   ssl
 )

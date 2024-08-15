@@ -460,6 +460,10 @@ namespace vpn_data_utils {
         }  
     }
 
+    int udp_packet_data::id_to_i() {
+        return atoi((char *) user_id);
+    }
+
     void udp_packet_data::log() {
 
         printf("Reading VPN data from client packet\n");

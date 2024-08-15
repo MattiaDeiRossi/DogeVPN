@@ -99,6 +99,8 @@ namespace vpn_data_utils {
 
         void send_or_throw(socket_utils::socket_t, socket_utils::udp_client_info);
 
+        int id_to_i();
+
         void log();
     };
 

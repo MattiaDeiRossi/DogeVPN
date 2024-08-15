@@ -5,7 +5,7 @@ mongo::mongo(const std::string uri) : instance_{}, uri_(uri), client_(uri_)
 {
    db_ = client_["vpndb"];
    collection_ = db_["users"];
-   salt_ = SALT;
+   salt_ = "slt123safe";
 }
 
 mongo::~mongo()

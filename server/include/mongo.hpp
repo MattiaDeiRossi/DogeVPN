@@ -10,7 +10,6 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 
 #include "standards.h"
-#include "defines.h"
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_array;

@@ -100,7 +100,7 @@ void handle_udp_packet(
     tun_utils::ip_header header = frame.get_ip_header();
     tun_utils::ipv4_t ipv4(header.destination_ip);
 
-    if (!ip_net.same_network(&ipv4)) {
+    if (frame.size == 0 || !ip_net.same_network(&ipv4)) {
 
         /* The only piece of memory shared by different threads is the
         *  client_register. Since the TUN device receive lots of frames that should not
@@ -148,8 +148,12 @@ void start_doge_vpn(std::map<std::string, std::string> config) {
     device.persist();
 
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, config["public_cert"].c_str(), config["private_key"].c_str());
-    holder::socket_holder server_tcp_holder = holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), true);
-    holder::socket_holder server_udp_holder = holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), false);
+
+    holder::socket_holder server_tcp_holder =
+        holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), true);
+
+    holder::socket_holder server_udp_holder =
+        holder::create_server_holder_or_abort(config["address"].c_str(), config["port"].c_str(), false);
 
     /* After tcp and udp sockets are created:
     *   1. extract sockets from holder

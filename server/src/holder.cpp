@@ -273,8 +273,6 @@ namespace holder {
     }
 
     select_result client_register::merge_select(std::set<socket_utils::socket_t> set) {
-        
-        std::shared_lock lock(mutex);
 
         socket_utils::socket_t max = 0;
         std::set<socket_utils::socket_t> sockets;
@@ -289,17 +287,25 @@ namespace holder {
             max = socket > max ? socket : max;
         }
 
-        for (const auto &eachPair : session_per_holder) { 
+        {
+            /* Since the call to select is IO blocking, the mutex must be carefully handled,
+            *  that is use it only for the time necessary to mangle this regsiter. For this reason
+            *  the code is wrapped aroun a block.
+            */
+            std::shared_lock lock(mutex);
 
-            socket_utils::socket_t c_socket = 
-                eachPair
-                    .second
-                    .tcp_info
-                    .socket;
+            for (const auto &eachPair : session_per_holder) { 
 
-            FD_SET(c_socket, &master);
-            sockets.insert(c_socket);
-            max = c_socket > max ? c_socket : max;
+                socket_utils::socket_t c_socket = 
+                    eachPair
+                        .second
+                        .tcp_info
+                        .socket;
+
+                FD_SET(c_socket, &master);
+                sockets.insert(c_socket);
+                max = c_socket > max ? c_socket : max;
+            }
         }
 
         socket_utils::select_or_throw(max + 1, &master);

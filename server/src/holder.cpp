@@ -111,9 +111,8 @@ namespace holder {
         std::unique_lock lock(mutex);
 
         if (session_per_holder.count(holder.session_id) == 0) {
-            std::cout 
-                << "client_register::update_client_holder: client holder was not updated"
-                << std::endl;
+
+            std::cerr << "client holder was not updated" << std::endl;
             return false;
         }
 

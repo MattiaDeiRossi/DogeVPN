@@ -52,7 +52,7 @@ void mongo::add_user(const std::string id, const std::string username, const std
    }
 }
 
-user_id mongo::is_present(const std::string username, const std::string password)
+int mongo::is_present(const std::string username, const std::string password)
 {
    auto result = collection_.find_one(make_document(kvp("username", username)));
    if (result)

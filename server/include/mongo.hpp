@@ -10,7 +10,6 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 
 #include "standards.h"
-#include "data_structures.h"
 #include "defines.h"
 
 using bsoncxx::builder::basic::kvp;
@@ -36,7 +35,7 @@ public:
   std::string get_salt();
 
   void add_user(const std::string id, const std::string username, const std::string password);
-  user_id is_present(const std::string username, const std::string password);
+  int is_present(const std::string username, const std::string password);
   void delete_user();
   void get_users();
 };

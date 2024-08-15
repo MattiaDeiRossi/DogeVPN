@@ -142,7 +142,7 @@ namespace holder {
         return opt;
     }
 
-    bool client_register::register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info) {
+    bool client_register::register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *file_path) {
 
         client_holder holder;
         holder.tcp_info.socket = info->socket;
@@ -165,27 +165,46 @@ namespace holder {
             return -1;
         }
 
-        std::optional<vpn_data_utils::credentials> credentials = create_credentials(credentials_buffer, bytes_read);
-        if (!credentials.has_value()) {
+        std::optional<vpn_data_utils::credentials> credentials_opt = create_credentials(credentials_buffer, bytes_read);
+        if (!credentials_opt.has_value()) {
             fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
-        credentials
-            .value()
-            .log_credentials_from_client_message();
+        vpn_data_utils::credentials credentials = credentials_opt.value();
+        credentials.log_credentials_from_client_message();
 
         /* The user id is an important property for communicating over UDP.
         *  Once the id is fetched, it must be saved in memory.
         *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
         */
-        unsigned int db_user_id = 42;
+        std::optional<std::map<std::string, std::string>> user_row_opt =
+            file_utils::find_in_multi_key_value_lines(file_path, "username", credentials.username);
+
+        if (!user_row_opt.has_value()) {
+
+            ssl_utils::free_ssl(ssl, NULL);
+            return -1;
+        }
+
+        std::map<std::string, std::string> user_row = user_row_opt.value();
+        std::string user_password = user_row["password"];
+
+        if (user_password.compare(credentials.password) != 0) {
+
+            ssl_utils::free_ssl(ssl, NULL);
+            return -1; 
+        }
+
+
+        int session_id = stoi(user_row["session_id"]);
+    
         char id_buf[SIZE_32];
         memset(id_buf, 0, sizeof(id_buf));
-        sprintf(id_buf, "%d", db_user_id); // Replace with mongo check.
+        sprintf(id_buf, "%d", session_id);
 
-        holder.session_id = db_user_id;
+        holder.session_id = session_id;
 
         /* A symmetric key must be generated securely.
         *  The SSL libarary is used in order to properly delegate such difficutl generation.

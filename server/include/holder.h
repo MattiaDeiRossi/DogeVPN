@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <stdlib.h>
 #include "socket_utils.h"
+#include "file_utils.h"
 #include "ssl_utils.h"
 #include "tun_utils.h"
 #include "vpn_data_utils.h"
@@ -96,7 +97,7 @@ namespace holder {
         *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
         *  After a timeout or some error the client socket can be freed along with the thread; this will simplify the whole logic.
         */
-        bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info);
+        bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *);
 
         bool insert_client_holder(client_holder holder);
 

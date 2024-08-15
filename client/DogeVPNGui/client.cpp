@@ -22,8 +22,12 @@ void handle_udp_packet(
     encryption::packet e_packet;
     e_packet.size = socket_utils::recv_from_socket(udp_socket, e_packet.buffer, e_packet.max_capacity);
 
+    vpn_data_utils::udp_packet_data udp_packet(&e_packet, true);
+
+    udp_packet.log();
+
     encryption::packet d_packet = 
-        vpn_data_utils::udp_packet_data(&e_packet, true)
+        udp_packet
             .decrypt(key_exchange.key)
             .value();
 
@@ -121,6 +125,9 @@ int start_doge_vpn(
 
     while (!(stop_flag || client_errors)) {
 
+        /* TODO: this could block disconnection.
+        *  Use loop with yeld insteads.
+        */
         fd_set master = socket_utils::select_or_throw(client_sockets);
 
         for (auto socket : client_sockets) {
@@ -143,13 +150,15 @@ int start_doge_vpn(
 
     /* Freeing SSL objects.
     *  The TCP socket will be closed along with the SSL session.
-    *  Closing the UDP socket along with the TUN device.
     */
     ssl_utils::free_ssl(ssl_session, NULL);
     ssl_utils::ssl_context_free(ctx);
 
     socket_utils::close_socket(udp_socket);
     
+    /* TUN device is no longer needed.
+    *  Release it for further reuse.
+    */
     tun_device.free();
 
     return 0;

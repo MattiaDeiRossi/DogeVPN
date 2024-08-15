@@ -301,4 +301,20 @@ namespace socket_utils {
 		if (bytes < 0) throw std::invalid_argument("cannot receive from socket");
 		return bytes;
 	}
+
+	udp_client_info::udp_client_info() {
+
+		bzero(&address, sizeof(struct sockaddr_storage));
+        length = 0;
+	}
+
+	udp_client_info::udp_client_info(struct sockaddr_storage address, socklen_t length) {
+
+		this->address = address;
+		this->length = length;
+	}
+
+	bool udp_client_info::empty() {
+		return length == 0;
+	}
 }

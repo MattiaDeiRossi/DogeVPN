@@ -39,8 +39,13 @@ namespace socket_utils
 
     struct udp_client_info {
 
-        socklen_t length;
         struct sockaddr_storage address;
+        socklen_t length;
+
+        udp_client_info();
+        udp_client_info(struct sockaddr_storage, socklen_t);
+
+        bool empty();
 
         raw_client_info to_raw_info();  
     };

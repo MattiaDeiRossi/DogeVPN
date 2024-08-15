@@ -1,0 +1,6 @@
+third_octet:11
+name:serverTUN
+public_cert:certs/cert.pem
+private_key:certs/key.pem
+address:10.5.42.15
+port:8080

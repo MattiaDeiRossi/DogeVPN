@@ -17,11 +17,13 @@ namespace holder {
 
     const size_t SIZE_512 = 512;
     const size_t SIZE_32 = 32;
+
     const char MESSAGE_SEPARATOR_POINT = '.';
     const char MESSAGE_SEPARATOR_OPEN = '(';
     const char MESSAGE_SEPARATOR_CLOSE = ')';
 
     struct tun_ip {
+
         char ip[SIZE_32];
 
         bool operator==(const tun_ip &o) const;

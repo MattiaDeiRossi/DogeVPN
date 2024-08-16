@@ -78,7 +78,7 @@ void handle_udp_packet(
     if (c_holder.udp_info.empty())
     {
         /* Accessing the register can be computationally expensive. The update is done
-         *  if and only if the client's UDP information are not present yet.
+         * if and only if the client's UDP information are not present yet.
          */
         c_holder.udp_info = recv_result.udp_info;
         c_register->update_client_holder(c_holder);
@@ -176,8 +176,8 @@ void start_doge_vpn(std::map<std::string, std::string> config)
     logging::logger logger(config["logfile_path"]);
     logger.log(logging::log_level::INFO, "Server is starting");
 
-    /* Server pool.
-     * By using a pool of ip, for each client a unique address gets selected.
+    /* Server pool: by using a pool of ip, for each client a unique address
+     * gets selected.
      */
     tun_utils::ip_pool_t server_pool;
     server_pool.compose_class_c_pool(stoi(config["third_octet"]));
@@ -227,13 +227,13 @@ void start_doge_vpn(std::map<std::string, std::string> config)
                 if (socket == tcp_socket)
                 {
 
-                    /* Calling accept_client won't block the main thread since a call to select was made. */
+                    /* Calling accept_client won't block the main thread since a call to select was made */
                     socket_utils::tcp_client_info info = socket_utils::accept_client(socket);
 
                     if (socket_utils::invalid_info(&info))
                     {
 
-                        /* This could fail when the connections reach the maximum allowed number. */
+                        /* This could fail when the connections reach the maximum allowed number */
                         logger.log(logging::WARNING, "Server cannot accept new clients, call to accept failed");
                     }
                     else

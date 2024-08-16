@@ -77,8 +77,9 @@ void handle_udp_packet(
 
     if (c_holder.udp_info.empty())
     {
-        /* Accessing the register can be computationally expensive. The update is done
-         * if and only if the client's UDP information are not present yet.
+        /* Accessing the register can be computationally expensive since thre is a mutex
+         * protecting shared resources. The update is done if and only if the
+         * client's UDP information are not present yet.
          */
         c_holder.udp_info = recv_result.udp_info;
         c_register->update_client_holder(c_holder);

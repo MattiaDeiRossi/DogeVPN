@@ -1,9 +1,10 @@
 #!/bin/bash
 
 docker stop $(docker ps -q)
-docker container prune -f  # Remove all stopped containers from the system.
-docker image prune -f      # Removes dangling images, which are not associated with any container and don't have tags.
-docker network prune -f    # Remove unused networks
+docker container prune -f   # Remove all stopped containers from the system
+docker image prune -f       # Removes dangling images, which are not associated with any container and don't have tags
+docker network prune -f     # Remove unused networks
+docker volume prune -f      # Removes all anonymous volumes not used by any containers
 
 # Close all the opened terminals
 

@@ -25,7 +25,7 @@ void handle_udp_packet(
 
     vpn_data_utils::udp_packet_data udp_packet(&e_packet, true);
 
-    udp_packet.log();
+    // udp_packet.log();
 
     encryption::packet d_packet =
         udp_packet

@@ -133,6 +133,7 @@ int start_doge_vpn(
         /* Since there is the requirement to stop this while loop not only when some unrecoverable error
          * is encountered, but also when the stop flag is set, a time interval for the select call is set.
          * The result indicates an error (-1), a timeout exceeded (0), or a succesful call (> 0).
+         * The erason behind working with inetrvals is to not deal with overcomplicated signals to intercept instead.
          */
         int result = 0;
         suseconds_t microseconds = 800000;

@@ -244,7 +244,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
                          * Instead of blocking the entire server we may want to block only one therad.
                          * This thread is in charge of establish a TLS connection and exchange a key for UDP.
                          */
-                        std::thread(handle_tls_handshake, ctx, &info, &c_register, config["users"].c_str())
+                        std::thread(handle_tls_handshake, ctx, &info, &c_register, &logger, config["users"].c_str())
                             .detach();
                     }
                 }
@@ -262,6 +262,6 @@ void start_doge_vpn(std::map<std::string, std::string> config)
 int main()
 {
 
-    start_doge_vpn(file_utils::parse_key_value_lines("config.txt"));
+    start_doge_vpn(file_utils::parse_key_value_lines(std::getenv("DOGE_VPN_CONFIG_PATH")));
     return 0;
 }

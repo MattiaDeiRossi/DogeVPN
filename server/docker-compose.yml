@@ -30,6 +30,7 @@ services:
     container_name: server
     environment:
       - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+      - DOGE_VPN_CONFIG_PATH=config.txt
     networks:
       external_network:
         ipv4_address: 10.5.42.15

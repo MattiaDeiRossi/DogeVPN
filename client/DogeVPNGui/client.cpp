@@ -96,7 +96,7 @@ int start_doge_vpn(
     *   2. UDP: when data packets will be sent
     */
     SSL* ssl_session = ssl_utils::bind_client_ssl_or_abort(ctx, socket_utils::connect_tcp_client_socket_or_abort(domain, port));
-    socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd_or_throw(ssl_session);
+    socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
     /* First message to exchange between client and server inder a TLS sessions.

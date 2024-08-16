@@ -59,7 +59,7 @@ namespace ssl_utils
         return ctx;
     }
 
-    int ssl_fd_or_throw(const SSL* ssl) {
+    int ssl_fd(const SSL* ssl) {
 
         int socket = SSL_get_fd(ssl);
 

@@ -23,7 +23,7 @@ namespace ssl_utils
         const char *pri_cert_path
     );
 
-    int ssl_fd_or_throw(const SSL* ssl);
+    int ssl_fd(const SSL* ssl);
 
     void free_ssl(SSL *ssl, int *with_error);
 

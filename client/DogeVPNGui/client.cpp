@@ -7,7 +7,8 @@
 
 bool stop_flag = false;
 
-void set_stop_flag(bool status) {
+void set_stop_flag(bool status)
+{
     stop_flag = status;
 }
 
@@ -16,8 +17,8 @@ void handle_tcp_packet(SSL *ssl_session) {}
 void handle_udp_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t tun_device,
-    vpn_data_utils::key_exchange_data key_exchange
-) {
+    vpn_data_utils::key_exchange_data key_exchange)
+{
 
     encryption::packet e_packet;
     e_packet.size = socket_utils::recv_from_socket(udp_socket, e_packet.buffer, e_packet.max_capacity);
@@ -26,7 +27,7 @@ void handle_udp_packet(
 
     udp_packet.log();
 
-    encryption::packet d_packet = 
+    encryption::packet d_packet =
         udp_packet
             .decrypt(key_exchange.key)
             .value();
@@ -38,8 +39,8 @@ void handle_tun_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t tun_device,
     vpn_data_utils::key_exchange_data key_exchange,
-    std::vector<tun_utils::ipv4_netmask_t> nets
-) {
+    std::vector<tun_utils::ipv4_netmask_t> nets)
+{
 
     bool can_forward = false;
 
@@ -47,40 +48,43 @@ void handle_tun_packet(
     tun_utils::ip_header header = frame.get_ip_header();
 
     /* When receiving frames from the TUN interface, only appropriate ones are sent to
-    *  the server; that is only those frames that belong to the registered routes.
-    */
-    for (auto net : nets) {
+     *  the server; that is only those frames that belong to the registered routes.
+     */
+    for (auto net : nets)
+    {
 
         tun_utils::ipv4_t ipv4(header.destination_ip);
         can_forward = can_forward || net.same_network(&ipv4);
     }
 
     /* Ignore empty frames */
-    if (frame.size == 0) {
-        
+    if (frame.size == 0)
+    {
+
         std::cout << "received an empty frame" << std::endl;
         can_forward = false;
     }
 
-    if (can_forward) {
+    if (can_forward)
+    {
 
         std::cout << "sending to " << header.destination_ip << std::endl;
 
         /* Build encrypted packet to send to the server.
-        *  It is encrypted with the received key. 
-        */
-        encryption::packet tun_pkt((unsigned char *) frame.data, frame.size);
-        vpn_data_utils::udp_packet_data(&tun_pkt, (char *) key_exchange.key, key_exchange.id_to_i())
+         *  It is encrypted with the received key.
+         */
+        encryption::packet tun_pkt((unsigned char *)frame.data, frame.size);
+        vpn_data_utils::udp_packet_data(&tun_pkt, (char *)key_exchange.key, key_exchange.id_to_i())
             .send_or_throw(udp_socket);
     }
 }
 
 int start_doge_vpn(
-    char const* domain,
-    char const* port,
-    char const* user,
-    char const* pwd
-) {
+    char const *domain,
+    char const *port,
+    char const *user,
+    char const *pwd)
+{
 
     /* Move */
     const char *dev_name = "DogeVpnTun";
@@ -92,27 +96,28 @@ int start_doge_vpn(
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
 
     /* Two kinds of socket will be used:
-    *   1. TCP: in order to keep up to date the connection and its paramaters; bound to the ssl object
-    *   2. UDP: when data packets will be sent
-    */
-    SSL* ssl_session = ssl_utils::bind_client_ssl_or_abort(ctx, socket_utils::connect_tcp_client_socket_or_abort(domain, port));
+     *   1. TCP: in order to keep up to date the connection and its paramaters; bound to the ssl object
+     *   2. UDP: when data packets will be sent
+     */
+    SSL *ssl_session = ssl_utils::bind_client_ssl_or_abort(ctx, socket_utils::connect_tcp_client_socket_or_abort(domain, port));
     socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
     /* First message to exchange between client and server inder a TLS sessions.
-    *  After this exchange, the following data is available:
-    *   - key:      the symmetric key with wich udp packets will be encrypted
-    *   - id:       the id for this client
-    *   - tun_ip:   the ip to assign to the TUN device
-    */
+     *  After this exchange, the following data is available:
+     *   - key:      the symmetric key with wich udp packets will be encrypted
+     *   - id:       the id for this client
+     *   - tun_ip:   the ip to assign to the TUN device
+     */
     vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
 
     /* TODO: netmask should be send by server */
-    tun_utils::tundev_t tun_device(dev_name, (const char *) key_exchange.tun_ip, 24);
+    tun_utils::tundev_t tun_device(dev_name, (const char *)key_exchange.tun_ip, 24);
     tun_device.persist();
-    
-    for (auto net : nets) {
+
+    for (auto net : nets)
+    {
         tun_device.add_route(net);
     }
 
@@ -123,23 +128,32 @@ int start_doge_vpn(
 
     bool client_errors = false;
 
-    while (!(stop_flag || client_errors)) {
+    while (!(stop_flag || client_errors))
+    {
 
         /* TODO: this could block disconnection.
-        *  Use loop with yeld insteads.
-        */
+         *  Use loop with yeld insteads.
+         */
         fd_set master = socket_utils::select_or_throw(client_sockets);
 
-        for (auto socket : client_sockets) {
+        for (auto socket : client_sockets)
+        {
 
-            if (FD_ISSET(socket, &master)) {
+            if (FD_ISSET(socket, &master))
+            {
 
-                try {
+                try
+                {
 
-                    if (socket == tcp_socket) handle_tcp_packet(ssl_session);
-                    else if (socket == udp_socket) handle_udp_packet(udp_socket, tun_device, key_exchange);
-                    else if (socket == tun_device.fd) handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
-                } catch(const std::exception& e) {
+                    if (socket == tcp_socket)
+                        handle_tcp_packet(ssl_session);
+                    else if (socket == udp_socket)
+                        handle_udp_packet(udp_socket, tun_device, key_exchange);
+                    else if (socket == tun_device.fd)
+                        handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
+                }
+                catch (const std::exception &e)
+                {
 
                     std::cerr << e.what() << '\n';
                     client_errors = true;
@@ -149,18 +163,17 @@ int start_doge_vpn(
     }
 
     /* Freeing SSL objects.
-    *  The TCP socket will be closed along with the SSL session.
-    */
+     *  The TCP socket will be closed along with the SSL session.
+     */
     ssl_utils::free_ssl(ssl_session, NULL);
     ssl_utils::ssl_context_free(ctx);
 
     socket_utils::close_socket(udp_socket);
-    
+
     /* TUN device is no longer needed.
-    *  Release it for further reuse.
-    */
+     *  Release it for further reuse.
+     */
     tun_device.free();
 
     return 0;
 }
-

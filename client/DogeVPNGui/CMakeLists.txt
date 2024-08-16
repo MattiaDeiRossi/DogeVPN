@@ -19,7 +19,6 @@ set(PROJECT_SOURCES
         mainwindow.ui
         client.h
         client.cpp
-        standards.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

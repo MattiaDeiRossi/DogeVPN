@@ -8,10 +8,10 @@
 #include <logging.h>
 
 /* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
- *  When handling a new client there is no need to just create the client socket and return.
- *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
- *  After a timeout or some error the client socket can be freed along with the thread.
- *  This will simplify the whole logic.
+ * When handling a new client there is no need to just create the client socket and return.
+ * A dedicated process should handle the process of data exchange without relying on select in the main loop.
+ * After a timeout or some error the client socket can be freed along with the thread.
+ * This will simplify the whole logic.
  */
 void handle_tls_handshake(
     SSL_CTX *ctx,
@@ -23,14 +23,17 @@ void handle_tls_handshake(
 
     if (c_register->register_client_holder(ctx, info, file_path))
     {
-        /**/
+        /* Only registred clients can access the network. In case of wrong credentials or
+         * malformed packet, this server refuse to register the incoming client for further
+         * computation.
+         */
         logger->log(logging::log_level::WARNING, "Registration error");
     }
 }
 
 /* Errors should be notified to the client peer.
- *  This should be done by using the initial TCP connection.
- *  This version does not include any error notification.
+ * This should be done by using the initial TCP connection.
+ * This version does not include any error notification.
  */
 void handle_udp_packet(
     socket_utils::socket_t udp_socket,
@@ -73,7 +76,7 @@ void handle_udp_packet(
     }
 
     /* Since we received the udp info from client, we must save this
-     *  information on order to properly send packets back.
+     * information on order to properly send packets back.
      */
     holder::client_holder c_holder = c_holder_opt.value();
 
@@ -114,10 +117,10 @@ void handle_tun_packet(
     {
 
         /* The only piece of memory shared by different threads is the
-         *  client_register. Since the TUN device receive lots of frames that should not
-         *  be sent to clients, the same network_check function is called to verify if
-         *  the destination matches the netmask_address. This avoid lock the client_register
-         *  mutex multiple times, increasing the overall efficiency.
+         * client_register. Since the TUN device receive lots of frames that should not
+         * be sent to clients, the same network_check function is called to verify if
+         * the destination matches the netmask_address. This avoid lock the client_register
+         * mutex multiple times, increasing the overall efficiency.
          */
         return;
     }

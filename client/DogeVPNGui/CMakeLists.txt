@@ -19,7 +19,6 @@ set(PROJECT_SOURCES
         mainwindow.ui
         client.h
         client.cpp
-        defines.h
         standards.h
 )
 

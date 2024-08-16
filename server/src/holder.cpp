@@ -342,7 +342,7 @@ namespace holder
         }
 
         select_result result;
-        result.fdset = socket_utils::select_or_throw(sockets);
+        result.fdset = socket_utils::select_or_throw(sockets, 0, NULL);
         result.sockets = sockets;
 
         return result;

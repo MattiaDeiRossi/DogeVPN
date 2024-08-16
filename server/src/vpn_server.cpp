@@ -55,7 +55,10 @@ void handle_udp_packet(
     }
 
     vpn_data_utils::udp_packet_data vpn_data = vpn_data_opt.value();
-    vpn_data.log();
+
+    std::ostringstream logEntry;
+    logEntry << "Received UDP packet: " << vpn_data.to_s();
+    logger->log(logging::log_level::INFO, logEntry.str());
 
     std::optional<holder::client_holder> c_holder_opt = c_register->get_client_holder(vpn_data.id_to_i());
 

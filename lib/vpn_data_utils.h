@@ -107,7 +107,7 @@ namespace vpn_data_utils
 
         int id_to_i();
 
-        void log();
+        std::string to_s();
     };
 
     std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, bool from_server);

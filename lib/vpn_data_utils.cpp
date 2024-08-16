@@ -551,37 +551,75 @@ namespace vpn_data_utils
         return atoi((char *)user_id);
     }
 
-    void udp_packet_data::log()
+    std::string udp_packet_data::to_s()
     {
 
-        printf("Reading VPN data from client packet\n");
+        char buff[512];
+        char user_id_buff[64];
+        char iv_buff[64];
+        char hash_buff[128];
 
-        // Id must be long no more than 8 bytes.
-        if (strlen((const char *)user_id) > 0)
+        size_t iv_buff_index = 0;
+        size_t hash_buff_index = 0;
+
+        bzero(buff, sizeof(buff));
+        bzero(user_id_buff, sizeof(user_id_buff));
+        bzero(iv_buff, sizeof(iv_buff));
+        bzero(hash_buff, sizeof(hash_buff));
+
+        memcpy(user_id_buff, user_id, SIZE_16);
+
+        for (size_t i = 0; i < encryption::IV_SIZE_16; i++)
         {
-            utils::print_yellow("   user_id");
-            printf(":");
-            for (int i = 0; i < strlen((const char *)user_id); ++i)
+
+            char ex_char[16];
+
+            bzero(ex_char, sizeof(ex_char));
+            snprintf(ex_char, sizeof(ex_char) - 1, "%02X", iv[i]);
+
+            char *ex_char_ptr = ex_char;
+
+            while (*ex_char_ptr)
             {
-                if (user_id[i] == 0)
-                    break;
-                printf(" %c", user_id[i]);
+
+                iv_buff[iv_buff_index] = *ex_char_ptr;
+                iv_buff_index += 1;
+                ex_char_ptr += 1;
             }
-            printf("\n");
         }
 
-        // Id must be long 16 bytes.
-        utils::print_yellow("   iv");
-        printf(":");
-        utils::print_bytes("", (const char *)iv, 16, 0);
+        for (size_t i = 0; i < encryption::SHA_256_SIZE; i++)
+        {
 
-        // Hash must be long 16 bytes.
-        utils::print_yellow("   hash");
-        printf(":");
-        utils::print_bytes("", (const char *)hash, 32, 0);
+            char ex_char[16];
 
-        // Priting packet data.
-        printf("Reading encrypted packet from client of size %ld bytes\n", encrypted_packet.size);
-        utils::print_bytes("Printing packet bytes", (const char *)encrypted_packet.buffer, encrypted_packet.size, 4);
+            bzero(ex_char, sizeof(ex_char));
+            snprintf(ex_char, sizeof(ex_char) - 1, "%02X", hash[i]);
+
+            char *ex_char_ptr = ex_char;
+
+            while (*ex_char_ptr)
+            {
+
+                hash_buff[hash_buff_index] = *ex_char_ptr;
+                hash_buff_index += 1;
+                ex_char_ptr += 1;
+            }
+        }
+
+        if (strlen((const char *)user_id) == 0)
+        {
+            snprintf(buff, sizeof(buff) - 1,
+                     "udp_packet_data(iv:%s;hash:%s)",
+                     iv_buff, hash_buff);
+        }
+        else
+        {
+            snprintf(buff, sizeof(buff) - 1,
+                     "udp_packet_data(user_id:%s;iv:%s;hash:%s)",
+                     user_id_buff, iv_buff, hash_buff);
+        }
+
+        return buff;
     }
 }

@@ -288,7 +288,7 @@ namespace encryption
 
         char buff[128];
         bzero(buff, sizeof(buff));
-        snprintf(buff, sizeof(buff), "Packet(size:%ld)", size);
+        snprintf(buff, sizeof(buff) - 1, "Packet(size:%ld)", size);
 
         std::string result = buff;
         return result;

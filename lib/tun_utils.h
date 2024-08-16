@@ -8,7 +8,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <cstdlib>
-#include <climits>  
+#include <climits>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,12 +22,14 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-namespace tun_utils {
+namespace tun_utils
+{
 
     const unsigned int MTU = 1500;
     const unsigned int MAX_IP_SIZE = 64;
 
-    struct ipv4_t {
+    struct ipv4_t
+    {
 
         char ipv4_str[32];
 
@@ -38,7 +40,8 @@ namespace tun_utils {
         ipv4_t(const char *data);
     };
 
-    struct netmask_t {
+    struct netmask_t
+    {
 
         char netmask_str[4];
 
@@ -49,19 +52,21 @@ namespace tun_utils {
         netmask_t(unsigned int mask);
     };
 
-    struct ipv4_netmask_t {
+    struct ipv4_netmask_t
+    {
 
         ipv4_t ipv4;
         netmask_t netmask;
 
         ipv4_netmask_t(const char *, unsigned int);
 
-        const char * combine(char *, size_t);
+        const char *combine(char *, size_t);
 
         bool same_network(ipv4_t *);
     };
 
-    struct ip_header {
+    struct ip_header
+    {
 
         char source_ip[MAX_IP_SIZE];
         char destination_ip[MAX_IP_SIZE];
@@ -71,7 +76,8 @@ namespace tun_utils {
         void log();
     };
 
-    struct tundev_frame_t {
+    struct tundev_frame_t
+    {
 
         struct tun_pi info;
 
@@ -82,17 +88,18 @@ namespace tun_utils {
     };
 
     /* Should add the netmask */
-    struct tundev_t {
+    struct tundev_t
+    {
 
         char dev[IFNAMSIZ];
         char addr[64];
 
-        int	fd;
-        int	flags;
+        int fd;
+        int flags;
         int netmask;
 
         /* Arguments taken by the function:
-        * @param name:      the name of an interface (or '\0'); 
+        * @param name:      the name of an interface (or '\0');
                             must have enough space to hold the interface name if '\0' is passed.
         * @param address:   the address that will be used for ip packets
         */
@@ -109,7 +116,8 @@ namespace tun_utils {
         void free();
     };
 
-    struct ip_pool_t {
+    struct ip_pool_t
+    {
 
         unsigned char netmask;
         unsigned char ip_bytes[4];
@@ -121,9 +129,9 @@ namespace tun_utils {
         void compose_class_c_pool(unsigned char third_octet);
 
         /* Given a pool of available ip addresses, a call to next returns the next available ip.
-        *  In order to work properly the pool must be properly configured.
-        */
-        const char* next(char *buffer, size_t num, unsigned int *next_ip);
+         *  In order to work properly the pool must be properly configured.
+         */
+        const char *next(char *buffer, size_t num, unsigned int *next_ip);
 
         void insert(unsigned int ip);
 

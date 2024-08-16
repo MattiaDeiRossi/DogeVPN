@@ -442,57 +442,43 @@ namespace holder
         return holder_opt;
     }
 
-    void client_holder::log()
+    std::string client_holder::to_s()
     {
 
-        std::cout
-            << "Client data:"
-            << std::endl
-            << "  TLS data:"
-            << std::endl
-            << "    SESSION_ID: " << session_id
-            << std::endl
-            << "    KEY:"
-            << std::endl;
+        char buff[1028];
+        char symmetric_key_buff[128];
+        size_t symmetric_key_buff_index = 0;
+
+        bzero(buff, sizeof(buff));
+        bzero(symmetric_key_buff, sizeof(symmetric_key_buff));
 
         for (size_t i = 0; i < SIZE_32; i++)
         {
-            if (i % 8 == 7)
+
+            char ex_char[16];
+
+            bzero(ex_char, sizeof(ex_char));
+            snprintf(ex_char, sizeof(ex_char) - 1, "%02X", symmetric_key[i]);
+
+            char *ex_char_ptr = ex_char;
+
+            while (*ex_char_ptr)
             {
-                printf("%02X\n", symmetric_key[i]);
-                if (i != SIZE_32 - 1)
-                    printf("         ");
-            }
-            else
-            {
-                if (i == 0)
-                    printf("         ");
-                printf("%02X::", symmetric_key[i]);
+
+                symmetric_key_buff[symmetric_key_buff_index] = *ex_char_ptr;
+                symmetric_key_buff_index += 1;
+                ex_char_ptr += 1;
             }
         }
 
-        std::cout
-            << "  TUN Data:"
-            << std::endl
-            << "    TUN_ID: " << client_tun_ip_id
-            << std::endl
-            << "    TUN_IP: " << client_tun_ip.ip
-            << std::endl;
+        snprintf(buff, sizeof(buff) - 1,
+                 "client_holder(key:%s;session_id:%d;tun_ip:%s;tcp_address:%s;udp_address:%s)",
+                 symmetric_key_buff,
+                 session_id,
+                 client_tun_ip.ip,
+                 tcp_info.to_raw_info().address_service,
+                 udp_info.empty() ? "NA" : udp_info.to_raw_info().address_service);
 
-        socket_utils::raw_client_info raw_tcp_info = tcp_info.to_raw_info();
-        std::cout
-            << "  TCP Data:"
-            << std::endl
-            << "    TCP_SOCKET: " << tcp_info.socket
-            << std::endl
-            << "    TCP_IP_SERVICE: " << raw_tcp_info.address_service
-            << std::endl;
-
-        socket_utils::raw_client_info raw_udp_info = udp_info.to_raw_info();
-        std::cout
-            << "  UDP Data:"
-            << std::endl
-            << "    UDP_IP_SERVICE: " << raw_udp_info.address_service
-            << std::endl;
+        return buff;
     }
 }

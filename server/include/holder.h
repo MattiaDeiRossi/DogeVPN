@@ -57,7 +57,7 @@ namespace holder
          */
         SSL *ssl;
 
-        void log();
+        std::string to_s();
     };
 
     struct server_holder

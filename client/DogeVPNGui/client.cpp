@@ -48,7 +48,7 @@ void handle_tun_packet(
     tun_utils::ip_header header = frame.get_ip_header();
 
     /* When receiving frames from the TUN interface, only appropriate ones are sent to
-     *  the server; that is only those frames that belong to the registered routes.
+     * the server; that is only those frames that belong to the registered routes.
      */
     for (auto net : nets)
     {
@@ -71,7 +71,7 @@ void handle_tun_packet(
         std::cout << "sending to " << header.destination_ip << std::endl;
 
         /* Build encrypted packet to send to the server.
-         *  It is encrypted with the received key.
+         * It is encrypted with the received key.
          */
         encryption::packet tun_pkt((unsigned char *)frame.data, frame.size);
         vpn_data_utils::udp_packet_data(&tun_pkt, (char *)key_exchange.key, key_exchange.id_to_i())
@@ -96,8 +96,8 @@ int start_doge_vpn(
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
 
     /* Two kinds of socket will be used:
-     *   1. TCP: in order to keep up to date the connection and its paramaters; bound to the ssl object
-     *   2. UDP: when data packets will be sent
+     *  1. TCP: in order to keep up to date the connection and its paramaters; bound to the ssl object
+     *  2. UDP: when data packets will be sent
      */
     SSL *ssl_session = ssl_utils::bind_client_ssl_or_abort(ctx, socket_utils::connect_tcp_client_socket_or_abort(domain, port));
     socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
@@ -105,9 +105,9 @@ int start_doge_vpn(
 
     /* First message to exchange between client and server inder a TLS sessions.
      *  After this exchange, the following data is available:
-     *   - key:      the symmetric key with wich udp packets will be encrypted
-     *   - id:       the id for this client
-     *   - tun_ip:   the ip to assign to the TUN device
+     *      - key:      the symmetric key with wich udp packets will be encrypted
+     *      - id:       the id for this client
+     *      - tun_ip:   the ip to assign to the TUN device
      */
     vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
@@ -148,7 +148,7 @@ int start_doge_vpn(
         {
 
             /* After 0.8 seconds the select did not find any available socket to read.
-             *  This is not an error, but the next iteration must follow since the flags must be checked.
+             * This is not an error, but the next iteration must follow since the flags must be checked.
              */
             continue;
         }
@@ -180,7 +180,7 @@ int start_doge_vpn(
     }
 
     /* Freeing SSL objects.
-     *  The TCP socket will be closed along with the SSL session.
+     * The TCP socket will be closed along with the SSL session.
      */
     ssl_utils::free_ssl(ssl_session, NULL);
     ssl_utils::ssl_context_free(ctx);
@@ -188,7 +188,7 @@ int start_doge_vpn(
     socket_utils::close_socket(udp_socket);
 
     /* TUN device is no longer needed.
-     *  Release it for further reuse.
+     * Release it for further reuse.
      */
     tun_device.free();
 

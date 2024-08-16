@@ -3,68 +3,74 @@
 
 #include <ctype.h>
 #include <stdexcept>
-#include <cstdlib>  
+#include <cstdlib>
 #include "utils.h"
 #include "encryption.h"
 #include "ssl_utils.h"
 #include "socket_utils.h"
 
-namespace vpn_data_utils {
+namespace vpn_data_utils
+{
 
     const unsigned char SIZE_16 = 16;
     const unsigned char SIZE_64 = 64;
 
-    const unsigned char MESSAGE_SEPARATOR_POINT =   '.';
-    const unsigned char MESSAGE_SEPARATOR_DIV =     '/';
-    const unsigned char MESSAGE_SEPARATOR_OPEN =    '(';
-    const unsigned char MESSAGE_SEPARATOR_CLOSE =   ')';
+    const unsigned char MESSAGE_SEPARATOR_POINT = '.';
+    const unsigned char MESSAGE_SEPARATOR_DIV = '/';
+    const unsigned char MESSAGE_SEPARATOR_OPEN = '(';
+    const unsigned char MESSAGE_SEPARATOR_CLOSE = ')';
 
-    const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE =    128;
-    const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE =          256;
+    const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE = 128;
+    const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE = 256;
 
-    struct raw_key_exchange_data {
+    struct raw_key_exchange_data
+    {
 
         unsigned char buffer[KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE];
         size_t size;
         size_t buffer_capacity;
 
-        raw_key_exchange_data(SSL* ssl_session);
+        raw_key_exchange_data(SSL *ssl_session);
     };
 
-    struct key_exchange_data {
+    struct key_exchange_data
+    {
 
         unsigned char key[encryption::KEY_SIZE_32];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
 
-        key_exchange_data(SSL* ssl_session);
+        key_exchange_data(SSL *ssl_session);
 
         int id_to_i();
 
         void log();
     };
 
-    struct raw_credentials {
+    struct raw_credentials
+    {
 
         size_t actual_size;
         char raw_message[CREDENTIALS_FROM_CLIENT_MESSAGE];
 
-        raw_credentials(const char* username, const char* password);
+        raw_credentials(const char *username, const char *password);
 
-        void send(SSL* ssl_session);
+        void send(SSL *ssl_session);
     };
 
-    struct credentials {
+    struct credentials
+    {
 
         char username[CREDENTIALS_FROM_CLIENT_MESSAGE];
         char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
 
-        credentials(const char* data, size_t num);
+        credentials(const char *data, size_t num);
 
         void log_credentials_from_client_message();
     };
 
-    struct udp_packet_data {
+    struct udp_packet_data
+    {
 
         unsigned char user_id[SIZE_16];
         unsigned char iv[encryption::IV_SIZE_16];
@@ -73,16 +79,16 @@ namespace vpn_data_utils {
 
         udp_packet_data();
 
-        /* This function deals with extracting the information. 
-        *  DogeVPN requires the payload to respect the following format:
-        *   1.  First part of the payload is the original encrypted packet.
-        *       The length is variable.
-        *   2.  After the payload there is the hash of the message signed with the exchanged key;
-        *       the main reason to exchange the hashed messsage is to avoid 
-        *       that the user id leak allow everyone to send non-sense packet
-        *   3.  After the hashed part we have the IV
-        *   4.  Then we have the user id: this is needed to decrypt the message with correct key
-        */
+        /* This function deals with extracting the information.
+         *  DogeVPN requires the payload to respect the following format:
+         *   1.  First part of the payload is the original encrypted packet.
+         *       The length is variable.
+         *   2.  After the payload there is the hash of the message signed with the exchanged key;
+         *       the main reason to exchange the hashed messsage is to avoid
+         *       that the user id leak allow everyone to send non-sense packet
+         *   3.  After the hashed part we have the IV
+         *   4.  Then we have the user id: this is needed to decrypt the message with correct key
+         */
         udp_packet_data(encryption::packet *from, bool from_server);
 
         udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id);

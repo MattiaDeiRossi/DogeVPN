@@ -77,7 +77,9 @@ void handle_udp_packet(
 
     if (c_holder.udp_info.empty())
     {
-
+        /* Accessing the register can be computationally expensive. The update is done
+         *  if and only if the client's UDP information are not present yet.
+         */
         c_holder.udp_info = recv_result.udp_info;
         c_register->update_client_holder(c_holder);
     }
@@ -88,7 +90,9 @@ void handle_udp_packet(
     if (!d_packet_opt.has_value())
     {
 
-        /**/
+        /* There can be situation for which data cannot be decrypted. For this reason
+         * computation cannot proceed.
+         */
         logger->log(logging::log_level::WARNING, "Packet cannot be decrypted");
         return;
     }
@@ -177,13 +181,9 @@ void start_doge_vpn(std::map<std::string, std::string> config)
      */
     tun_utils::ip_pool_t server_pool;
     server_pool.compose_class_c_pool(stoi(config["third_octet"]));
-
-    /**/
     tun_utils::ipv4_netmask_t ipv4_netmask = server_pool.compose_ipv4_netmask();
 
-    /* TUN device.
-     * By configuring the TUN device, raw ip
-     */
+    /* TUN device */
     char server_tun_ip[holder::SIZE_32];
     tun_utils::tundev_t device(config["name"].c_str(), server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
     device.persist();
@@ -208,7 +208,9 @@ void start_doge_vpn(std::map<std::string, std::string> config)
     server_socket_set.insert(udp_socket);
     server_socket_set.insert(device.fd);
 
-    /**/
+    /* The client register with which current clients are saved in memory. By usign the register
+     * packets can be related to the correct client in both direction.
+     */
     holder::client_register c_register(server_pool);
 
     while (true)

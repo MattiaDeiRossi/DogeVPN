@@ -53,14 +53,17 @@ namespace logging
         bzero(timestamp, sizeof(timestamp));
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
 
-        std::ostringstream logEntry;
-        logEntry << "[" << timestamp << "] "
+        std::ostringstream log_entry;
+        log_entry << "[" << timestamp << "] "
                  << levelToString(level) << ": " << message
                  << std::endl;
 
+        /* Log also for stdout */
+        std::cout << log_entry.str() <<std::endl;
+
         if (logFile.is_open())
         {
-            logFile << logEntry.str();
+            logFile << log_entry.str();
             logFile.flush(); /* Ensure immediate write to file */
         }
     }

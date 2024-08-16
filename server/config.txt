@@ -5,3 +5,4 @@ private_key:certs/key.pem
 address:10.5.42.15
 port:8080
 users:users.txt
+logfile_path:log.txt

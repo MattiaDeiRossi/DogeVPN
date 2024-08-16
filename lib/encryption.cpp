@@ -283,11 +283,14 @@ namespace encryption
         return true;
     }
 
-    void packet::log()
+    std::string packet::to_s()
     {
 
-        std::cout
-            << "Size of packet: " << size
-            << std::endl;
+        char buff[128];
+        bzero(buff, sizeof(buff));
+        snprintf(buff, sizeof(buff), "Packet(size:%ld)", size);
+
+        std::string result = buff;
+        return result;
     }
 }

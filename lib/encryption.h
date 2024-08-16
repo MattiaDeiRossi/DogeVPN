@@ -53,7 +53,7 @@ namespace encryption
         bool append(const unsigned char *data, size_t num);
         bool append(unsigned char data);
 
-        void log();
+        std::string to_s();
     };
 }
 

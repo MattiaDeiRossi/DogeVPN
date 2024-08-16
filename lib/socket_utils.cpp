@@ -271,7 +271,7 @@ namespace socket_utils
 		return raw_info;
 	}
 
-	fd_set select_or_throw(std::set<socket_t> sockets, time_t seconds, int *result)
+	fd_set select_or_throw(std::set<socket_t> sockets, time_t seconds, suseconds_t microseconds, int *result)
 	{
 
 		int select_result = 0;
@@ -291,7 +291,7 @@ namespace socket_utils
 			FD_SET(socket, &master);
 		}
 
-		if (seconds <= 0)
+		if (seconds <= 0 && microseconds <= 0)
 		{
 
 			select_result = select(max + 1, &master, 0, 0, 0);
@@ -301,7 +301,7 @@ namespace socket_utils
 
 			struct timeval interval;
 			interval.tv_sec = seconds;
-			interval.tv_usec = 0;
+			interval.tv_usec = microseconds;
 
 			select_result = select(max + 1, &master, 0, 0, &interval);
 		}

@@ -23,9 +23,6 @@ namespace socket_utils
         raw_client_info();
         raw_client_info(struct sockaddr_storage address, socklen_t length);
 
-        bool operator==(const raw_client_info &o) const;
-        bool operator<(const raw_client_info &o) const;
-
         void log();
     };
 

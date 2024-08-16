@@ -245,14 +245,6 @@ namespace socket_utils {
 		return raw_info;
 	}
 
-	bool raw_client_info::operator==(const raw_client_info &o) const {
-        return strncmp(address_service, o.address_service, 256) == 0 ? true : false;
-    }
-
-	bool raw_client_info::operator<(const raw_client_info &o) const {
-        return strncmp(address_service, o.address_service, 256) < 0 ? true : false;
-    }
-
 	fd_set select_or_throw(std::set<socket_t> sockets) {
 		
 		fd_set master;

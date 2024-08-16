@@ -156,7 +156,7 @@ void handle_tcp_packet(socket_utils::socket_t socket, holder::client_register *c
              * when deleting the client holder a call to free should not be done.
              */
             std::ostringstream logEntry;
-            logEntry << "Client " << holder.to_s() << " is disconnecting from this server";
+            logEntry << "Client is disconnecting from this server: " << holder.to_s();
             logger->log(logging::log_level::INFO, logEntry.str());
 
             c_register->delete_client_holder(holder, false);

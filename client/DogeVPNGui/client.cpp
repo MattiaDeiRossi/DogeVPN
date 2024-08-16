@@ -130,11 +130,19 @@ int start_doge_vpn(
 
     while (!(stop_flag || client_errors))
     {
+        /**/
+        int result = 0;
+        suseconds_t microseconds = 800000;
+        fd_set master = socket_utils::select_or_throw(client_sockets, 0, microseconds, &result);
 
-        /* TODO: this could block disconnection.
-         *  Use loop with yeld insteads.
-         */
-        fd_set master = socket_utils::select_or_throw(client_sockets);
+        if (result == -1) {
+            client_errors = true;
+        }
+        else if (!result) {
+
+            /*timeout*/
+            continue;
+        }
 
         for (auto socket : client_sockets)
         {

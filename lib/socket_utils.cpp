@@ -274,6 +274,12 @@ namespace socket_utils
 	fd_set select_or_throw(std::set<socket_t> sockets, time_t seconds, suseconds_t microseconds, int *result)
 	{
 
+		if (seconds < 0 || microseconds < 0)
+		{
+			/**/
+			throw std::invalid_argument("seconds and microseconds cannot be negative");
+		}
+
 		int select_result = 0;
 		socket_t max = 0;
 		fd_set master;
@@ -291,14 +297,15 @@ namespace socket_utils
 			FD_SET(socket, &master);
 		}
 
-		if (seconds <= 0 && microseconds <= 0)
+		if (seconds == 0 && microseconds == 0)
 		{
 
+			/**/
 			select_result = select(max + 1, &master, 0, 0, 0);
 		}
 		else
 		{
-
+			/**/
 			struct timeval interval;
 			interval.tv_sec = seconds;
 			interval.tv_usec = microseconds;
@@ -319,6 +326,7 @@ namespace socket_utils
 		}
 		else
 		{
+			/**/
 			*result = select_result;
 		}
 

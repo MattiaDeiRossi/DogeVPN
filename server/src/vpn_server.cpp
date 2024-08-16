@@ -17,12 +17,14 @@ void handle_tls_handshake(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,
     holder::client_register *c_register,
+    logging::logger *logger,
     const char *file_path)
 {
 
     if (c_register->register_client_holder(ctx, info, file_path))
     {
-        std::cerr << "Handle tcp client key exchange: registration error" << std::endl;
+        /**/
+        logger->log(logging::log_level::WARNING, "Registration error");
     }
 }
 
@@ -66,7 +68,7 @@ void handle_udp_packet(
     {
 
         /* There is no need to proceed if the client has not been registred */
-        std::cerr << "client is not registered" << std::endl;
+        logger->log(logging::log_level::WARNING, "Client is not registered");
         return;
     }
 
@@ -89,7 +91,7 @@ void handle_udp_packet(
     {
 
         /**/
-        std::cerr << "packet cannot be decrypted" << std::endl;
+        logger->log(logging::log_level::WARNING, "Packet cannot be decrypted");
         return;
     }
 
@@ -232,7 +234,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
                     {
 
                         /* This could fail when the connections reach the maximum allowed number. */
-                        logger.log(logging::ERROR, "Server cannot accept new clients, call to accept failed");
+                        logger.log(logging::WARNING, "Server cannot accept new clients, call to accept failed");
                     }
                     else
                     {

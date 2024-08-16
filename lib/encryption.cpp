@@ -3,10 +3,12 @@
 namespace encryption
 {
 
-    struct r_engine {
+    struct r_engine
+    {
         std::default_random_engine source;
 
-        r_engine() {
+        r_engine()
+        {
             std::random_device r;
             source.seed(r());
         }
@@ -20,13 +22,15 @@ namespace encryption
         int ciphertext_len;
 
         /* Create and initialise the context */
-        if (!(ctx = EVP_CIPHER_CTX_new())) {
+        if (!(ctx = EVP_CIPHER_CTX_new()))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
 
         /* Initialise the encryption operation. */
-        if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+        if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -34,7 +38,8 @@ namespace encryption
         /* Provide the message to be encrypted, and obtain the encrypted output.
          * EVP_EncryptUpdate can be called multiple times if necessary
          */
-        if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
+        if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -44,7 +49,8 @@ namespace encryption
         /* Finalise the encryption. Further ciphertext bytes may be written at
          * this stage.
          */
-        if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
+        if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -64,13 +70,15 @@ namespace encryption
         int plaintext_len;
 
         /* Create and initialise the context */
-        if (!(ctx = EVP_CIPHER_CTX_new())) {
+        if (!(ctx = EVP_CIPHER_CTX_new()))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
 
         /* Initialise the decryption operation. */
-        if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+        if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -78,7 +86,8 @@ namespace encryption
         /* Provide the message to be decrypted, and obtain the plaintext output.
          * EVP_DecryptUpdate can be called multiple times if necessary
          */
-        if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+        if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -88,7 +97,8 @@ namespace encryption
         /* Finalise the decryption. Further plaintext bytes may be written at
          * this stage.
          */
-        if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
+        if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
+        {
             ERR_print_errors_fp(stderr);
             return -1;
         }
@@ -100,22 +110,26 @@ namespace encryption
         return plaintext_len;
     }
 
-    encryption_data::encryption_data(const unsigned char *key) {
+    encryption_data::encryption_data(const unsigned char *key)
+    {
 
         /* Assuming the key follows specifications given (KEY: 32 bytes). */
-        for (size_t i = 0; i < KEY_SIZE_32; i++) this->key[i] = key[i];
+        for (size_t i = 0; i < KEY_SIZE_32; i++)
+            this->key[i] = key[i];
 
         unsigned char _iv[IV_SIZE_16];
         bzero(_iv, IV_SIZE_16);
 
         int rand_value = RAND_bytes(_iv, IV_SIZE_16);
-        if (rand_value != 1) {
+        if (rand_value != 1)
+        {
 
             /* When RAND_bytes cannot produce secured random bytes, a fallback is made by using
-            *  the random std library.
-            */
-            std::uniform_int_distribution<uint32_t> uint_dist(0, UCHAR_MAX);  
-            for (int i = 0; i < 16; i++) {
+             *  the random std library.
+             */
+            std::uniform_int_distribution<uint32_t> uint_dist(0, UCHAR_MAX);
+            for (int i = 0; i < 16; i++)
+            {
                 _iv[i] = uint_dist(encryption::engine.source);
             }
 
@@ -125,66 +139,77 @@ namespace encryption
         memcpy(iv, _iv, IV_SIZE_16);
     }
 
-    encryption_data::encryption_data(const unsigned char *key, const unsigned char *iv) {
+    encryption_data::encryption_data(const unsigned char *key, const unsigned char *iv)
+    {
 
         /* Here we are assuming the key and the iv follows specifications given:
-        *   KEY:    32 bytes
-        *   IV:     16 bytes
-        */
-        for (size_t i = 0; i < KEY_SIZE_32; i++) this->key[i] = key[i];
-        for (size_t i = 0; i < IV_SIZE_16; i++) this->iv[i] = iv[i];
+         *   KEY:    32 bytes
+         *   IV:     16 bytes
+         */
+        for (size_t i = 0; i < KEY_SIZE_32; i++)
+            this->key[i] = key[i];
+        for (size_t i = 0; i < IV_SIZE_16; i++)
+            this->iv[i] = iv[i];
     }
 
-    packet::packet() {
-        
+    packet::packet()
+    {
+
         bzero(buffer, SIZE_8_192);
         max_capacity = SIZE_8_192;
         size = 0;
     }
 
-    packet::packet(unsigned char *data, size_t num) {
+    packet::packet(unsigned char *data, size_t num)
+    {
 
         bzero(buffer, SIZE_8_192);
         max_capacity = SIZE_8_192;
         size = num;
 
-        if (num > SIZE_8_192) {
+        if (num > SIZE_8_192)
+        {
             throw std::invalid_argument("data is too large");
         }
 
-        for (size_t i = 0; i < num; i++) {
+        for (size_t i = 0; i < num; i++)
+        {
             buffer[i] = data[i];
         }
     }
 
-    std::optional<packet> packet::encrypt(encryption_data enc_data) {
+    std::optional<packet> packet::encrypt(encryption_data enc_data)
+    {
 
         packet result;
 
         /* Checking the length for returning an error in case of an UDP packet too large.
-        *  Abusing plus one just for lazyness and safetyness, ignoring modules.
-        */
+         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
+         */
         size_t ciphertext_max_size = ((size / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
-        if (ciphertext_max_size > result.max_capacity) return std::nullopt;
+        if (ciphertext_max_size > result.max_capacity)
+            return std::nullopt;
 
         /* check error*/
         ssize_t ciphertext_size = encryption::encrypt(buffer, size, enc_data.key, enc_data.iv, result.buffer);
-        if (ciphertext_size == -1) return std::nullopt;
+        if (ciphertext_size == -1)
+            return std::nullopt;
 
         result.size = ciphertext_size;
         return result;
     }
 
-    std::optional<packet> packet::decrypt(encryption_data enc_data) {
+    std::optional<packet> packet::decrypt(encryption_data enc_data)
+    {
 
         packet result;
         ssize_t plaintext_size = encryption::decrypt(
-            buffer, size, 
-            enc_data.key, enc_data.iv, 
-            result.buffer
-        );
+            buffer, size,
+            enc_data.key, enc_data.iv,
+            result.buffer);
 
-        if (plaintext_size == -1) {
+        if (plaintext_size == -1)
+        {
             return std::nullopt;
         }
 
@@ -192,24 +217,28 @@ namespace encryption
         return result;
     }
 
-    bool packet::getShaSum(unsigned char *output) {
+    bool packet::getShaSum(unsigned char *output)
+    {
 
         EVP_MD_CTX *mdCtx = EVP_MD_CTX_new();
         unsigned char mdVal[SHA_256_SIZE];
         unsigned int mdLen;
 
-        if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL)) {
+        if (!EVP_DigestInit_ex(mdCtx, EVP_sha256(), NULL))
+        {
             EVP_MD_CTX_free(mdCtx);
             return false;
         }
 
         /* Hashes cnt bytes of data at d into the digest context mdCtx. */
-        if (!EVP_DigestUpdate(mdCtx, buffer, size)) {
+        if (!EVP_DigestUpdate(mdCtx, buffer, size))
+        {
             EVP_MD_CTX_free(mdCtx);
             return false;
         }
 
-        if (!EVP_DigestFinal_ex(mdCtx, mdVal, &mdLen)) {
+        if (!EVP_DigestFinal_ex(mdCtx, mdVal, &mdLen))
+        {
             EVP_MD_CTX_free(mdCtx);
             return false;
         }
@@ -219,35 +248,43 @@ namespace encryption
         return true;
     }
 
-    bool packet::valid_hash(unsigned char *hash) {
+    bool packet::valid_hash(unsigned char *hash)
+    {
 
         /* Creating the buffer with the correct hash size. */
         unsigned char computed_hash[SHA_256_SIZE];
-        if (!getShaSum(computed_hash)) return false;
-        return strncmp((const char *) computed_hash, (const char *) hash, SHA_256_SIZE) == 0 ? true : false;
+        if (!getShaSum(computed_hash))
+            return false;
+        return strncmp((const char *)computed_hash, (const char *)hash, SHA_256_SIZE) == 0 ? true : false;
     }
 
-    bool packet::append(const unsigned char *data, size_t num) {
+    bool packet::append(const unsigned char *data, size_t num)
+    {
 
         size_t current_size = size;
-        if (current_size + num > max_capacity) return false;
+        if (current_size + num > max_capacity)
+            return false;
 
-        for (size_t i = 0; i < num; ++i) buffer[current_size + i] = data[i];
+        for (size_t i = 0; i < num; ++i)
+            buffer[current_size + i] = data[i];
         size = current_size + num;
         return true;
     }
 
-    bool packet::append(unsigned char data) {
+    bool packet::append(unsigned char data)
+    {
 
         size_t current_size = size;
-        if (current_size + 1 > max_capacity) return false;
+        if (current_size + 1 > max_capacity)
+            return false;
 
         buffer[current_size] = data;
         size = current_size + 1;
         return true;
     }
 
-    void packet::log() {
+    void packet::log()
+    {
 
         std::cout
             << "Size of packet: " << size

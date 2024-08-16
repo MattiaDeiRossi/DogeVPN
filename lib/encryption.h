@@ -18,13 +18,14 @@
 namespace encryption
 {
 
-    const int SIZE_8_192            = 8192;
-    const int KEY_SIZE_32           = 32;
-    const int IV_SIZE_16            = 16;
-    const int SHA_256_SIZE          = 32;
-    const int AES_256_CBC_PADDING   = 16;
+    const int SIZE_8_192 = 8192;
+    const int KEY_SIZE_32 = 32;
+    const int IV_SIZE_16 = 16;
+    const int SHA_256_SIZE = 32;
+    const int AES_256_CBC_PADDING = 16;
 
-    struct encryption_data {
+    struct encryption_data
+    {
 
         unsigned char key[KEY_SIZE_32];
         unsigned char iv[IV_SIZE_16];
@@ -33,7 +34,8 @@ namespace encryption
         encryption_data(const unsigned char *key, const unsigned char *iv);
     };
 
-    struct packet {
+    struct packet
+    {
 
         unsigned char buffer[SIZE_8_192];
         size_t size;

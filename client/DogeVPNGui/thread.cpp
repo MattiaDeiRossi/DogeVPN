@@ -30,16 +30,21 @@ void Thread::setParams(const char *domain, const char *port, const char *user, c
 
 void Thread::run()
 {
-    if (user_ && pwd_ && domain_ && port_) {
-        int result = start_doge_vpn(domain_, port_,user_, pwd_);
+    if (user_ && pwd_ && domain_ && port_)
+    {
+        int result = start_doge_vpn(domain_, port_, user_, pwd_);
         emit threadFinished(result);
-    } else {
+    }
+    else
+    {
         std::cerr << "Errore: Parametri non impostati correttamente" << std::endl;
     }
 }
 
-void Thread::stop() {
-    if (isRunning()) {
+void Thread::stop()
+{
+    if (isRunning())
+    {
         set_stop_flag(true);
         wait();
         set_stop_flag(false);

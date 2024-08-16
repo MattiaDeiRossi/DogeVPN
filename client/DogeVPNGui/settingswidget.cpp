@@ -1,19 +1,7 @@
 #include "settingswidget.h"
 
 SettingsWidget::SettingsWidget(QWidget *parent)
-    : QDialog(parent)
-    , domainServerLabel( new QLabel("Domain", this))
-    , domainServerLineEdit( new QLineEdit(this))
-    , portServerLabel( new QLabel("Port", this))
-    , portServerLineEdit( new QLineEdit(this))
-    , userLabel(new QLabel("Username", this))
-    , userLineEdit(new QLineEdit(this))
-    , passwordLabel(new QLabel("Password", this))
-    , passwordLineEdit(new QLineEdit(this))
-    , saveButton(new QPushButton("Save"))
-    , okButton(new QPushButton("Ok"))
-    , togglePswButton(new QPushButton("Show"))
-    , layout(nullptr)
+    : QDialog(parent), domainServerLabel(new QLabel("Domain", this)), domainServerLineEdit(new QLineEdit(this)), portServerLabel(new QLabel("Port", this)), portServerLineEdit(new QLineEdit(this)), userLabel(new QLabel("Username", this)), userLineEdit(new QLineEdit(this)), passwordLabel(new QLabel("Password", this)), passwordLineEdit(new QLineEdit(this)), saveButton(new QPushButton("Save")), okButton(new QPushButton("Ok")), togglePswButton(new QPushButton("Show")), layout(nullptr)
 {
     passwordLineEdit->setEchoMode(QLineEdit::Password);
 
@@ -64,17 +52,22 @@ SettingsWidget::~SettingsWidget()
     delete layout;
 }
 
-void SettingsWidget::togglePasswordVisibility() {
-    if (passwordLineEdit->echoMode() == QLineEdit::Password) {
+void SettingsWidget::togglePasswordVisibility()
+{
+    if (passwordLineEdit->echoMode() == QLineEdit::Password)
+    {
         passwordLineEdit->setEchoMode(QLineEdit::Normal);
         togglePswButton->setText("Hide");
-    } else {
+    }
+    else
+    {
         passwordLineEdit->setEchoMode(QLineEdit::Password);
         togglePswButton->setText("Show");
     }
 }
 
-QString SettingsWidget::loadFromFile(){
+QString SettingsWidget::loadFromFile()
+{
     QString fileName = QFileDialog::getOpenFileName(this, tr("Apri file di testo"), "/DogeVPN", tr("File di testo (*.txt);;Tutti i file (*.*)"));
 
     if (fileName.isEmpty())
@@ -82,14 +75,16 @@ QString SettingsWidget::loadFromFile(){
 
     QFile file(fileName);
 
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
         QMessageBox::warning(this, tr("Error"), tr("Unable to open the file: ") + file.errorString());
         return "";
     }
 
     QTextStream in(&file);
 
-    while (!in.atEnd()) {
+    while (!in.atEnd())
+    {
         QString line = in.readLine().trimmed();
 
         if (line.isEmpty() || line.startsWith('#'))
@@ -97,7 +92,8 @@ QString SettingsWidget::loadFromFile(){
 
         QStringList parts = line.split(':');
 
-        if (parts.size() == 2) {
+        if (parts.size() == 2)
+        {
             QString key = parts[0].trimmed();
             QString value = parts[1].trimmed();
             settings_[key] = value;
@@ -108,18 +104,22 @@ QString SettingsWidget::loadFromFile(){
     return fileName;
 }
 
-void SettingsWidget::setSettings(){
+void SettingsWidget::setSettings()
+{
     settings_.insert(domainServerLabel->text().toLower(), domainServerLineEdit->text());
     settings_.insert(portServerLabel->text().toLower(), portServerLineEdit->text());
     settings_.insert(userLabel->text().toLower(), userLineEdit->text());
     settings_.insert(passwordLabel->text().toLower(), passwordLineEdit->text());
 }
-const QMap<QString, QString> SettingsWidget::getSettings() const {
+const QMap<QString, QString> SettingsWidget::getSettings() const
+{
     return settings_;
 }
 
-void SettingsWidget::fillFields(){
-    if(!settings_.empty()){
+void SettingsWidget::fillFields()
+{
+    if (!settings_.empty())
+    {
         domainServerLineEdit->setText(settings_.value("domain"));
         portServerLineEdit->setText(settings_.value("port"));
         userLineEdit->setText(settings_.value("username"));
@@ -127,15 +127,18 @@ void SettingsWidget::fillFields(){
     }
 }
 
-void SettingsWidget::onOkClicked() {
+void SettingsWidget::onOkClicked()
+{
     setSettings();
-    for (auto it = settings_.constBegin(); it != settings_.constEnd(); ++it) {
-        qDebug("%s: %s",it.key().toStdString().c_str(), it.value().toStdString().c_str());
+    for (auto it = settings_.constBegin(); it != settings_.constEnd(); ++it)
+    {
+        qDebug("%s: %s", it.key().toStdString().c_str(), it.value().toStdString().c_str());
     }
     emit settingsAccepted();
 }
 
-void SettingsWidget::onSaveClicked(){
+void SettingsWidget::onSaveClicked()
+{
     QString fileName = QFileDialog::getOpenFileName(this, tr("Save text file"), "/DogeVPN", tr("Text files (*.txt);;All files (*.*)"));
 
     if (fileName.isEmpty())
@@ -143,7 +146,8 @@ void SettingsWidget::onSaveClicked(){
 
     QFile file(fileName);
 
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
         QMessageBox::warning(this, tr("Error"), tr("Unable to save the file: ") + file.errorString());
         return;
     }

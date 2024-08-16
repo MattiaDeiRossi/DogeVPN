@@ -10,7 +10,8 @@
 #include <QMessageBox>
 #include <QTextStream>
 
-class SettingsWidget : public QDialog {
+class SettingsWidget : public QDialog
+{
     Q_OBJECT
 
 public:

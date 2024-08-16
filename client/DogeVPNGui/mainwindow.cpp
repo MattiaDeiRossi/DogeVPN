@@ -4,10 +4,7 @@
 #include "./ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , settingsWidget(new SettingsWidget(this))
-    , client_thread_(new Thread(this))
+    : QMainWindow(parent), ui(new Ui::MainWindow), settingsWidget(new SettingsWidget(this)), client_thread_(new Thread(this))
 {
     ui->setupUi(this);
     setWindowTitle("DogeVPN Client");
@@ -28,7 +25,8 @@ void MainWindow::on_connectButton_clicked()
 {
     auto settings = settingsWidget->getSettings();
 
-    if(settings.empty()){
+    if (settings.empty())
+    {
         QMessageBox::warning(this, tr("Error"), tr("Settings are empty"));
         return;
     }
@@ -38,22 +36,31 @@ void MainWindow::on_connectButton_clicked()
     std::string us;
     std::string psw;
 
-    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
+    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it)
+    {
 
-        qDebug("%s: %s",it.key().toStdString().c_str(), it.value().toStdString().c_str());
+        qDebug("%s: %s", it.key().toStdString().c_str(), it.value().toStdString().c_str());
 
-        if (strcmp(it.key().toStdString().c_str(), "domain") == 0) {
+        if (strcmp(it.key().toStdString().c_str(), "domain") == 0)
+        {
             domain = it.value().toStdString();
-        } else if (strcmp(it.key().toStdString().c_str(), "port") == 0) {
+        }
+        else if (strcmp(it.key().toStdString().c_str(), "port") == 0)
+        {
             port = it.value().toStdString();
-        } else if (strcmp(it.key().toStdString().c_str(), "username") == 0) {
+        }
+        else if (strcmp(it.key().toStdString().c_str(), "username") == 0)
+        {
             us = it.value().toStdString();
-        } else if (strcmp(it.key().toStdString().c_str(), "password") == 0) {
+        }
+        else if (strcmp(it.key().toStdString().c_str(), "password") == 0)
+        {
             psw = it.value().toStdString();
         }
     }
 
-    if(!client_thread_){
+    if (!client_thread_)
+    {
         client_thread_ = new Thread(this);
     }
 
@@ -65,9 +72,12 @@ void MainWindow::on_connectButton_clicked()
 
 void MainWindow::on_disconnectButton_clicked()
 {
-    if (client_thread_->isRunning()) {
+    if (client_thread_->isRunning())
+    {
         client_thread_->stop();
-    }else{
+    }
+    else
+    {
         QMessageBox::warning(this, tr("Error"), tr("Client is not connected"));
         return;
     }
@@ -79,7 +89,7 @@ void MainWindow::handleThreadFinished(int result)
 {
     ui->connectionStatus->setText("Disconnected");
     ui->connectionStatus->setStyleSheet("color: red;");
-    if(result<0)
+    if (result < 0)
         QMessageBox::warning(this, tr("Error"), tr("Connection closed woth an error"));
 
     std::cout << result << std::endl;
@@ -88,10 +98,11 @@ void MainWindow::handleThreadFinished(int result)
 void MainWindow::on_actionOpen_triggered()
 {
     auto fileName = settingsWidget->loadFromFile();
-    if(fileName.isEmpty())
+    if (fileName.isEmpty())
         QMessageBox::warning(this, tr("Error"), tr("FileName is empty"));
 
-    if (settingsWidget) {
+    if (settingsWidget)
+    {
         settingsWidget->show();
         emit settingsWidget->refreshSettings();
     }
@@ -99,25 +110,26 @@ void MainWindow::on_actionOpen_triggered()
 
 void MainWindow::on_actionNew_triggered()
 {
-    if (settingsWidget) {
+    if (settingsWidget)
+    {
         settingsWidget->show();
     }
-
 }
 
 void MainWindow::on_actionEdit_triggered()
 {
-    if (settingsWidget && !settingsWidget->getSettings().empty()) {
+    if (settingsWidget && !settingsWidget->getSettings().empty())
+    {
         settingsWidget->show();
         emit settingsWidget->refreshSettings();
     }
 }
 
-
-void MainWindow::handleSettingsAccepted() {
+void MainWindow::handleSettingsAccepted()
+{
     auto settings = settingsWidget->getSettings();
     auto domain = settings.value("domain").toStdString();
-    auto port= settings.value("port").toStdString();
+    auto port = settings.value("port").toStdString();
     auto dp = domain + ":" + port;
     auto us = settings.value("username").toStdString().c_str();
 
@@ -125,14 +137,10 @@ void MainWindow::handleSettingsAccepted() {
     ui->name_label->setText(us);
 
     settingsWidget->close();
-
 }
-
-
 
 void MainWindow::on_actionInfo_triggered()
 {
     QUrl url("https://github.com/MattiaDeiRossi/DogeVPN");
     QDesktopServices::openUrl(url);
 }
-

@@ -8,6 +8,10 @@
                 "/usr/local/include/bsoncxx/v_noabi",
                 "/usr/local/include/bsoncxx",
                 "/usr/local/include/bsoncxx/v_noabi/bsoncxx/third_party/mnmlstc",
+                "/usr/include/x86_64-linux-gnu/qt5",
+                "/usr/include/x86_64-linux-gnu/qt5/QtWidgets",
+                "/usr/include/x86_64-linux-gnu/qt5/QtGui",
+                "/usr/include/x86_64-linux-gnu/qt5/QtCore"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",

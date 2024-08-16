@@ -47,15 +47,19 @@ namespace vpn_data_utils {
             if (selector == 1) {
 
                 if (user_id_size == SIZE_16) {
-                    fprintf(stderr, "parse_key_exchange_from_server_message: id of wrong size\n");
+
+                    std::cerr << "id of wrong size" << std::endl;
                     break;
                 } else if (is_digit) {
+
                     id[user_id_size++] = byte_data;
                 } else if (is_point) {
+
                     selector = 2;
                     continue;
                 } else {
-                    fprintf(stderr, "parse_key_exchange_from_server_message: malformed id\n");
+
+                    std::cerr << "malformed id" << std::endl;
                     break;
                 }
             }
@@ -64,11 +68,14 @@ namespace vpn_data_utils {
             if (selector == 2) {
 
                 if (tun_ip_size == SIZE_64) {
-                    fprintf(stderr, "parse_key_exchange_from_server_message: tun ip of wrong size\n");
+
+                    std::cerr << "tun ip of wrong size" << std::endl;
                     break;
                 } else if (is_digit || is_point || is_div) {
+
                     tun_ip[tun_ip_size++] = byte_data;
                 } else {
+
                     break;
                 }
             }

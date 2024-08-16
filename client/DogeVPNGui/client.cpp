@@ -130,17 +130,25 @@ int start_doge_vpn(
 
     while (!(stop_flag || client_errors))
     {
-        /**/
+        /* Since there is the requirement to stop this while loop not only when some unrecoverable error
+         * is encountered, but also when the stop flag is set, a time interval for the select call is set.
+         * The result indicates an error (-1), a timeout exceeded (0), or a succesful call (> 0).
+         */
         int result = 0;
         suseconds_t microseconds = 800000;
         fd_set master = socket_utils::select_or_throw(client_sockets, 0, microseconds, &result);
 
-        if (result == -1) {
+        if (result == -1)
+        {
+            /* A call to select should never fail, this is something that is unrecoverable */
             client_errors = true;
         }
-        else if (!result) {
+        else if (!result)
+        {
 
-            /*timeout*/
+            /* After 0.8 seconds the select did not find any available socket to read.
+             *  This is not an error, but the next iteration must follow since the flags must be checked.
+             */
             continue;
         }
 

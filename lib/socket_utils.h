@@ -5,10 +5,10 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
-#include<optional>
-#include<iostream>
-#include<set>
-#include<stdexcept>
+#include <optional>
+#include <iostream>
+#include <set>
+#include <stdexcept>
 
 namespace socket_utils
 {
@@ -16,7 +16,8 @@ namespace socket_utils
 
     const socket_t invalid_socket_value = -1;
 
-    struct raw_client_info {
+    struct raw_client_info
+    {
 
         char address_service[256];
 
@@ -26,15 +27,17 @@ namespace socket_utils
         void log();
     };
 
-    struct tcp_client_info {
+    struct tcp_client_info
+    {
         socket_t socket;
         socklen_t length;
         struct sockaddr_storage address;
 
-        raw_client_info to_raw_info();  
+        raw_client_info to_raw_info();
     };
 
-    struct udp_client_info {
+    struct udp_client_info
+    {
 
         struct sockaddr_storage address;
         socklen_t length;
@@ -44,10 +47,11 @@ namespace socket_utils
 
         bool empty();
 
-        raw_client_info to_raw_info();  
+        raw_client_info to_raw_info();
     };
-    
-    struct recvfrom_result {
+
+    struct recvfrom_result
+    {
 
         udp_client_info udp_info;
         size_t bytes_read;

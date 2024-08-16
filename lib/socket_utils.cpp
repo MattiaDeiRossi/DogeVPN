@@ -1,12 +1,15 @@
 #include "socket_utils.h"
 
-namespace socket_utils {
+namespace socket_utils
+{
 
-	int invalid_socket(socket_t socket) {
+	int invalid_socket(socket_t socket)
+	{
 		return socket < 0;
 	}
 
-	void close_socket(socket_t socket) {
+	void close_socket(socket_t socket)
+	{
 		close(socket);
 	}
 
@@ -15,51 +18,53 @@ namespace socket_utils {
 		char const *port,
 		bool is_tcp,
 		bool is_server,
-		socket_t *ret_socket
-	) {
+		socket_t *ret_socket)
+	{
 
 		struct addrinfo hints;
-	    memset(&hints, 0, sizeof(hints));
+		memset(&hints, 0, sizeof(hints));
 
-	    /* 1. AF_INET:      Looking for IPv4 address
-	    *  2. SOCK_STREAM:  Going to use TCP
-	    *  3. SOCK_DGRAM:	Going to use UDP
-	    */
-	    hints.ai_family = AF_INET;
-	    hints.ai_socktype = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
+		/* 1. AF_INET:      Looking for IPv4 address
+		 *  2. SOCK_STREAM:  Going to use TCP
+		 *  3. SOCK_DGRAM:	Going to use UDP
+		 */
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
 
 		// The variable bind_address will hold the return information from getaddrinfo.
-	    struct addrinfo *bind_address;
-	    if (getaddrinfo(host, port, &hints, &bind_address) != 0) {
+		struct addrinfo *bind_address;
+		if (getaddrinfo(host, port, &hints, &bind_address) != 0)
+		{
 			return -1;
 		}
 
 		/* getaddrinfo() returns a list of address structures.
-        *  Try each address until we successfully bind(2).
-    	*  If socket(2) (or bind(2)) fails, we close the socket and try the next address. 
-		*/
+		 *  Try each address until we successfully bind(2).
+		 *  If socket(2) (or bind(2)) fails, we close the socket and try the next address.
+		 */
 		socket_t socket_listen;
 		struct addrinfo *ba_p = bind_address;
-		while (ba_p) {
+		while (ba_p)
+		{
 
 			socket_listen = socket(ba_p->ai_family, ba_p->ai_socktype, ba_p->ai_protocol);
-			if (invalid_socket(socket_listen)) {
+			if (invalid_socket(socket_listen))
+			{
 				ba_p = ba_p->ai_next;
 				continue;
 			}
 
-			int bc_result = is_server ?
-				bind(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen) :
-				connect(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen);
-				
+			int bc_result = is_server ? bind(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen) : connect(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen);
+
 			/* If the connection or binding succeeds, zero is returned.
-			*  On success just exit the loop by breaking it.
-			*/
-			if (bc_result == 0) break;          
+			 *  On success just exit the loop by breaking it.
+			 */
+			if (bc_result == 0)
+				break;
 
 			/* Call to bind or connect failed.
-			*  On failure just close the socket and continue with the loop.
-			*/
+			 *  On failure just close the socket and continue with the loop.
+			 */
 			close_socket(socket_listen);
 			ba_p = ba_p->ai_next;
 		}
@@ -68,77 +73,88 @@ namespace socket_utils {
 		freeaddrinfo(bind_address);
 
 		// No address succeeded.
-        if (ba_p == NULL) {
+		if (ba_p == NULL)
+		{
 			return -1;
 		}
 
 		/* A UDP socket does not need to set itself to a listen state.
-		*  Just up to bind. 
-		*/
-	    if (is_tcp && is_server) {
+		 *  Just up to bind.
+		 */
+		if (is_tcp && is_server)
+		{
 
-		    /* Listen put the socket in a state where it listens for new connections.
-			*  A backlog argument of 0 may allow the socket to accept connections.
-			*  In this case the length of the listen queue may be set to an implementation-defined minimum value.
-		    */
-		    if (listen(socket_listen, 0) < 0) {
-		        utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
-		        close_socket(socket_listen);
-		        return -1;
-		    }
-	    }
+			/* Listen put the socket in a state where it listens for new connections.
+			 *  A backlog argument of 0 may allow the socket to accept connections.
+			 *  In this case the length of the listen queue may be set to an implementation-defined minimum value.
+			 */
+			if (listen(socket_listen, 0) < 0)
+			{
+				utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
+				close_socket(socket_listen);
+				return -1;
+			}
+		}
 
-	    // Returning correctly created socket.
-	    *ret_socket = socket_listen;
-	    return 0;
+		// Returning correctly created socket.
+		*ret_socket = socket_listen;
+		return 0;
 	}
 
-	int bind_tcp_server_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int bind_tcp_server_socket(char const *host, char const *port, socket_t *ret_socket)
+	{
 		return create_socket(host, port, true, true, ret_socket);
 	}
 
-	int bind_udp_server_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int bind_udp_server_socket(char const *host, char const *port, socket_t *ret_socket)
+	{
 		return create_socket(host, port, false, true, ret_socket);
 	}
 
-	int connect_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_tcp_client_socket(char const *host, char const *port, socket_t *ret_socket)
+	{
 		return create_socket(host, port, true, false, ret_socket);
 	}
 
-	int connect_udp_client_socket(char const *host, char const *port, socket_t *ret_socket) {
+	int connect_udp_client_socket(char const *host, char const *port, socket_t *ret_socket)
+	{
 		return create_socket(host, port, false, false, ret_socket);
 	}
 
-	socket_t connect_tcp_client_socket_or_abort(char const *host, char const *port) {
+	socket_t connect_tcp_client_socket_or_abort(char const *host, char const *port)
+	{
 
 		socket_t socket;
-		if (connect_tcp_client_socket(host, port, &socket) == -1) {
+		if (connect_tcp_client_socket(host, port, &socket) == -1)
+		{
 			throw std::invalid_argument("cannot connect tcp client socket");
 		}
 
 		return socket;
 	}
 
-    socket_t connect_udp_client_socket_or_abort(char const *host, char const *port) {
+	socket_t connect_udp_client_socket_or_abort(char const *host, char const *port)
+	{
 
 		socket_t socket;
-		if (connect_udp_client_socket(host, port, &socket) == -1) {
+		if (connect_udp_client_socket(host, port, &socket) == -1)
+		{
 			throw std::invalid_argument("cannot connect udp client socket");
 		}
 
 		return socket;
 	}
 
-	tcp_client_info accept_client(socket_t server_socket) {
+	tcp_client_info accept_client(socket_t server_socket)
+	{
 
 		struct sockaddr_storage client_address;
-        socklen_t client_length = sizeof(client_address);
+		socklen_t client_length = sizeof(client_address);
 
 		socket_utils::socket_t client_socket = accept(
 			server_socket,
-			(struct sockaddr*) &client_address,
-			&client_length
-		);
+			(struct sockaddr *)&client_address,
+			&client_length);
 
 		tcp_client_info info;
 		info.socket = client_socket;
@@ -148,38 +164,44 @@ namespace socket_utils {
 		return info;
 	}
 
-    bool invalid_info(const tcp_client_info *info) {
+	bool invalid_info(const tcp_client_info *info)
+	{
 		return socket_utils::invalid_socket(info->socket);
 	}
 
-	void log_start_server(bool is_tcp, char const *host, char const *port) {
+	void log_start_server(bool is_tcp, char const *host, char const *port)
+	{
 
-		if (is_tcp) utils::print("Server can now listen for new TCP connections\n", 0);
-		else utils::print("Server can now receive UDP packets\n", 0);
+		if (is_tcp)
+			utils::print("Server can now listen for new TCP connections\n", 0);
+		else
+			utils::print("Server can now receive UDP packets\n", 0);
 
-	    utils::print("Server listening:\n", 0);
-	    utils::print("IP address:", 3);
-	    utils::print(host, 1);
-	    utils::print("\n", 0);
-	    utils::print("Port:", 3);
-	    utils::print(port, 1);
-	    utils::print("\n", 0);
+		utils::print("Server listening:\n", 0);
+		utils::print("IP address:", 3);
+		utils::print(host, 1);
+		utils::print("\n", 0);
+		utils::print("Port:", 3);
+		utils::print(port, 1);
+		utils::print("\n", 0);
 	}
 
-	recvfrom_result recvfrom(socket_t fd, void *buf, size_t n) {
+	recvfrom_result recvfrom(socket_t fd, void *buf, size_t n)
+	{
 
 		struct sockaddr_storage client_address;
 		socklen_t client_len = sizeof(client_address);
-		ssize_t bytes_read = recvfrom(fd, buf, n, 0, (struct sockaddr *) &client_address, &client_len);
+		ssize_t bytes_read = recvfrom(fd, buf, n, 0, (struct sockaddr *)&client_address, &client_len);
 
-		if (bytes_read < 0) {
+		if (bytes_read < 0)
+		{
 
 			/* A negative value should never happen.
-			*  In this case no actions are performed, just throwing the exception.
-			*/
+			 *  In this case no actions are performed, just throwing the exception.
+			 */
 			throw std::invalid_argument("recvfrom failed, cannot read bytes");
 		}
-		
+
 		udp_client_info udp_info;
 		udp_info.address = client_address;
 		udp_info.length = client_len;
@@ -191,116 +213,132 @@ namespace socket_utils {
 		return result;
 	}
 
-	raw_client_info::raw_client_info() {
+	raw_client_info::raw_client_info()
+	{
 		bzero(address_service, 256);
 	}
 
-	raw_client_info::raw_client_info(struct sockaddr_storage address, socklen_t length) {
+	raw_client_info::raw_client_info(struct sockaddr_storage address, socklen_t length)
+	{
 
 		bzero(address_service, 256);
 
 		char address_buffer[128];
-	    char service_buffer[128];
+		char service_buffer[128];
 
-	    getnameinfo(
-	        (struct sockaddr*) &address, length,
-	        address_buffer, sizeof(address_buffer), 
-	        service_buffer, sizeof(service_buffer),
-	        NI_NUMERICHOST | NI_NUMERICSERV
-	    );
+		getnameinfo(
+			(struct sockaddr *)&address, length,
+			address_buffer, sizeof(address_buffer),
+			service_buffer, sizeof(service_buffer),
+			NI_NUMERICHOST | NI_NUMERICSERV);
 
 		size_t index = 0;
 		char *a_ptr = address_buffer;
 		char *s_ptr = service_buffer;
-		
-		while (*a_ptr) {
+
+		while (*a_ptr)
+		{
 			address_service[index++] = *a_ptr;
 			a_ptr++;
 		}
 
 		address_service[index++] = ':';
 
-		while (*s_ptr) {
+		while (*s_ptr)
+		{
 			address_service[index++] = *s_ptr;
 			s_ptr++;
 		}
 	}
 
-	void raw_client_info::log() {
-		std::cout << 
-			"Received packet from:\n" << 
-			address_service << 
-			"\n";
+	void raw_client_info::log()
+	{
+		std::cout << "Received packet from:\n"
+				  << address_service << "\n";
 	}
 
-	raw_client_info tcp_client_info::to_raw_info() {
+	raw_client_info tcp_client_info::to_raw_info()
+	{
 
 		raw_client_info raw_info(address, length);
 		return raw_info;
 	}
 
-	raw_client_info udp_client_info::to_raw_info() {
+	raw_client_info udp_client_info::to_raw_info()
+	{
 
 		raw_client_info raw_info(address, length);
 		return raw_info;
 	}
 
-	fd_set select_or_throw(std::set<socket_t> sockets) {
-		
+	fd_set select_or_throw(std::set<socket_t> sockets)
+	{
+
 		fd_set master;
-        FD_ZERO(&master);
+		FD_ZERO(&master);
 
-        socket_t max = 0;
+		socket_t max = 0;
 
-        for (auto socket : sockets) {
+		for (auto socket : sockets)
+		{
 
-            if (socket > max) {
-                max = socket;
-            }
+			if (socket > max)
+			{
+				max = socket;
+			}
 
-            FD_SET(socket, &master);
-        }
+			FD_SET(socket, &master);
+		}
 
-		if (select(max + 1, &master, 0, 0, 0) == -1) {
-            throw std::invalid_argument("call to select failed");
-        }
-		
-        return master;
+		if (select(max + 1, &master, 0, 0, 0) == -1)
+		{
+			throw std::invalid_argument("call to select failed");
+		}
+
+		return master;
 	}
 
-	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length) {
-        return send_to_socket(udp_socket, buffer, length, NULL, 0);
-    }
+	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length)
+	{
+		return send_to_socket(udp_socket, buffer, length, NULL, 0);
+	}
 
-	size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len) {
+	size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len)
+	{
 
 		ssize_t bytes = sendto(udp_socket, buffer, length, 0, addr, addr_len);
 
-		if (bytes < 0) throw std::invalid_argument("cannot write to socket");
+		if (bytes < 0)
+			throw std::invalid_argument("cannot write to socket");
 		return bytes;
-    }
+	}
 
-	size_t recv_from_socket(socket_t socket, void *buffer, size_t length) {
+	size_t recv_from_socket(socket_t socket, void *buffer, size_t length)
+	{
 
 		ssize_t bytes = recv(socket, buffer, length, 0);
 
-		if (bytes < 0) throw std::invalid_argument("cannot receive from socket");
+		if (bytes < 0)
+			throw std::invalid_argument("cannot receive from socket");
 		return bytes;
 	}
 
-	udp_client_info::udp_client_info() {
+	udp_client_info::udp_client_info()
+	{
 
 		bzero(&address, sizeof(struct sockaddr_storage));
-        length = 0;
+		length = 0;
 	}
 
-	udp_client_info::udp_client_info(struct sockaddr_storage address, socklen_t length) {
+	udp_client_info::udp_client_info(struct sockaddr_storage address, socklen_t length)
+	{
 
 		this->address = address;
 		this->length = length;
 	}
 
-	bool udp_client_info::empty() {
+	bool udp_client_info::empty()
+	{
 		return length == 0;
 	}
 }

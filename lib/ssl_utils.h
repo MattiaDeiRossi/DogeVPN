@@ -14,16 +14,14 @@ namespace ssl_utils
         SSL_CTX **ctx_pointer,
         bool is_server,
         const char *pub_cert_path,
-        const char *pri_cert_path
-    );
+        const char *pri_cert_path);
 
     SSL_CTX *create_ssl_context_or_abort(
         bool is_server,
         const char *pub_cert_path,
-        const char *pri_cert_path
-    );
+        const char *pri_cert_path);
 
-    int ssl_fd(const SSL* ssl);
+    int ssl_fd(const SSL *ssl);
 
     void free_ssl(SSL *ssl, int *with_error);
 
@@ -36,7 +34,7 @@ namespace ssl_utils
     void log_ssl_cipher(SSL *ssl, struct sockaddr_storage storage, socklen_t length);
 
     int read(SSL *ssl, char *buffer, size_t num);
-    
+
     int read_or_throw(SSL *ssl, char *buffer, size_t num);
 
     int write(SSL *ssl, char *buffer, size_t num);

@@ -271,13 +271,14 @@ namespace socket_utils
 		return raw_info;
 	}
 
-	fd_set select_or_throw(std::set<socket_t> sockets)
+	fd_set select_or_throw(std::set<socket_t> sockets, time_t seconds, int *result)
 	{
 
-		fd_set master;
-		FD_ZERO(&master);
-
+		int select_result = 0;
 		socket_t max = 0;
+		fd_set master;
+
+		FD_ZERO(&master);
 
 		for (auto socket : sockets)
 		{
@@ -290,9 +291,35 @@ namespace socket_utils
 			FD_SET(socket, &master);
 		}
 
-		if (select(max + 1, &master, 0, 0, 0) == -1)
+		if (seconds <= 0)
 		{
-			throw std::invalid_argument("call to select failed");
+
+			select_result = select(max + 1, &master, 0, 0, 0);
+		}
+		else
+		{
+
+			struct timeval interval;
+			interval.tv_sec = seconds;
+			interval.tv_usec = 0;
+
+			select_result = select(max + 1, &master, 0, 0, &interval);
+		}
+
+		if (result == NULL)
+		{
+
+			if (select_result <= 0)
+			{
+				/* Since the given result poniter is NULL, when select encounter an error,
+				 * or the timeout in seconds exceed, an exception is thrown instead of reporting an error.
+				 */
+				throw std::invalid_argument("select failed");
+			}
+		}
+		else
+		{
+			*result = select_result;
 		}
 
 		return master;

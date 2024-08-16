@@ -82,7 +82,7 @@ namespace socket_utils
 
     recvfrom_result recvfrom(socket_t fd, void *buf, size_t n);
 
-    fd_set select_or_throw(std::set<socket_t> sockets);
+    fd_set select_or_throw(std::set<socket_t> sockets, time_t seconds, int *result);
 
     ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length);
 

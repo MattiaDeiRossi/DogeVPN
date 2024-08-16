@@ -7,12 +7,7 @@
 #include <thread>
 #include <logging.h>
 
-/* Probably a thread approach is be better approach since SSL_accept is I/O blocking.
- * When handling a new client there is no need to just create the client socket and return.
- * A dedicated process should handle the process of data exchange without relying on select in the main loop.
- * After a timeout or some error the client socket can be freed along with the thread.
- * This will simplify the whole logic.
- */
+/* This function will handle thw whole TLS handshake */
 void handle_tls_handshake(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,

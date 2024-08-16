@@ -1,44 +1,54 @@
 #include "holder.h"
 
-namespace holder {
+namespace holder
+{
 
-    tun_ip extract_tun_ip_or_abort(client_register *c_register, unsigned int session_id) {
+    tun_ip extract_tun_ip_or_abort(client_register *c_register, unsigned int session_id)
+    {
 
         std::shared_lock lock(c_register->mutex);
 
-        if (c_register->session_per_holder.count(session_id) == 0) {
+        if (c_register->session_per_holder.count(session_id) == 0)
+        {
             throw std::invalid_argument("ip cannot be extracted");
         }
 
         return c_register->session_per_holder.at(session_id).client_tun_ip;
     }
 
-    tun_ip::tun_ip() {
+    tun_ip::tun_ip()
+    {
         bzero(ip, SIZE_32);
     }
 
-    tun_ip::tun_ip(const char *buffer) {
+    tun_ip::tun_ip(const char *buffer)
+    {
 
         bzero(ip, SIZE_32);
         memcpy(ip, buffer, strlen(buffer));
     }
 
-    bool tun_ip::operator==(const tun_ip &o) const {
+    bool tun_ip::operator==(const tun_ip &o) const
+    {
         return strncmp(ip, o.ip, SIZE_32) == 0 ? true : false;
     }
 
-    bool tun_ip::operator<(const tun_ip &o) const {
+    bool tun_ip::operator<(const tun_ip &o) const
+    {
         return strncmp(ip, o.ip, SIZE_32) < 0 ? true : false;
     }
 
-    client_register::client_register(tun_utils::ip_pool_t pool) {
+    client_register::client_register(tun_utils::ip_pool_t pool)
+    {
         this->pool = pool;
     }
 
-    int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder) {
-        
+    int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder)
+    {
+
         socket_utils::socket_t socket;
-        if (socket_utils::bind_tcp_server_socket(host, port, &socket) == -1) {
+        if (socket_utils::bind_tcp_server_socket(host, port, &socket) == -1)
+        {
             fprintf(stderr, "init_tcp_server_holder: cannot create TCP server socket\n");
             return -1;
         }
@@ -50,44 +60,50 @@ namespace holder {
         return 0;
     }
 
-    int update_register(client_register *c_register, client_holder holder, bool saving, bool free_old_ssl) {
+    int update_register(client_register *c_register, client_holder holder, bool saving, bool free_old_ssl)
+    {
 
         std::unique_lock lock(c_register->mutex);
 
         unsigned int session_id = holder.session_id;
 
         /* In order to avoid dealing with wrong behaviour (i.e. old client have not been properly released),
-        *  every time a new client gets registered, a delete pass gets executed.
-        *  This is done for both maps.
-        */
-        if (c_register->session_per_holder.count(session_id) != 0) {
+         *  every time a new client gets registered, a delete pass gets executed.
+         *  This is done for both maps.
+         */
+        if (c_register->session_per_holder.count(session_id) != 0)
+        {
 
             client_holder old_holder = c_register->session_per_holder.at(session_id);
             tun_ip old_client_tun_ip = old_holder.client_tun_ip;
 
             c_register->pool.insert(old_holder.client_tun_ip_id);
 
-            if (c_register->tun_ip_per_session.count(old_client_tun_ip) != 0) {
+            if (c_register->tun_ip_per_session.count(old_client_tun_ip) != 0)
+            {
                 c_register->tun_ip_per_session.erase(old_client_tun_ip);
             }
 
-            if (free_old_ssl) {
+            if (free_old_ssl)
+            {
                 ssl_utils::free_ssl(old_holder.ssl, NULL);
             }
 
             c_register->session_per_holder.erase(session_id);
         }
 
-        if (saving) {
+        if (saving)
+        {
 
             /* In order to preoperly communicate with the correct client a TUN ip must be assigned,
-            *  and this ip must uniquely identify the client. 
-            *  When the packet gets sent back from a private host, 
-            *  the correct key and the correct client ip must be selected.
-            */
+             *  and this ip must uniquely identify the client.
+             *  When the packet gets sent back from a private host,
+             *  the correct key and the correct client ip must be selected.
+             */
             char tun_ip[SIZE_32];
             unsigned int client_tun_ip_id;
-            if (c_register->pool.next(tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL) {
+            if (c_register->pool.next(tun_ip, sizeof(tun_ip), &client_tun_ip_id) == NULL)
+            {
                 fprintf(stderr, "init_tcp_client_holder: unavailable ip for client\n");
                 return -1;
             }
@@ -102,15 +118,18 @@ namespace holder {
         return 0;
     }
 
-    bool client_register::insert_client_holder(client_holder holder) {
+    bool client_register::insert_client_holder(client_holder holder)
+    {
         return update_register(this, holder, true, true) == 0 ? true : false;
     }
 
-    bool client_register::update_client_holder(client_holder holder) {
+    bool client_register::update_client_holder(client_holder holder)
+    {
 
         std::unique_lock lock(mutex);
 
-        if (session_per_holder.count(holder.session_id) == 0) {
+        if (session_per_holder.count(holder.session_id) == 0)
+        {
 
             std::cerr << "client holder was not updated" << std::endl;
             return false;
@@ -123,18 +142,23 @@ namespace holder {
         return true;
     }
 
-    void client_register::delete_client_holder(client_holder holder, bool free_old_ssl) {
+    void client_register::delete_client_holder(client_holder holder, bool free_old_ssl)
+    {
         update_register(this, holder, false, free_old_ssl);
     }
 
-    std::optional<vpn_data_utils::credentials> create_credentials(const char *data, size_t num) {
+    std::optional<vpn_data_utils::credentials> create_credentials(const char *data, size_t num)
+    {
 
         std::optional<vpn_data_utils::credentials> opt;
 
-        try {
+        try
+        {
             vpn_data_utils::credentials credentials(data, num);
             opt = credentials;
-        } catch(const std::exception& e) {
+        }
+        catch (const std::exception &e)
+        {
             std::cerr << e.what() << '\n';
             opt = std::nullopt;
         }
@@ -142,7 +166,8 @@ namespace holder {
         return opt;
     }
 
-    bool client_register::register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *file_path) {
+    bool client_register::register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *file_path)
+    {
 
         client_holder holder;
         holder.tcp_info.socket = info->socket;
@@ -150,7 +175,8 @@ namespace holder {
         holder.tcp_info.address = info->address;
 
         SSL *ssl;
-        if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1) {
+        if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1)
+        {
             fprintf(stderr, "register_client_holder: TLS communication cannot start between client and server\n");
             return -1;
         }
@@ -160,13 +186,15 @@ namespace holder {
 
         char credentials_buffer[SIZE_512];
         int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
-        if (bytes_read == -1) {
+        if (bytes_read == -1)
+        {
             fprintf(stderr, "register_client_holder: client closed connection and credentials cannot be verified\n");
             return -1;
         }
 
         std::optional<vpn_data_utils::credentials> credentials_opt = create_credentials(credentials_buffer, bytes_read);
-        if (!credentials_opt.has_value()) {
+        if (!credentials_opt.has_value())
+        {
             fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
@@ -176,13 +204,14 @@ namespace holder {
         credentials.log_credentials_from_client_message();
 
         /* The user id is an important property for communicating over UDP.
-        *  Once the id is fetched, it must be saved in memory.
-        *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
-        */
+         *  Once the id is fetched, it must be saved in memory.
+         *  This is needed since the pakcet should be enrcypted and decrypted with the correct key.
+         */
         std::optional<std::map<std::string, std::string>> user_row_opt =
             file_utils::find_in_multi_key_value_lines(file_path, "username", credentials.username);
 
-        if (!user_row_opt.has_value()) {
+        if (!user_row_opt.has_value())
+        {
 
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
@@ -191,15 +220,15 @@ namespace holder {
         std::map<std::string, std::string> user_row = user_row_opt.value();
         std::string user_password = user_row["password"];
 
-        if (user_password.compare(credentials.password) != 0) {
+        if (user_password.compare(credentials.password) != 0)
+        {
 
             ssl_utils::free_ssl(ssl, NULL);
-            return -1; 
+            return -1;
         }
 
-
         int session_id = stoi(user_row["session_id"]);
-    
+
         char id_buf[SIZE_32];
         memset(id_buf, 0, sizeof(id_buf));
         sprintf(id_buf, "%d", session_id);
@@ -207,19 +236,21 @@ namespace holder {
         holder.session_id = session_id;
 
         /* A symmetric key must be generated securely.
-        *  The SSL libarary is used in order to properly delegate such difficutl generation.
-        */
+         *  The SSL libarary is used in order to properly delegate such difficutl generation.
+         */
         unsigned char rand_buf[SIZE_32];
-        if (ssl_utils::generate_rand_32(rand_buf) == -1) {
+        if (ssl_utils::generate_rand_32(rand_buf) == -1)
+        {
             fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
         memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
-        
+
         /* Check error*/
-        if (!insert_client_holder(holder)) {
+        if (!insert_client_holder(holder))
+        {
             fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
@@ -230,10 +261,12 @@ namespace holder {
         char message[SIZE_512];
         bzero(message, sizeof(message));
 
-        for (size_t i = 0; i < sizeof(rand_buf); i++) message[start++] = rand_buf[i];
+        for (size_t i = 0; i < sizeof(rand_buf); i++)
+            message[start++] = rand_buf[i];
 
         char *ptr = id_buf;
-        while (*ptr) {
+        while (*ptr)
+        {
             message[start++] = *ptr;
             ptr++;
         }
@@ -242,19 +275,21 @@ namespace holder {
 
         tun_ip tun_ip = extract_tun_ip_or_abort(this, holder.session_id);
         ptr = tun_ip.ip;
-        while (*ptr) {
+        while (*ptr)
+        {
             message[start++] = *ptr;
             ptr++;
         }
 
-        size_t message_size = 
-            sizeof(rand_buf) +  /* Size of the key */
-            strlen(id_buf) +    /* Session id size */
-            1 +                 /* Point separator */
-            strlen(tun_ip.ip);  /* TUN ip size */
+        size_t message_size =
+            sizeof(rand_buf) + /* Size of the key */
+            strlen(id_buf) +   /* Session id size */
+            1 +                /* Point separator */
+            strlen(tun_ip.ip); /* TUN ip size */
 
         /* Sending the message to the client securely under a TLS tunnel. */
-        if (ssl_utils::write(ssl, message, message_size) == -1) {
+        if (ssl_utils::write(ssl, message, message_size) == -1)
+        {
             fprintf(stderr, "register_client_holder: first wrote failed between client and server\n");
             update_register(this, holder, false, false);
             return -1;
@@ -263,34 +298,40 @@ namespace holder {
         /* Printing message bytes for logging purposes. */
         printf("Client message generated\n");
 
-        for (size_t i = 0; i < message_size; ++i) {
+        for (size_t i = 0; i < message_size; ++i)
+        {
 
-            if (i % 8 == 7 || i == message_size - 1) printf("%02X\n", (unsigned char) message[i]);
-            else printf("%02X::", (unsigned char) message[i]);
+            if (i % 8 == 7 || i == message_size - 1)
+                printf("%02X\n", (unsigned char)message[i]);
+            else
+                printf("%02X::", (unsigned char)message[i]);
         }
 
         return 0;
     }
 
-    select_result client_register::merge_select(std::set<socket_utils::socket_t> set) {
+    select_result client_register::merge_select(std::set<socket_utils::socket_t> set)
+    {
 
         std::set<socket_utils::socket_t> sockets;
 
-        for (auto socket : set) {
+        for (auto socket : set)
+        {
 
             sockets.insert(socket);
         }
 
         {
             /* Since the call to select is IO blocking, the mutex must be carefully handled,
-            *  that is use it only for the time necessary to mangle this regsiter. For this reason
-            *  the code is wrapped aroun a block.
-            */
+             *  that is use it only for the time necessary to mangle this regsiter. For this reason
+             *  the code is wrapped aroun a block.
+             */
             std::shared_lock lock(mutex);
 
-            for (const auto &eachPair : session_per_holder) { 
+            for (const auto &eachPair : session_per_holder)
+            {
 
-                socket_utils::socket_t c_socket = 
+                socket_utils::socket_t c_socket =
                     eachPair
                         .second
                         .tcp_info
@@ -307,10 +348,12 @@ namespace holder {
         return result;
     }
 
-    int init_udp_server_holder(char const *host, char const *port, socket_holder *holder) {
+    int init_udp_server_holder(char const *host, char const *port, socket_holder *holder)
+    {
 
         socket_utils::socket_t socket;
-        if (socket_utils::bind_udp_server_socket(host, port, &socket) == -1) {
+        if (socket_utils::bind_udp_server_socket(host, port, &socket) == -1)
+        {
             fprintf(stderr, "init_udp_server_holder: cannot create UDP server socket\n");
             return -1;
         }
@@ -322,64 +365,75 @@ namespace holder {
         return 0;
     }
 
-    socket_utils::socket_t extract_socket(const socket_holder *wrapper) {
+    socket_utils::socket_t extract_socket(const socket_holder *wrapper)
+    {
 
-        if (wrapper == NULL) return socket_utils::invalid_socket_value;
+        if (wrapper == NULL)
+            return socket_utils::invalid_socket_value;
 
-        switch (wrapper->holder_type) {
-            case socket_holder::SERVER_HOLDER:
-                return (wrapper->s_holder).socket;
-            case socket_holder::CLIENT_HOLDER:
-                return (wrapper->c_holder).tcp_info.socket;
-            default:
-                return socket_utils::invalid_socket_value;
+        switch (wrapper->holder_type)
+        {
+        case socket_holder::SERVER_HOLDER:
+            return (wrapper->s_holder).socket;
+        case socket_holder::CLIENT_HOLDER:
+            return (wrapper->c_holder).tcp_info.socket;
+        default:
+            return socket_utils::invalid_socket_value;
         }
     }
 
-    holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp) {
+    holder::socket_holder create_server_holder_or_abort(const char *ip, const char *port, bool is_tcp)
+    {
 
         holder::socket_holder holder;
 
-        int result = is_tcp ? 
-            holder::init_tcp_server_holder(ip, port, &holder) :
-            holder::init_udp_server_holder(ip, port, &holder);
+        int result = is_tcp ? holder::init_tcp_server_holder(ip, port, &holder) : holder::init_udp_server_holder(ip, port, &holder);
 
-        if (result == -1) {
+        if (result == -1)
+        {
             throw std::invalid_argument("server cannot start");
         }
 
         return holder;
     }
 
-    std::optional<client_holder> client_register::get_client_holder(unsigned int session_id) {
+    std::optional<client_holder> client_register::get_client_holder(unsigned int session_id)
+    {
 
         std::shared_lock lock(mutex);
 
-        if (session_per_holder.count(session_id) == 0) return std::nullopt;
+        if (session_per_holder.count(session_id) == 0)
+            return std::nullopt;
         return session_per_holder.at(session_id);
     }
 
-    std::optional<client_holder> client_register::get_client_holder(tun_ip ip) {
+    std::optional<client_holder> client_register::get_client_holder(tun_ip ip)
+    {
 
         std::shared_lock lock(mutex);
 
-        if (tun_ip_per_session.count(ip) == 0) return std::nullopt;
+        if (tun_ip_per_session.count(ip) == 0)
+            return std::nullopt;
 
         unsigned int session_id = tun_ip_per_session.at(ip);
-        if (session_per_holder.count(session_id) == 0) return std::nullopt;
+        if (session_per_holder.count(session_id) == 0)
+            return std::nullopt;
         return session_per_holder.at(session_id);
     }
 
-    std::optional<client_holder> client_register::find_by_socket(socket_utils::socket_t socket) {
+    std::optional<client_holder> client_register::find_by_socket(socket_utils::socket_t socket)
+    {
 
         std::shared_lock lock(mutex);
 
         std::optional<client_holder> holder_opt = std::nullopt;
 
-        for (const auto &eachPair : session_per_holder) {
+        for (const auto &eachPair : session_per_holder)
+        {
 
             /**/
-            if (eachPair.second.tcp_info.socket == socket) {
+            if (eachPair.second.tcp_info.socket == socket)
+            {
                 holder_opt = eachPair.second;
                 break;
             }
@@ -388,9 +442,10 @@ namespace holder {
         return holder_opt;
     }
 
-    void client_holder::log() {
+    void client_holder::log()
+    {
 
-        std::cout 
+        std::cout
             << "Client data:"
             << std::endl
             << "  TLS data:"
@@ -400,12 +455,18 @@ namespace holder {
             << "    KEY:"
             << std::endl;
 
-        for (size_t i = 0; i < SIZE_32; i++) {
-            if (i % 8 == 7) {
+        for (size_t i = 0; i < SIZE_32; i++)
+        {
+            if (i % 8 == 7)
+            {
                 printf("%02X\n", symmetric_key[i]);
-                if (i != SIZE_32 - 1) printf("         ");
-            } else {
-                if (i == 0) printf("         ");
+                if (i != SIZE_32 - 1)
+                    printf("         ");
+            }
+            else
+            {
+                if (i == 0)
+                    printf("         ");
                 printf("%02X::", symmetric_key[i]);
             }
         }
@@ -426,7 +487,7 @@ namespace holder {
             << std::endl
             << "    TCP_IP_SERVICE: " << raw_tcp_info.address_service
             << std::endl;
-        
+
         socket_utils::raw_client_info raw_udp_info = udp_info.to_raw_info();
         std::cout
             << "  UDP Data:"

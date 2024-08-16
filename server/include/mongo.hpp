@@ -35,7 +35,6 @@ public:
 
   void add_user(const std::string id, const std::string username, const std::string password);
   int is_present(const std::string username, const std::string password);
-  void delete_user();
   void get_users();
 };
 

@@ -9,7 +9,8 @@
 #include <iterator>
 #include <optional>
 
-namespace file_utils {
+namespace file_utils
+{
 
     std::map<std::string, std::string> parse_key_value_lines(const char *path);
 

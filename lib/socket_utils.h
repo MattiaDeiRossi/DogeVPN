@@ -80,8 +80,6 @@ namespace socket_utils
 
     fd_set select_or_throw(std::set<socket_t> sockets);
 
-    void select_or_throw(socket_t max, fd_set *fd_set_p);
-
     ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length);
 
     size_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length, const sockaddr *addr, socklen_t addr_len);

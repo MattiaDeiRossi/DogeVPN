@@ -274,17 +274,11 @@ namespace holder {
 
     select_result client_register::merge_select(std::set<socket_utils::socket_t> set) {
 
-        socket_utils::socket_t max = 0;
         std::set<socket_utils::socket_t> sockets;
-
-        fd_set master;
-        FD_ZERO(&master);
 
         for (auto socket : set) {
 
-            FD_SET(socket, &master);
             sockets.insert(socket);
-            max = socket > max ? socket : max;
         }
 
         {
@@ -302,16 +296,12 @@ namespace holder {
                         .tcp_info
                         .socket;
 
-                FD_SET(c_socket, &master);
                 sockets.insert(c_socket);
-                max = c_socket > max ? c_socket : max;
             }
         }
 
-        socket_utils::select_or_throw(max + 1, &master);
-
         select_result result;
-        result.fdset = master;
+        result.fdset = socket_utils::select_or_throw(sockets);
         result.sockets = sockets;
 
         return result;

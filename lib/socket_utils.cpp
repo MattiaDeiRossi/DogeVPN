@@ -268,12 +268,6 @@ namespace socket_utils {
         return master;
 	}
 
-	void select_or_throw(socket_t max, fd_set *fd_set_p) {
-        if (select(max + 1, fd_set_p, 0, 0, 0) == -1) {
-            throw std::invalid_argument("call to select failed");
-        }
-    }
-
 	ssize_t send_to_socket(socket_t udp_socket, const void *buffer, size_t length) {
         return send_to_socket(udp_socket, buffer, length, NULL, 0);
     }

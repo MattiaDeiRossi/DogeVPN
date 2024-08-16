@@ -33,7 +33,8 @@ void handle_tls_handshake(
 void handle_udp_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t device,
-    holder::client_register *c_register)
+    holder::client_register *c_register,
+    logging::logger *logger)
 {
 
     encryption::packet pkt;
@@ -47,9 +48,9 @@ void handle_udp_packet(
     {
 
         /* In order to continue with the processing, all the metadata need to
-         *  be extracted from the message.
+         * be extracted from the message.
          */
-        std::cerr << "vpn data cannot be extracted" << std::endl;
+        logger->log(logging::log_level::WARNING, "Received an UDP packet which format is wrong");
         return;
     }
 
@@ -243,7 +244,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
                     }
                 }
                 else if (socket == udp_socket)
-                    handle_udp_packet(udp_socket, device, &c_register);
+                    handle_udp_packet(udp_socket, device, &c_register, &logger);
                 else if (socket == device.fd)
                     handle_tun_packet(udp_socket, device, ipv4_netmask, &c_register);
                 else

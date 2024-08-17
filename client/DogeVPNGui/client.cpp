@@ -25,8 +25,6 @@ void handle_udp_packet(
 
     vpn_data_utils::udp_packet_data udp_packet(&e_packet, true);
 
-    // udp_packet.log();
-
     encryption::packet d_packet =
         udp_packet
             .decrypt(key_exchange.key)
@@ -91,7 +89,7 @@ int start_doge_vpn(
     std::vector<tun_utils::ipv4_netmask_t> nets;
     nets.push_back(tun_utils::ipv4_netmask_t(network));
 
-    /* No need to continue with computation if context cannot be created. */
+    /* No need to continue with computation if context cannot be created */
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
 
     /* Two kinds of socket will be used:
@@ -103,10 +101,10 @@ int start_doge_vpn(
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
     /* First message to exchange between client and server inder a TLS sessions.
-     *  After this exchange, the following data is available:
-     *      - key:      the symmetric key with wich udp packets will be encrypted
-     *      - id:       the id for this client
-     *      - tun_ip:   the ip to assign to the TUN device
+     * After this exchange, the following data is available:
+     *  - key:      the symmetric key with wich udp packets will be encrypted
+     *  - id:       the id for this client
+     *  - tun_ip:   the ip to assign to the TUN device
      */
     vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);

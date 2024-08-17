@@ -130,6 +130,23 @@ namespace tun_utils
         flatten_netmask = UINT_MAX << (32 - mask);
     }
 
+    ipv4_netmask_t::ipv4_netmask_t(const char *ip) {
+
+        int i_netmask = 0;
+
+        std::stringstream ss(ip);
+        std::string ipv4_str;
+        std::string netmask_str;
+
+        getline(ss, ipv4_str, '/');
+        getline(ss, netmask_str, '/');
+
+        i_netmask = stoi(netmask_str);
+
+        this->ipv4 = ipv4_t(ipv4_str.c_str());
+        this->netmask = netmask_t(i_netmask);
+    }
+
     ipv4_netmask_t::ipv4_netmask_t(const char *ip, unsigned int mask)
     {
 

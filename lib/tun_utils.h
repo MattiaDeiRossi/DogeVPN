@@ -7,6 +7,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include <stdexcept>
+#include <sstream>
 #include <cstdlib>
 #include <climits>
 #include <stdio.h>
@@ -58,6 +59,7 @@ namespace tun_utils
         ipv4_t ipv4;
         netmask_t netmask;
 
+        ipv4_netmask_t(const char *);
         ipv4_netmask_t(const char *, unsigned int);
 
         const char *combine(char *, size_t);

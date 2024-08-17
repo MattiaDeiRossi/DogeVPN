@@ -3,17 +3,13 @@
 namespace holder
 {
 
-    tun_ip extract_tun_ip_or_abort(client_register *c_register, unsigned int session_id)
+    unsigned char extract_netmask(client_register *c_register)
     {
 
         std::shared_lock lock(c_register->mutex);
 
-        if (c_register->session_per_holder.count(session_id) == 0)
-        {
-            throw std::invalid_argument("ip cannot be extracted");
-        }
-
-        return c_register->session_per_holder.at(session_id).client_tun_ip;
+        unsigned char netmask = c_register->pool.netmask;
+        return netmask;
     }
 
     tun_ip::tun_ip()

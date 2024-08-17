@@ -31,10 +31,12 @@ void MainWindow::on_connectButton_clicked()
         return;
     }
 
-    std::string domain;
-    std::string port;
-    std::string us;
-    std::string psw;
+    std::string domain = "";
+    std::string port = "";
+    std::string us = "";
+    std::string psw = "";
+    std::string device = "";
+    std::string network = "";
 
     for (auto it = settings.constBegin(); it != settings.constEnd(); ++it)
     {
@@ -42,21 +44,17 @@ void MainWindow::on_connectButton_clicked()
         qDebug("%s: %s", it.key().toStdString().c_str(), it.value().toStdString().c_str());
 
         if (strcmp(it.key().toStdString().c_str(), "domain") == 0)
-        {
             domain = it.value().toStdString();
-        }
         else if (strcmp(it.key().toStdString().c_str(), "port") == 0)
-        {
             port = it.value().toStdString();
-        }
         else if (strcmp(it.key().toStdString().c_str(), "username") == 0)
-        {
             us = it.value().toStdString();
-        }
         else if (strcmp(it.key().toStdString().c_str(), "password") == 0)
-        {
             psw = it.value().toStdString();
-        }
+        else if (strcmp(it.key().toStdString().c_str(), "device") == 0)
+            device = it.value().toStdString();
+        else if (strcmp(it.key().toStdString().c_str(), "network") == 0)
+            network = it.value().toStdString();
     }
 
     if (!client_thread_)

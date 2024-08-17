@@ -1,7 +1,7 @@
 #include "settingswidget.h"
 
 SettingsWidget::SettingsWidget(QWidget *parent)
-    : QDialog(parent), domainServerLabel(new QLabel("Domain", this)), domainServerLineEdit(new QLineEdit(this)), portServerLabel(new QLabel("Port", this)), portServerLineEdit(new QLineEdit(this)), userLabel(new QLabel("Username", this)), userLineEdit(new QLineEdit(this)), passwordLabel(new QLabel("Password", this)), passwordLineEdit(new QLineEdit(this)), saveButton(new QPushButton("Save")), okButton(new QPushButton("Ok")), togglePswButton(new QPushButton("Show")), layout(nullptr)
+    : QDialog(parent), domainServerLabel(new QLabel("Domain", this)), domainServerLineEdit(new QLineEdit(this)), portServerLabel(new QLabel("Port", this)), portServerLineEdit(new QLineEdit(this)), userLabel(new QLabel("Username", this)), userLineEdit(new QLineEdit(this)), passwordLabel(new QLabel("Password", this)), passwordLineEdit(new QLineEdit(this)), deviceNameLabel(new QLabel("Device", this)), deviceNameEdit(new QLineEdit(this)), networkLabel(new QLabel("Network", this)), networkEdit(new QLineEdit(this)), saveButton(new QPushButton("Save")), okButton(new QPushButton("Ok")), togglePswButton(new QPushButton("Show")), layout(nullptr)
 {
     passwordLineEdit->setEchoMode(QLineEdit::Password);
 
@@ -25,6 +25,13 @@ SettingsWidget::SettingsWidget(QWidget *parent)
     passwordLayout->addWidget(togglePswButton);
     layout->addLayout(passwordLayout);
 
+    QHBoxLayout *deviceLayout = new QHBoxLayout;
+    deviceLayout->addWidget(deviceNameLabel);
+    deviceLayout->addWidget(deviceNameEdit);
+    deviceLayout->addWidget(networkLabel);
+    deviceLayout->addWidget(networkEdit);
+    layout->addLayout(deviceLayout);
+
     QHBoxLayout *buttonLayout = new QHBoxLayout;
     buttonLayout->addWidget(okButton);
     buttonLayout->addWidget(saveButton);
@@ -42,13 +49,29 @@ SettingsWidget::SettingsWidget(QWidget *parent)
 
 SettingsWidget::~SettingsWidget()
 {
+
+    delete domainServerLabel;
+    delete domainServerLineEdit;
+
+    delete portServerLabel;
+    delete portServerLineEdit;
+
     delete userLabel;
     delete userLineEdit;
+
     delete passwordLabel;
     delete passwordLineEdit;
+
+    delete deviceNameLabel;
+    delete deviceNameEdit;
+
+    delete networkLabel;
+    delete networkEdit;
+
     delete okButton;
     delete saveButton;
     delete togglePswButton;
+
     delete layout;
 }
 
@@ -110,6 +133,8 @@ void SettingsWidget::setSettings()
     settings_.insert(portServerLabel->text().toLower(), portServerLineEdit->text());
     settings_.insert(userLabel->text().toLower(), userLineEdit->text());
     settings_.insert(passwordLabel->text().toLower(), passwordLineEdit->text());
+    settings_.insert(deviceNameLabel->text().toLower(), deviceNameEdit->text());
+    settings_.insert(networkLabel->text().toLower(), networkEdit->text());
 }
 const QMap<QString, QString> SettingsWidget::getSettings() const
 {
@@ -124,6 +149,8 @@ void SettingsWidget::fillFields()
         portServerLineEdit->setText(settings_.value("port"));
         userLineEdit->setText(settings_.value("username"));
         passwordLineEdit->setText(settings_.value("password"));
+        deviceNameEdit->setText(settings_.value("device"));
+        networkEdit->setText(settings_.value("network"));
     }
 }
 
@@ -159,6 +186,8 @@ void SettingsWidget::onSaveClicked()
     out << "port: " << settings_.value("port") << "\n";
     out << "username: " << settings_.value("username") << "\n";
     out << "password: " << settings_.value("password") << "\n";
+    out << "device: " << settings_.value("device") << "\n";
+    out << "network: " << settings_.value("network") << "\n";
 
     file.close();
 

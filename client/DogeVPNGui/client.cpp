@@ -112,8 +112,8 @@ int start_doge_vpn(
     vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
 
-    /* TODO: netmask should be send by server */
-    tun_utils::tundev_t tun_device(dev_name, (const char *)key_exchange.tun_ip, 24);
+    /**/
+    tun_utils::tundev_t tun_device(dev_name, (const char *)key_exchange.tun_ip, key_exchange.netmask_to_i());
     tun_device.persist();
 
     for (auto net : nets)

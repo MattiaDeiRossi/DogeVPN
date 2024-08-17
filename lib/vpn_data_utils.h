@@ -39,10 +39,12 @@ namespace vpn_data_utils
         unsigned char key[encryption::KEY_SIZE_32];
         unsigned char id[SIZE_16];
         unsigned char tun_ip[SIZE_64];
+        unsigned char netmask[SIZE_16];
 
         key_exchange_data(SSL *ssl_session);
 
         int id_to_i();
+        int netmask_to_i();
 
         void log();
     };

@@ -24,14 +24,16 @@ namespace vpn_data_utils
         bzero(key, encryption::KEY_SIZE_32);
         bzero(id, SIZE_16);
         bzero(tun_ip, SIZE_64);
+        bzero(netmask, SIZE_16);
 
         vpn_data_utils::raw_key_exchange_data data(ssl_session);
 
-        /* To keep track of current data to parse. */
+        /* To keep track of current data to parse */
         unsigned char selector = 0;
 
         size_t user_id_size = 0;
         size_t tun_ip_size = 0;
+        size_t netmask_size = 0;
 
         for (size_t i = 0; i < data.size; i++)
         {
@@ -41,7 +43,7 @@ namespace vpn_data_utils
             int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
             int is_div = byte_data == MESSAGE_SEPARATOR_DIV;
 
-            /* Key extraction. */
+            /* Key extraction */
             if (selector == 0)
             {
                 key[i] = byte_data;
@@ -49,7 +51,7 @@ namespace vpn_data_utils
                 continue;
             }
 
-            /* Id extraction. */
+            /* Id extraction */
             if (selector == 1)
             {
 
@@ -78,7 +80,7 @@ namespace vpn_data_utils
                 }
             }
 
-            /* Tun ip extraction. */
+            /* Tun ip extraction */
             if (selector == 2)
             {
 
@@ -88,10 +90,36 @@ namespace vpn_data_utils
                     std::cerr << "tun ip of wrong size" << std::endl;
                     break;
                 }
-                else if (is_digit || is_point || is_div)
+                else if (is_digit || is_point)
                 {
 
                     tun_ip[tun_ip_size++] = byte_data;
+                }
+                else if (is_div)
+                {
+
+                    selector = 3;
+                    continue;
+                }
+                else
+                {
+
+                    break;
+                }
+            }
+
+            if (selector == 3)
+            {
+                if (netmask_size == SIZE_16)
+                {
+
+                    std::cerr << "netmask of wrong size" << std::endl;
+                    break;
+                }
+                else if (is_digit)
+                {
+
+                    netmask[netmask_size++] = byte_data;
                 }
                 else
                 {
@@ -101,7 +129,7 @@ namespace vpn_data_utils
             }
         }
 
-        if (user_id_size == 0 || tun_ip_size == 0)
+        if (user_id_size == 0 || tun_ip_size == 0 || netmask_size == 0)
         {
             throw std::invalid_argument("raw_message is malformed");
         }
@@ -110,6 +138,11 @@ namespace vpn_data_utils
     int key_exchange_data::id_to_i()
     {
         return atoi((char *)id);
+    }
+
+    int key_exchange_data::netmask_to_i()
+    {
+        return atoi((char *)netmask);
     }
 
     void key_exchange_data::log()
@@ -217,7 +250,7 @@ namespace vpn_data_utils
             if (reading_username)
             {
 
-                /* While reading credentilas alway checking if the separator is the current byte. */
+                /* While reading credentilas alway checking if the separator is the current byte */
                 if (bdata == MESSAGE_SEPARATOR_POINT)
                 {
                     reading_username = false;
@@ -232,7 +265,7 @@ namespace vpn_data_utils
             else
             {
 
-                /* From now on the data that is being read represents the password. */
+                /* From now on the data that is being read represents the password */
                 *pwd_p = bdata;
                 pwd_p++;
                 password_length++;

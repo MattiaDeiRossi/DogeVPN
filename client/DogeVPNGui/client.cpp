@@ -81,6 +81,10 @@ int start_doge_vpn(
     char const *network)
 {
 
+    /* This allow to specify the networks that the client would like to reach. This sets
+     * will contain just one network, but this should change, allowing the client to select multiple networks
+     * that can be handled by the server.
+     */
     std::vector<tun_utils::ipv4_netmask_t> nets;
     nets.push_back(tun_utils::ipv4_netmask_t(network));
 

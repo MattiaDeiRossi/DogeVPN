@@ -269,19 +269,48 @@ namespace holder
 
         message[start++] = MESSAGE_SEPARATOR_POINT;
 
-        tun_ip tun_ip = extract_tun_ip_or_abort(this, holder.session_id);
+        std::optional<client_holder> prev_holder_opt = get_client_holder(session_id);
+
+        if (!prev_holder_opt.has_value())
+        {
+            ssl_utils::free_ssl(ssl, NULL);
+            return -1;
+        }
+
+        client_holder prev_holder = prev_holder_opt.value();
+        tun_ip tun_ip = prev_holder.client_tun_ip;
         ptr = tun_ip.ip;
+
         while (*ptr)
         {
             message[start++] = *ptr;
             ptr++;
         }
 
+        message[start++] = '/';
+
+        unsigned char netmask = extract_netmask(this);
+        char netmask_buff[16];
+
+        bzero(netmask_buff, sizeof(netmask_buff));
+        snprintf(netmask_buff, sizeof(netmask_buff) - 1, "%d", netmask);
+
+        ptr = netmask_buff;
+
+        while (*ptr)
+        {
+            message[start++] = *ptr;
+            ptr++;
+        }
+
+        /* TODO why not to use start ?*/
         size_t message_size =
-            sizeof(rand_buf) + /* Size of the key */
-            strlen(id_buf) +   /* Session id size */
-            1 +                /* Point separator */
-            strlen(tun_ip.ip); /* TUN ip size */
+            sizeof(rand_buf) +    /* Size of the key */
+            strlen(id_buf) +      /* Session id size */
+            1 +                   /* Point separator */
+            strlen(tun_ip.ip) +   /* TUN ip size */
+            1 +                   /* Netmask separator */
+            strlen(netmask_buff); /* Size of the netmask string */
 
         /* Sending the message to the client securely under a TLS tunnel. */
         if (ssl_utils::write(ssl, message, message_size) == -1)

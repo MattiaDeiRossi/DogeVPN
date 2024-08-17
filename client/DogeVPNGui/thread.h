@@ -11,7 +11,7 @@ public:
     Thread(QObject *parent = nullptr);
     ~Thread();
 
-    void setParams(const char *domain, const char *port, const char *user, const char *pwd);
+    void setParams(const char *domain, const char *port, const char *user, const char *pwd, const char *device_name, const char *network);
     void stop();
 
 signals:
@@ -25,6 +25,8 @@ private:
     char pwd_[256];
     char domain_[256];
     char port_[256];
+    char device_[256];
+    char network_[256];
 };
 
 #endif // THREAD_H

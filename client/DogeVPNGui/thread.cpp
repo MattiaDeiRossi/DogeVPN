@@ -12,7 +12,7 @@ Thread::~Thread()
     stop();
 }
 
-void Thread::setParams(const char *domain, const char *port, const char *user, const char *pwd)
+void Thread::setParams(const char *domain, const char *port, const char *user, const char *pwd, const char *device_name, const char *network)
 {
     size_t bytes = 256;
     size_t max_bytes = 255;
@@ -21,18 +21,22 @@ void Thread::setParams(const char *domain, const char *port, const char *user, c
     bzero(port_, bytes);
     bzero(user_, bytes);
     bzero(pwd_, bytes);
+    bzero(device_, bytes);
+    bzero(network_, bytes);
 
     strncpy(domain_, domain, max_bytes);
     strncpy(port_, port, max_bytes);
     strncpy(user_, user, max_bytes);
     strncpy(pwd_, pwd, max_bytes);
+    strncpy(device_, device_name, max_bytes);
+    strncpy(network_, network, max_bytes);
 }
 
 void Thread::run()
 {
     if (user_ && pwd_ && domain_ && port_)
     {
-        int result = start_doge_vpn(domain_, port_, user_, pwd_);
+        int result = start_doge_vpn(domain_, port_, user_, pwd_, device_, network_);
         emit threadFinished(result);
     }
     else

@@ -83,14 +83,13 @@ int start_doge_vpn(
     char const *domain,
     char const *port,
     char const *user,
-    char const *pwd)
+    char const *pwd,
+    char const *device_name,
+    char const *network)
 {
 
-    /* Move */
-    const char *dev_name = "DogeVpnTun";
-
     std::vector<tun_utils::ipv4_netmask_t> nets;
-    nets.push_back(tun_utils::ipv4_netmask_t("192.168.42.0", 24));
+    nets.push_back(tun_utils::ipv4_netmask_t(network));
 
     /* No need to continue with computation if context cannot be created. */
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
@@ -113,7 +112,7 @@ int start_doge_vpn(
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
 
     /**/
-    tun_utils::tundev_t tun_device(dev_name, (const char *)key_exchange.tun_ip, key_exchange.netmask_to_i());
+    tun_utils::tundev_t tun_device(device_name, (const char *)key_exchange.tun_ip, key_exchange.netmask_to_i());
     tun_device.persist();
 
     for (auto net : nets)

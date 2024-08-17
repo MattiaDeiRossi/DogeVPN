@@ -62,7 +62,7 @@ void MainWindow::on_connectButton_clicked()
         client_thread_ = new Thread(this);
     }
 
-    client_thread_->setParams(domain.c_str(), port.c_str(), us.c_str(), psw.c_str());
+    client_thread_->setParams(domain.c_str(), port.c_str(), us.c_str(), psw.c_str(), device.c_str(), network.c_str());
     client_thread_->start();
     ui->connectionStatus->setText("Connected");
     ui->connectionStatus->setStyleSheet("color: green;");

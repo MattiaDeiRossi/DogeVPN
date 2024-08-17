@@ -28,7 +28,13 @@ namespace vpn_data_utils
 
         vpn_data_utils::raw_key_exchange_data data(ssl_session);
 
-        /* To keep track of current data to parse */
+        /* To keep track of current data to parse a selector is used. The behaviour
+        *  is the following:
+        *   - SELECTOR=0 -> parsing the KEY
+        *   - SELECTOR=1 -> parsing the ID
+        *   - SELECTOR=2 -> parsing the TUN
+        *   - SELECTOR=3 -> parsing the NETMASK
+        */
         unsigned char selector = 0;
 
         size_t user_id_size = 0;
@@ -43,7 +49,6 @@ namespace vpn_data_utils
             int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
             int is_div = byte_data == MESSAGE_SEPARATOR_DIV;
 
-            /* Key extraction */
             if (selector == 0)
             {
                 key[i] = byte_data;
@@ -51,20 +56,20 @@ namespace vpn_data_utils
                 continue;
             }
 
-            /* Id extraction */
             if (selector == 1)
             {
 
-                if (user_id_size == SIZE_16)
+                if (user_id_size == SIZE_16 || !(is_digit || is_point))
                 {
 
-                    std::cerr << "id of wrong size" << std::endl;
-                    break;
+                    const char *error_message = "ID cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
                 }
                 else if (is_digit)
                 {
 
                     id[user_id_size++] = byte_data;
+                    continue;
                 }
                 else if (is_point)
                 {
@@ -72,28 +77,22 @@ namespace vpn_data_utils
                     selector = 2;
                     continue;
                 }
-                else
-                {
-
-                    std::cerr << "malformed id" << std::endl;
-                    break;
-                }
             }
 
-            /* Tun ip extraction */
             if (selector == 2)
             {
 
-                if (tun_ip_size == SIZE_64)
+                if (tun_ip_size == SIZE_64 || !(is_digit || is_point || is_div))
                 {
 
-                    std::cerr << "tun ip of wrong size" << std::endl;
-                    break;
+                    const char *error_message = "TUN cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
                 }
                 else if (is_digit || is_point)
                 {
 
                     tun_ip[tun_ip_size++] = byte_data;
+                    continue;
                 }
                 else if (is_div)
                 {
@@ -101,37 +100,28 @@ namespace vpn_data_utils
                     selector = 3;
                     continue;
                 }
-                else
-                {
-
-                    break;
-                }
             }
 
             if (selector == 3)
             {
-                if (netmask_size == SIZE_16)
+                if (netmask_size == SIZE_16 || !is_digit)
                 {
 
-                    std::cerr << "netmask of wrong size" << std::endl;
-                    break;
+                    const char *error_message = "NETMASK cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
                 }
                 else if (is_digit)
                 {
 
                     netmask[netmask_size++] = byte_data;
-                }
-                else
-                {
-
-                    break;
+                    continue;
                 }
             }
         }
 
         if (user_id_size == 0 || tun_ip_size == 0 || netmask_size == 0)
         {
-            throw std::invalid_argument("raw_message is malformed");
+            throw std::invalid_argument("Packet is malformed");
         }
     }
 

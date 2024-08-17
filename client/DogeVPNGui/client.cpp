@@ -23,10 +23,11 @@ void handle_udp_packet(
     encryption::packet e_packet;
     e_packet.size = socket_utils::recv_from_socket(udp_socket, e_packet.buffer, e_packet.max_capacity);
 
-    vpn_data_utils::udp_packet_data udp_packet(&e_packet, true);
-
+    /* Parse and decrypt the UDP packet received from server. If the decryption completes
+     * succesfully, the packet will be dispatched to the correct service on this client machine.
+     */
     encryption::packet d_packet =
-        udp_packet
+        vpn_data_utils::udp_packet_data(&e_packet, true)
             .decrypt(key_exchange.key)
             .value();
 
@@ -57,16 +58,10 @@ void handle_tun_packet(
 
     /* Ignore empty frames */
     if (frame.size == 0)
-    {
-
-        std::cout << "received an empty frame" << std::endl;
         can_forward = false;
-    }
 
     if (can_forward)
     {
-
-        std::cout << "sending to " << header.destination_ip << std::endl;
 
         /* Build encrypted packet to send to the server.
          * It is encrypted with the received key.
@@ -110,8 +105,8 @@ int start_doge_vpn(
     vpn_data_utils::key_exchange_data key_exchange(ssl_session);
 
     /* Create the VPN tunnel by making use of the TUN devices. After the key exchange procedure, all the
-    *  needed data is available to configure a new entry for the routing table.
-    */
+     *  needed data is available to configure a new entry for the routing table.
+     */
     tun_utils::tundev_t tun_device(device_name, (const char *)key_exchange.tun_ip, key_exchange.netmask_to_i());
     tun_device.persist();
 

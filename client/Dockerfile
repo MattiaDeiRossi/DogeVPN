@@ -9,6 +9,7 @@ RUN apt-get update && \
     libssl-dev \
     iproute2 \
     iputils-ping \
+    telnet \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /DogeVPN

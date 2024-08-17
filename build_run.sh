@@ -40,16 +40,6 @@ CONTAINER_NAMES=$(sudo docker ps --format "{{.Names}}")
 
 for cn in $CONTAINER_NAMES
 do
-    # WTF? Well, the reason is this one:
-    #   => ERROR [server_host_a 4/4] RUN ip route add 192.168.11.0/24 via 192.168.42.15
-    #   > [server_host_a 4/4] RUN ip route add 192.168.11.0/24 via 192.168.42.15:
-    #   RTNETLINK answers: Operation not permitted
-    # So this horrible trick has been used. This requires a use of a convention: all 
-    # the containers internal to the VPN must have this name 'server_host_*', where * is whatever.
-    if [[ "$cn" == "server_host_"* ]]; then
-        docker exec "$cn" sh -c 'ip route add 192.168.11.0/24 via 192.168.42.15'
-    fi
-
     # Attach terminal's standard input, output, and error.
     # Need to install dbus-x11 for running gnome-terminal command easily.
     echo "$cn" > "holder.txt"

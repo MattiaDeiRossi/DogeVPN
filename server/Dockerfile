@@ -11,8 +11,7 @@ RUN apt install -y \
     libssl-dev \
     iproute2 \
     tcpdump \
-    net-tools \
-    iputils-ping
+    net-tools
 
 # copy and build
 WORKDIR /server

@@ -44,11 +44,11 @@ target_link_libraries(vpnserver
   mongo
   socket_utils
   ssl_utils
-  utils
   holder
   vpn_data_utils
   tun_utils
   file_utils
+  utils
   logging
   crypto
   ssl

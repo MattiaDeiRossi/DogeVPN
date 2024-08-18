@@ -90,7 +90,7 @@ namespace socket_utils
 			 */
 			if (listen(socket_listen, 0) < 0)
 			{
-				utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
+				//utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
 				close_socket(socket_listen);
 				return -1;
 			}
@@ -167,23 +167,6 @@ namespace socket_utils
 	bool invalid_info(const tcp_client_info *info)
 	{
 		return socket_utils::invalid_socket(info->socket);
-	}
-
-	void log_start_server(bool is_tcp, char const *host, char const *port)
-	{
-
-		if (is_tcp)
-			utils::print("Server can now listen for new TCP connections\n", 0);
-		else
-			utils::print("Server can now receive UDP packets\n", 0);
-
-		utils::print("Server listening:\n", 0);
-		utils::print("IP address:", 3);
-		utils::print(host, 1);
-		utils::print("\n", 0);
-		utils::print("Port:", 3);
-		utils::print(port, 1);
-		utils::print("\n", 0);
 	}
 
 	recvfrom_result recvfrom(socket_t fd, void *buf, size_t n)

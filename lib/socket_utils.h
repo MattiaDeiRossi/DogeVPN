@@ -1,12 +1,12 @@
 #ifndef SOCKET_UTILS_H
 #define SOCKET_UTILS_H
 
-#include "utils.h"
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <optional>
 #include <iostream>
+#include <cstring>
 #include <set>
 #include <stdexcept>
 
@@ -77,8 +77,6 @@ namespace socket_utils
     tcp_client_info accept_client(socket_t server_socket);
 
     bool invalid_info(const tcp_client_info *info);
-
-    void log_start_server(bool is_tcp, char const *host, char const *port);
 
     recvfrom_result recvfrom(socket_t fd, void *buf, size_t n);
 

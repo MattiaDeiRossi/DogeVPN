@@ -51,7 +51,6 @@ namespace holder
 
         holder->holder_type = socket_holder::SERVER_HOLDER;
         holder->s_holder = {true, socket};
-        socket_utils::log_start_server(true, host, port);
 
         return 0;
     }
@@ -385,7 +384,6 @@ namespace holder
 
         holder->holder_type = socket_holder::SERVER_HOLDER;
         holder->s_holder = {false, socket};
-        socket_utils::log_start_server(false, host, port);
 
         return 0;
     }

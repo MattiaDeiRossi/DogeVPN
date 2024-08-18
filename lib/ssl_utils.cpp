@@ -121,7 +121,7 @@ namespace ssl_utils
         SSL *ssl = SSL_new(ctx);
         if (ssl == NULL)
         {
-            utils::print_error("bind_ssl: a new SSL object cannot be created\n");
+            std::cerr << "a new SSL object cannot be created" << std::endl;
             free_ssl(ssl, NULL);
             return -1;
         }
@@ -140,7 +140,8 @@ namespace ssl_utils
             int connect_result = SSL_connect(ssl);
             if (SSL_connect(ssl) != 1)
             {
-                utils::print_error("bind_ssl: client cannot connect to server\n");
+
+                std::cerr << "client cannot connect to server" << std::endl;
                 free_ssl(ssl, &connect_result);
                 return -1;
             }
@@ -158,7 +159,8 @@ namespace ssl_utils
             int accept_result = SSL_accept(ssl);
             if (accept_result != 1)
             {
-                utils::print_error("bind_ssl: server cannot accept connections\n");
+
+                std::cerr << "server cannot accept connections" << std::endl;
                 ERR_print_errors_fp(stderr);
                 free_ssl(ssl, &accept_result);
                 return -1;
@@ -191,17 +193,10 @@ namespace ssl_utils
         getnameinfo(address, length, buffer, sizeof(buffer), 0, 0, NI_NUMERICHOST);
 
         /* Logging client IP address.
-         *  Logging the established cipher.
+         * Logging the established cipher.
          */
-        utils::print("Connection established:\n", 0);
-        utils::print("From:", 3);
-        utils::print(" ", 0);
-        utils::print(buffer, 0);
-        utils::print("\n", 0);
-        utils::print("Cipher:", 3);
-        utils::print(" ", 0);
-        utils::print(SSL_get_cipher(ssl), 0);
-        utils::print("\n", 0);
+        std::cout << "Connection established from " << buffer << std::endl;
+        std::cout << "Cipher " << SSL_get_cipher(ssl) << std::endl;
     }
 
     int read(SSL *ssl, char *buffer, size_t num)

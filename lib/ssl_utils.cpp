@@ -79,12 +79,11 @@ namespace ssl_utils
     void free_ssl(SSL *ssl, int *with_error)
     {
 
-        // Nothing can be done.
         if (ssl == NULL)
             return;
 
         /* SSL_shutdown() should not be called if a previous fatal error has occurred on a connection.
-         *  That is when SSL_get_error(3) has returned SSL_ERROR_SYSCALL or SSL_ERROR_SSL.
+         * That is when SSL_get_error(3) has returned SSL_ERROR_SYSCALL or SSL_ERROR_SSL.
          */
         bool should_shutdown = true;
         if (with_error != NULL)
@@ -95,7 +94,7 @@ namespace ssl_utils
 
         if (should_shutdown)
         {
-            /* The fast shutdown approach can only be used if there is no intention to reuse the underlying connection. */
+            /* The fast shutdown approach can only be used if there is no intention to reuse the underlying connection */
             SSL_shutdown(ssl);
         }
 
@@ -117,7 +116,6 @@ namespace ssl_utils
     int bind_ssl(SSL_CTX *ctx, socket_utils::socket_t socket, SSL **ssl_p, bool is_server)
     {
 
-        // Creating an SSL object.
         SSL *ssl = SSL_new(ctx);
         if (ssl == NULL)
         {
@@ -147,14 +145,14 @@ namespace ssl_utils
             }
         }
 
-        // The server must accept an incoming client.
+        /* The server must accept an incoming client */
         if (is_server)
         {
 
             /* A call to SSL_accept() can fail for many reasons.
-             *  For example if the connected client does not trust our certificate.
-             *  Or the client and the server cannot agree on a cipher suite.
-             *  This must be taking into account a the server should continue listening to incoming connections.
+             * For example if the connected client does not trust our certificate.
+             * Or the client and the server cannot agree on a cipher suite.
+             * This must be taking into account a the server should continue listening to incoming connections.
              */
             int accept_result = SSL_accept(ssl);
             if (accept_result != 1)
@@ -167,7 +165,7 @@ namespace ssl_utils
             }
         }
 
-        // Saving the SSL object just created.
+        /* Saving the SSL object just created */
         *ssl_p = ssl;
 
         return 0;

@@ -30,23 +30,23 @@ namespace socket_utils
 		struct addrinfo hints;
 		memset(&hints, 0, sizeof(hints));
 
-		/* 1. AF_INET:      Looking for IPv4 address
-		 *  2. SOCK_STREAM:  Going to use TCP
-		 *  3. SOCK_DGRAM:	Going to use UDP
+		/* 1. AF_INET:		Looking for IPv4 address
+		 * 2. SOCK_STREAM:  Going to use TCP
+		 * 3. SOCK_DGRAM:	Going to use UDP
 		 */
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
 
-		// The variable bind_address will hold the return information from getaddrinfo.
+		/* The variable bind_address will hold the return information from getaddrinfo */
 		struct addrinfo *bind_address;
 		if (getaddrinfo(host, port, &hints, &bind_address) != 0)
 		{
 			return -1;
 		}
 
-		/* getaddrinfo() returns a list of address structures.
-		 *  Try each address until we successfully bind(2).
-		 *  If socket(2) (or bind(2)) fails, we close the socket and try the next address.
+		/* A call to getaddrinfo returns a list of address structures.
+		 * Try each address until we successfully bind.
+		 * If the call to socket (or bind) fails, we close the socket and try the next address.
 		 */
 		socket_t socket_listen;
 		struct addrinfo *ba_p = bind_address;
@@ -63,46 +63,46 @@ namespace socket_utils
 			int bc_result = is_server ? bind(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen) : connect(socket_listen, ba_p->ai_addr, ba_p->ai_addrlen);
 
 			/* If the connection or binding succeeds, zero is returned.
-			 *  On success just exit the loop by breaking it.
+			 * On success just exit the loop by breaking it.
 			 */
 			if (bc_result == 0)
 				break;
 
 			/* Call to bind or connect failed.
-			 *  On failure just close the socket and continue with the loop.
+			 * On failure just close the socket and continue with the loop.
 			 */
 			close_socket(socket_listen);
 			ba_p = ba_p->ai_next;
 		}
 
-		// No longer needed.
 		freeaddrinfo(bind_address);
 
-		// No address succeeded.
 		if (ba_p == NULL)
 		{
+			/* In case no valid addresses have been found there is no way to continue with
+			 * the computation.
+			 */
 			return -1;
 		}
 
 		/* A UDP socket does not need to set itself to a listen state.
-		 *  Just up to bind.
+		 * Just up to bind.
 		 */
 		if (is_tcp && is_server)
 		{
 
 			/* Listen put the socket in a state where it listens for new connections.
-			 *  A backlog argument of 0 may allow the socket to accept connections.
-			 *  In this case the length of the listen queue may be set to an implementation-defined minimum value.
+			 * A backlog argument of 0 may allow the socket to accept connections.
+			 * In this case the length of the listen queue may be set to an implementation-defined minimum value.
 			 */
 			if (listen(socket_listen, 0) < 0)
 			{
-				// utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
 				close_socket(socket_listen);
 				return -1;
 			}
 		}
 
-		// Returning correctly created socket.
+		/* Returning correctly created socket */
 		*ret_socket = socket_listen;
 		return 0;
 	}
@@ -186,7 +186,7 @@ namespace socket_utils
 		{
 
 			/* A negative value should never happen.
-			 *  In this case no actions are performed, just throwing the exception.
+			 * In this case no actions are performed, just throwing the exception.
 			 */
 			throw std::invalid_argument("recvfrom failed, cannot read bytes");
 		}
@@ -240,12 +240,6 @@ namespace socket_utils
 		}
 	}
 
-	void raw_client_info::log()
-	{
-		std::cout << "Received packet from:\n"
-				  << address_service << "\n";
-	}
-
 	raw_client_info tcp_client_info::to_raw_info()
 	{
 
@@ -265,8 +259,12 @@ namespace socket_utils
 
 		if (seconds < 0 || microseconds < 0)
 		{
-			/**/
-			throw std::invalid_argument("seconds and microseconds cannot be negative");
+			/* Even tough the timeval struct allow for negative values, there is no reason to allow
+			 * the caller to supply them. However seconds and microseconds can take values of zero. In such case
+			 * no timeout is provided.
+			 */
+			const char *error_message = "seconds and microseconds cannot be negative";
+			throw std::invalid_argument(error_message);
 		}
 
 		int select_result = 0;
@@ -289,12 +287,16 @@ namespace socket_utils
 		if (seconds == 0 && microseconds == 0)
 		{
 
-			/**/
+			/* Both values to zero. A call to select is made without any
+			 * timeout.
+			 */
 			select_result = select(max + 1, &master, 0, 0, 0);
 		}
 		else
 		{
-			/**/
+			/* The value of seconds or microseconds (or both) is different from zero.
+			 * A timeout is provided.
+			 */
 			struct timeval interval;
 			interval.tv_sec = seconds;
 			interval.tv_usec = microseconds;
@@ -336,6 +338,7 @@ namespace socket_utils
 
 		if (bytes < 0)
 			throw std::invalid_argument("cannot write to socket");
+
 		return bytes;
 	}
 
@@ -346,6 +349,7 @@ namespace socket_utils
 
 		if (bytes < 0)
 			throw std::invalid_argument("cannot receive from socket");
+
 		return bytes;
 	}
 

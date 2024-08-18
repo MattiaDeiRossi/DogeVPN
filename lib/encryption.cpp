@@ -137,7 +137,7 @@ namespace encryption
         {
 
             /* When RAND_bytes cannot produce secured random bytes, a fallback is made by using
-             *  the random std library.
+             * the random std library.
              */
             std::uniform_int_distribution<uint32_t> uint_dist(0, UCHAR_MAX);
             for (int i = 0; i < 16; i++)
@@ -214,15 +214,14 @@ namespace encryption
     {
 
         packet result;
+
         ssize_t plaintext_size = encryption::decrypt(
             buffer, size,
             enc_data.key, enc_data.iv,
             result.buffer);
 
         if (plaintext_size == -1)
-        {
             return std::nullopt;
-        }
 
         result.size = plaintext_size;
         return result;
@@ -255,6 +254,7 @@ namespace encryption
 
         EVP_MD_CTX_free(mdCtx);
         memcpy(output, mdVal, SHA_256_SIZE);
+
         return true;
     }
 
@@ -265,6 +265,7 @@ namespace encryption
         unsigned char computed_hash[SHA_256_SIZE];
         if (!getShaSum(computed_hash))
             return false;
+
         return strncmp((const char *)computed_hash, (const char *)hash, SHA_256_SIZE) == 0 ? true : false;
     }
 

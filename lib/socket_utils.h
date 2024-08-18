@@ -17,8 +17,6 @@ namespace socket_utils
 
         raw_client_info();
         raw_client_info(struct sockaddr_storage address, socklen_t length);
-
-        void log();
     };
 
     struct tcp_client_info

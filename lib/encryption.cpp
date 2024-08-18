@@ -1,5 +1,17 @@
 #include "encryption.h"
 
+#include <openssl/rand.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+
+#include <cstring>
+#include <random>
+#include <iostream>
+#include <stdexcept>
+
 namespace encryption
 {
 

@@ -28,7 +28,7 @@ void handle_udp_packet(
     e_packet.size = socket_utils::recv_from_socket(udp_socket, e_packet.buffer, e_packet.max_capacity);
 
     /* Parse and decrypt the UDP packet received from server. If the decryption completes
-     * succesfully, the packet will be dispatched to the correct service on this client machine.
+     * successfully, the packet will be dispatched to the correct service on this client machine.
      */
     encryption::packet d_packet =
         vpn_data_utils::udp_packet_data(&e_packet, true)
@@ -96,16 +96,16 @@ int start_doge_vpn(
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(false, NULL, NULL);
 
     /* Two kinds of socket will be used:
-     *  1. TCP: in order to keep up to date the connection and its paramaters; bound to the ssl object
+     *  1. TCP: in order to keep up to date the connection and its parameters; bound to the ssl object
      *  2. UDP: when data packets will be sent
      */
     SSL *ssl_session = ssl_utils::bind_client_ssl_or_abort(ctx, socket_utils::connect_tcp_client_socket_or_abort(domain, port));
     socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
-    /* First message to exchange between client and server inder a TLS sessions.
+    /* First message to exchange between client and server under a TLS sessions.
      * After this exchange, the following data is available:
-     *  - key:      the symmetric key with wich udp packets will be encrypted
+     *  - key:      the symmetric key with which udp packets will be encrypted
      *  - id:       the id for this client
      *  - tun_ip:   the ip to assign to the TUN device
      */
@@ -134,8 +134,8 @@ int start_doge_vpn(
     {
         /* Since there is the requirement to stop this while loop not only when some unrecoverable error
          * is encountered, but also when the stop flag is set, a time interval for the select call is set.
-         * The result indicates an error (-1), a timeout exceeded (0), or a succesful call (> 0).
-         * The erason behind working with inetrvals is to not deal with overcomplicated signals to intercept instead.
+         * The result indicates an error (-1), a timeout exceeded (0), or a successful call (> 0).
+         * The reason behind working with intervals is to not deal with overcomplicated signals to intercept instead.
          */
         int result = 0;
         suseconds_t microseconds = 800000;

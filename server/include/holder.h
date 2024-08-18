@@ -85,7 +85,7 @@ namespace holder
     };
 
     /* Register of current connected client.
-     *  Whenever a client connects or disconnects, this should be properly updated.
+     * Whenever a client connects or disconnects, this should be properly updated.
      */
     struct client_register
     {
@@ -100,9 +100,9 @@ namespace holder
         client_register(tun_utils::ip_pool_t pool);
 
         /* When calling this method a thread approach may be a better approach since SSL_accept is I/O blocking.
-         *  When handling a new client there is no need to just create the client socket and return.
-         *  A dedicated process should handle the process of data exchange without relying on select in the main loop.
-         *  After a timeout or some error the client socket can be freed along with the thread; this will simplify the whole logic.
+         * When handling a new client there is no need to just create the client socket and return.
+         * A dedicated process should handle the process of data exchange without relying on select in the main loop.
+         * After a timeout or some error the client socket can be freed along with the thread; this will simplify the whole logic.
          */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *);
 
@@ -111,7 +111,7 @@ namespace holder
         bool update_client_holder(client_holder holder);
 
         /* Erased holder from register if present.
-         *  Data within holder should not be considered valid anymore.
+         * Data within holder should not be considered valid anymore.
          */
         void delete_client_holder(client_holder holder, bool free_old_ssl);
 

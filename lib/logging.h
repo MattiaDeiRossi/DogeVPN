@@ -2,10 +2,6 @@
 #define LOGGING_H
 
 #include <fstream>
-#include <sstream>
-#include <iostream>
-#include <cstring>
-#include <mutex>
 #include <shared_mutex>
 
 namespace logging

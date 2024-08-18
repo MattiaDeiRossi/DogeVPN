@@ -1,5 +1,10 @@
 #include "logging.h"
 
+#include <sstream>
+#include <iostream>
+#include <cstring>
+#include <mutex>
+
 namespace logging
 {
 

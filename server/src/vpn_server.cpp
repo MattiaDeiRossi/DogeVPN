@@ -21,7 +21,7 @@ void handle_tls_handshake(
 
     if (c_register->register_client_holder(ctx, info, file_path))
     {
-        /* Only registred clients can access the network. In case of wrong credentials or
+        /* Only registered clients can access the network. In case of wrong credentials or
          * malformed packet, this server refuse to register the incoming client for further
          * computation.
          */
@@ -68,7 +68,7 @@ void handle_udp_packet(
     if (!c_holder_opt.has_value())
     {
 
-        /* There is no need to proceed if the client has not been registred */
+        /* There is no need to proceed if the client has not been registered */
         logger->log(logging::log_level::WARNING, "Client is not registered");
         return;
     }
@@ -80,7 +80,7 @@ void handle_udp_packet(
 
     if (c_holder.udp_info.empty())
     {
-        /* Accessing the register can be computationally expensive since thre is a mutex
+        /* Accessing the register can be computationally expensive since the is a mutex
          * protecting shared resources. The update is done if and only if the
          * client's UDP information are not present yet.
          */
@@ -163,7 +163,7 @@ void handle_tcp_packet(socket_utils::socket_t socket, holder::client_register *c
         if (ssl_utils::read(holder.ssl, close_buffer, sizeof(close_buffer)) == -1)
         {
 
-            /* Since read automatically takes care of freeeing the ssl resource in case of failure,
+            /* Since read automatically takes care of freeing the ssl resource in case of failure,
              * when deleting the client holder a call to free should not be done.
              */
             std::ostringstream logEntry;
@@ -212,7 +212,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
     server_socket_set.insert(udp_socket);
     server_socket_set.insert(device.fd);
 
-    /* The client register with which current clients are saved in memory. By usign the register
+    /* The client register with which current clients are saved in memory. By using the register
      * packets can be related to the correct client in both direction.
      */
     holder::client_register c_register(server_pool);
@@ -245,7 +245,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
 
                         /* Why do we need to start a new thread when handling a new client?
                          * SSL operations may block on a slow client.
-                         * Instead of blocking the entire server we may want to block only one therad.
+                         * Instead of blocking the entire server we may want to block only one thread.
                          * This thread is in charge of establish a TLS connection and exchange a key for UDP.
                          */
                         std::thread(handle_tls_handshake, ctx, &info, &c_register, &logger, config["users"].c_str())

@@ -36,22 +36,30 @@ namespace holder
     struct client_holder
     {
 
-        /*
+        /* This data represents the id for the user that can authenticate to this server and
+         * the symmetric key generated for exchanging UDP packets.
          */
         unsigned int session_id;
         unsigned char symmetric_key[SIZE_32];
 
-        /*
+        /* The idea behind this data is that it is the server that is in charge of telling the client
+         * that wants to connect what is the IPv4 that they should use to properly configure the TUN device.
+         * By doing so the client can freely start the communication without selecting the proper IPv4 to assign to the
+         * virtual generated device and at the sime time the server can know to which client send the packet back.
          */
         unsigned int client_tun_ip_id;
         tun_ip client_tun_ip;
 
-        /*
+        /* After the first message the TCP info is ready to be saved within this holder. For the UDP info,
+         * the server need to wait for the first UDP packet related to a specific client.
          */
         socket_utils::tcp_client_info tcp_info;
         socket_utils::udp_client_info udp_info;
 
-        /*
+        /* The SSL object related to a specific communication within the client and the server. Its deletion is very
+         * delicate since there can be situation for which the object is deleted but the structure could still be
+         * accessed for whatever reason. The main idea is to keep this structure and the SSL object aligned, that is
+         * whenever the SSL object is freed, this structure should not be accessed.
          */
         SSL *ssl;
 
@@ -85,7 +93,7 @@ namespace holder
     };
 
     /* Register of current connected client.
-     * Whenever a client connects or disconnects, this should be properly updated.
+     * Whenever a client connects or disconnects, this object should be properly updated.
      */
     struct client_register
     {
@@ -106,8 +114,12 @@ namespace holder
          */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *);
 
+        /*
+         */
         bool insert_client_holder(client_holder holder);
 
+        /*
+         */
         bool update_client_holder(client_holder holder);
 
         /* Erased holder from register if present.
@@ -115,11 +127,20 @@ namespace holder
          */
         void delete_client_holder(client_holder holder, bool free_old_ssl);
 
+        /*
+         */
         std::optional<client_holder> get_client_holder(unsigned int session_id);
+
+        /*
+         */
         std::optional<client_holder> get_client_holder(tun_ip ip);
 
+        /*
+         */
         std::optional<client_holder> find_by_socket(socket_utils::socket_t socket);
 
+        /*
+         */
         select_result merge_select(std::set<socket_utils::socket_t> set);
     };
 

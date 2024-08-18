@@ -114,12 +114,11 @@ namespace holder
          */
         bool register_client_holder(SSL_CTX *ctx, socket_utils::tcp_client_info *info, const char *);
 
-        /*
+        /* Insert the given client holder within this register. If there is a holder with the same session id,
+         * the old one will be deleted (along with the SSL object that is associated to the holder), and the new one will be inserted.
          */
         bool insert_client_holder(client_holder holder);
 
-        /*
-         */
         bool update_client_holder(client_holder holder);
 
         /* Erased holder from register if present.
@@ -127,20 +126,12 @@ namespace holder
          */
         void delete_client_holder(client_holder holder, bool free_old_ssl);
 
-        /*
-         */
         std::optional<client_holder> get_client_holder(unsigned int session_id);
 
-        /*
-         */
         std::optional<client_holder> get_client_holder(tun_ip ip);
 
-        /*
-         */
         std::optional<client_holder> find_by_socket(socket_utils::socket_t socket);
 
-        /*
-         */
         select_result merge_select(std::set<socket_utils::socket_t> set);
     };
 

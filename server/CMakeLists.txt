@@ -5,16 +5,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Wformat=2 -Wmisleading-indentation)
 endif()
 
-set(MONGOCXX_INCLUDE_DIR /usr/local/include)
-
-# find dependencies
-find_package(mongocxx REQUIRED)
-find_package(bsoncxx REQUIRED)
-
 include_directories(include)
 include_directories(../lib)
 
-add_library(mongo src/mongo.cpp)
 add_library(encryption ../lib/encryption.cpp)
 add_library(socket_utils ../lib/socket_utils.cpp)
 add_library(ssl_utils ../lib/ssl_utils.cpp)
@@ -27,21 +20,8 @@ add_library(file_utils src/file_utils.cpp)
 
 add_executable(vpnserver src/vpn_server.cpp)
 
-target_include_directories(mongo PUBLIC
-  ${MONGOCXX_INCLUDE_DIR}/mongocxx/v_noabi
-  ${MONGOCXX_INCLUDE_DIR}/bsoncxx/
-  ${MONGOCXX_INCLUDE_DIR}/bsoncxx/v_noabi
-  ${MONGOCXX_INCLUDE_DIR}/bsoncxx/v_noabi/bsoncxx/third_party/mnmlstc
-)
-
-target_link_libraries(mongo PRIVATE 
-  mongocxx 
-  bsoncxx
-)
-
 target_link_libraries(vpnserver 
   encryption
-  mongo
   socket_utils
   ssl_utils
   holder

@@ -1,27 +1,9 @@
 #ifndef TUN_UTILS_H
 #define TUN_UTILS_H
 
-#include <iostream>
 #include <set>
-#include <cmath>
-#include <shared_mutex>
-#include <mutex>
-#include <stdexcept>
-#include <sstream>
-#include <cstdlib>
-#include <climits>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <linux/if.h>
 #include <linux/if_tun.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
+#include <linux/if.h>
 
 namespace tun_utils
 {

@@ -1,13 +1,10 @@
 #ifndef VPN_DATA_UTILS_H
 #define VPN_DATA_UTILS_H
 
-#include <ctype.h>
-#include <stdexcept>
-#include <cstdlib>
-#include "utils.h"
-#include "encryption.h"
-#include "ssl_utils.h"
-#include "socket_utils.h"
+#include <openssl/ssl.h>
+
+#include <encryption.h>
+#include <socket_utils.h>
 
 namespace vpn_data_utils
 {

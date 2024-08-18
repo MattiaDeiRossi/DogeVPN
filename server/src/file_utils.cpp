@@ -1,5 +1,9 @@
 #include "file_utils.h"
 
+#include <fstream>
+#include <sstream>
+#include <iterator>
+
 namespace file_utils
 {
 

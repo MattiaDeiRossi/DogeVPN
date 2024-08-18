@@ -1,5 +1,12 @@
 #include "holder.h"
 
+#include <iostream>
+#include <mutex>
+
+#include <file_utils.h>
+#include <ssl_utils.h>
+#include <vpn_data_utils.h>
+
 namespace holder
 {
 

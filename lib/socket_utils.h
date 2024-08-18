@@ -2,13 +2,7 @@
 #define SOCKET_UTILS_H
 
 #include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <optional>
-#include <iostream>
-#include <cstring>
 #include <set>
-#include <stdexcept>
 
 namespace socket_utils
 {

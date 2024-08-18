@@ -1,17 +1,15 @@
 #ifndef HOLDER_H
 #define HOLDER_H
 
-#include <map>
 #include <shared_mutex>
-#include <mutex>
 #include <optional>
-#include <stdexcept>
-#include <stdlib.h>
-#include "socket_utils.h"
-#include "file_utils.h"
-#include "ssl_utils.h"
-#include "tun_utils.h"
-#include "vpn_data_utils.h"
+#include <string>
+#include <map>
+
+#include <openssl/ssl.h>
+
+#include <socket_utils.h>
+#include <tun_utils.h>
 
 namespace holder
 {

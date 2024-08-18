@@ -1,5 +1,18 @@
 #include "tun_utils.h"
 
+#include <cstring>
+#include <cmath>
+#include <sstream>
+#include <stdexcept>
+#include <climits>
+#include <iostream>
+
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace tun_utils
 {
 

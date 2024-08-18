@@ -1,5 +1,12 @@
 #include "ssl_utils.h"
 
+#include <sys/socket.h>
+#include <netdb.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+
+#include <iostream>
+
 namespace ssl_utils
 {
 

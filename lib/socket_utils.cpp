@@ -1,5 +1,11 @@
 #include "socket_utils.h"
 
+#include <netdb.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <cstring>
+
 namespace socket_utils
 {
 

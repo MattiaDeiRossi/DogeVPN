@@ -256,14 +256,14 @@ namespace tun_utils
         {
 
             /* If a device name was specified, put it in the structure.
-             *  If not the kernel will try to allocate the "next" device of the specified type .
+             * If not the kernel will try to allocate the "next" device of the specified type .
              */
             strncpy(ifr.ifr_name, name, IFNAMSIZ);
         }
 
         /* Trying to create the device.
-         *  If the ioctl() succeeds, the virtual interface is created.
-         *  The file descriptor we had is now associated to it, and can be used to communicate.
+         * If the ioctl() succeeds, the virtual interface is created.
+         * The file descriptor we had is now associated to it, and can be used to communicate.
          */
         if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0)
         {
@@ -272,7 +272,7 @@ namespace tun_utils
         }
 
         /* If the operation was successful, write back the name of the interface to the variable "dev".
-         *  This way the caller can know it: note that the caller MUST reserve space in *dev.
+         * This way the caller can know it: note that the caller MUST reserve space in *dev.
          */
         bzero(dev, IFNAMSIZ);
         strcpy(dev, ifr.ifr_name);
@@ -282,9 +282,9 @@ namespace tun_utils
     {
 
         /* Exit status:
-         *   - 0 if command was successful
-         *   - 1 if there is a syntax error
-         *   - 2 if an error was reported by the kernel
+         *  - 0 if command was successful
+         *  - 1 if there is a syntax error
+         *  - 2 if an error was reported by the kernel
          */
         char command[128];
 
@@ -298,7 +298,7 @@ namespace tun_utils
 
         /* ip a add {ip_addr/mask} dev {interface} */
         bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip a add %s/%d dev %s", addr, netmask, dev);
+        snprintf(command, sizeof(command), "ip a add %s/%d dev %s", addr, netmask, dev); /* This should be checked */
         if (system(command) != 0)
         {
             throw std::invalid_argument("failing when assigning address to TUN device");
@@ -354,7 +354,7 @@ namespace tun_utils
         {
 
             /* First four bytes are the packet information.
-             *  Protocol is in big-endian format.
+             * Protocol is in big-endian format.
              */
             memcpy(&(frame.info), ptr, sizeof(frame.info));
             ptr += sizeof(frame.info);
@@ -411,15 +411,15 @@ namespace tun_utils
         ip_bytes[1] = third_octet;
 
         /* Last byte is zero:
-         *   - it will be incremented gradually from one to 254
-         *   - each call to next will update the configured pool
+         *  - it will be incremented gradually from one to 254
+         *  - each call to next will update the configured pool
          */
         ip_bytes[0] = 0;
         next_ip = 0;
 
         /* Host cannot have ip with special meaning:
-         *   - in binary: host portion all zeros is the subnet address
-         *   - in binary: host portion all ones is the broadcast address
+         *  - in binary: host portion all zeros is the subnet address
+         *  - in binary: host portion all ones is the broadcast address
          */
         unavailable_ips.insert(0);
         unavailable_ips.insert(255);
@@ -441,7 +441,7 @@ namespace tun_utils
         {
 
             /* Searching for the next available ip.
-             *  As soon the next ip is found, it gets added to the already used set.
+             * As soon the next ip is found, it gets added to the already used set.
              */
             if (unavailable_ips.count(this->next_ip) != 0)
             {
@@ -454,8 +454,8 @@ namespace tun_utils
             }
         }
 
-        /* Composign the ipv4 address as bytes:
-         *   - assuming the call o pool->ip_bytes[i] produce a byte with correct offset
+        /* Composing the ipv4 address as bytes:
+         *  - assuming the call o pool->ip_bytes[i] produce a byte with correct offset
          */
         unsigned int ip_to_use = this->next_ip;
         unsigned int mask = 255;
@@ -471,7 +471,7 @@ namespace tun_utils
         }
 
         /* Composing the ipv4 string.
-         *  The given buffer will be returned.
+         * The given buffer will be returned.
          */
         bzero(buffer, num);
         int start = 0;

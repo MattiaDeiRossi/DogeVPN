@@ -10,8 +10,8 @@
 namespace ssl_utils
 {
 
-    /* Function to call whenever a SSL contect is needed.
-     *  It can be resued for all the connections.
+    /* Function to call whenever a SSL context is needed.
+     * It can be reused for all the connections.
      */
     int init_ssl(
         SSL_CTX **ctx_pointer,
@@ -20,16 +20,16 @@ namespace ssl_utils
         const char *pri_cert_path)
     {
 
-        // This is required to initialize the OpenSSL.
+        /* This is required to initialize the OpenSSL */
         SSL_library_init();
 
         /* This cause OpenSSL to load all available algorithms.
-         *  A better alternative is loading only the needed ones.
+         * A better alternative is loading only the needed ones.
          */
         OpenSSL_add_all_algorithms();
 
         /* This cause OpenSSL to load error strings:
-         *   - it is used just to see readable error messages when something goes wrong
+         *  - it is used just to see readable error messages when something goes wrong
          */
         SSL_load_error_strings();
 
@@ -132,12 +132,12 @@ namespace ssl_utils
         }
 
         /* Associating the ssl object with the client socket.
-         *  Now the ssl object is bound to a socket that can be used to communicate over TLS.
+         * Now the ssl object is bound to a socket that can be used to communicate over TLS.
          */
         SSL_set_fd(ssl, socket);
 
         /* Client is trying to communicate with the server.
-         *  In the end a connect must be called.
+         * In the end a connect must be called.
          */
         if (!is_server)
         {
@@ -208,8 +208,8 @@ namespace ssl_utils
     {
 
         /* The assumption here is that all the data comes from a single read.
-         *  This is not the ideal solution sunce there's no guarantees that a single read can suffice.
-         *  A better approach would be agreeing on maximum size and a final line indicating the end of the message.
+         * This is not the ideal solution since there's no guarantees that a single read can suffice.
+         * A better approach would be agreeing on maximum size and a final line indicating the end of the message.
          */
         int bytes = SSL_read(ssl, buffer, num);
         if (bytes < 1)
@@ -237,7 +237,7 @@ namespace ssl_utils
     {
 
         /* Errors can be different.
-         *  A more resilient approach would be call SSL_get_error() to find out if it's retryable.
+         * A more resilient approach would be call SSL_get_error() to find out if it can be retried.
          */
         int bytes = SSL_write(ssl, buffer, num);
         if (bytes < 1)

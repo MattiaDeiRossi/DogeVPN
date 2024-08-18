@@ -82,11 +82,6 @@ namespace tun_utils
         int flags;
         int netmask;
 
-        /* Arguments taken by the function:
-        * @param name       the name of an interface (or '\0');
-                            must have enough space to hold the interface name if '\0' is passed.
-        * @param address    the address that will be used for ip packets
-        */
         tundev_t(const char *name, const char *address, int netmask);
 
         void persist();

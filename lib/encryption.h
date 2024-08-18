@@ -51,36 +51,36 @@ namespace encryption
         packet();
 
         /* Build a packet initialized with the given parameter
-         * @param data array of char representing a message
-         * @param num size fo the array
+         * @param data  array of char representing a message
+         * @param num   size fo the array
          */
         packet(unsigned char *data, size_t num);
 
         /* Encrypt this packet given a valid object of type encryption_data. Since
          * encryption may fail (for example when the given argument is wrong, that is the key or the IV are not correct),
          * an optional value is returned.
-         * @param enc_data structure for the key and the IV to be used during the encryption
-         * @return the encrypted packet on success, empty data on failure
+         * @param enc_data  structure for the key and the IV to be used during the encryption
+         * @return          the encrypted packet on success, empty data on failure
          */
         std::optional<packet> encrypt(encryption_data enc_data);
 
         /* Decrypt this packet given a valid object of type encryption_data. Since
          * decryption may fail (for example when the given argument is wrong, that is the key or the IV are not correct),
          * an optional value is returned.
-         * @param enc_data structure for the key and the IV to be used during the decryption
-         * @return the decrypted packet on success, empty data on failure
+         * @param enc_data  structure for the key and the IV to be used during the decryption
+         * @return          the decrypted packet on success, empty data on failure
          */
         std::optional<packet> decrypt(encryption_data enc_data);
 
         /* Build an hash of this packet buffer, flowed in the given output argument
-         * @param output buffer where the hash will be reversed on success
-         * @return true on success,false otherwise
+         * @param output    buffer where the hash will be reversed on success
+         * @return          true on success,false otherwise
          */
         bool getShaSum(unsigned char *output);
 
         /* Check whether, given an hash, this packet represents the same hash
-         * @param hash to verify
-         * @return true if the hash is the same, false otherwise
+         * @param hash  to verify
+         * @return      true if the hash is the same, false otherwise
          */
         bool valid_hash(unsigned char *hash);
 

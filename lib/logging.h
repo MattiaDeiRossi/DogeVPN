@@ -27,6 +27,7 @@ namespace logging
         std::shared_mutex mutex;
 
         logger(const std::string &filename);
+
         ~logger();
 
         void log(log_level level, const std::string &message);

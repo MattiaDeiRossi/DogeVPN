@@ -194,7 +194,7 @@ namespace vpn_data_utils
             if (reading_username)
             {
 
-                /* While reading credentilas alway checking if the separator is the current byte */
+                /* While reading credentials alway checking if the separator is the current byte */
                 if (bdata == MESSAGE_SEPARATOR_POINT)
                 {
                     reading_username = false;
@@ -217,7 +217,7 @@ namespace vpn_data_utils
         }
 
         /* A minimum length of bytes for the password is required.
-         *  If the minimum length is not respected, than an error is returned.
+         * If the minimum length is not respected, than an error is returned.
          */
         if (username_length == 0)
         {
@@ -264,8 +264,8 @@ namespace vpn_data_utils
 
                 char bdata = from->buffer[current_cursor--];
 
-                /* Id cannot excedd a specific length.
-                 *  When dealing with longer id, an error is returned.
+                /* Id cannot exceed a specific length.
+                 * When dealing with longer id, an error is returned.
                  */
                 if (j == SIZE_16 && bdata != MESSAGE_SEPARATOR_POINT)
                 {
@@ -276,7 +276,7 @@ namespace vpn_data_utils
                 {
 
                     /* The user id is the last part of the message after the IV vector.
-                     *  After encountering it the user id processing must stop.
+                     * After encountering it the user id processing must stop.
                      */
                     break;
                 }
@@ -284,7 +284,7 @@ namespace vpn_data_utils
                 {
 
                     /* An user id contains only digits.
-                     *  When a different character is encountered an error value is returned.
+                     * When a different character is encountered an error value is returned.
                      */
                     throw std::invalid_argument("malformed packet: id contains invalid characters");
                 }
@@ -296,7 +296,7 @@ namespace vpn_data_utils
             }
 
             /* Sanity check.
-             *  Id must not be empty.
+             * Id must not be empty.
              */
             if (j == 0)
             {
@@ -304,12 +304,12 @@ namespace vpn_data_utils
             }
 
             /* Id has been read in reverse.
-             *  In order to extract it correctly, a reverse operation is applied.
+             * In order to extract it correctly, a reverse operation is applied.
              */
             utils::reverse_string((char *)user_id, j);
         }
 
-        // IV extraction.
+        /* IV extraction */
         if (utils::read_reverse(
                 iv,
                 from->buffer,
@@ -319,7 +319,7 @@ namespace vpn_data_utils
                 true) == -1)
             throw std::invalid_argument("malformed packet: wrong IV");
 
-        // Hash extraction.
+        /* Hash extraction */
         if (utils::read_reverse(
                 hash,
                 from->buffer,
@@ -329,7 +329,7 @@ namespace vpn_data_utils
                 true) == -1)
             throw std::invalid_argument("malformed packet: wrong hash");
 
-        // Message extraction.
+        /* Message extraction */
         int packet_length = utils::read_reverse(
             encrypted_packet.buffer,
             from->buffer,
@@ -485,7 +485,7 @@ namespace vpn_data_utils
                 .value()
                 .valid_hash(hash);
 
-        /* With the encrypted packet we must verify the hash. */
+        /* With the encrypted packet we must verify the hash */
         if (!valid_hash)
         {
             std::cerr

@@ -265,7 +265,7 @@ namespace ssl_utils
     {
 
         /* Generating a key by using the OpenSSL library.
-         *  It will be num bytes long.
+         * It will be num bytes long.
          */
         memset(buffer, 0, num);
         int rand_value = RAND_bytes(buffer, num);

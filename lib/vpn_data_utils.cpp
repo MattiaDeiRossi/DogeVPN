@@ -410,7 +410,7 @@ namespace vpn_data_utils
         };
 
         char user_id_str[SIZE_16];
-        utils::int_to_string(session_id, (char *)user_id_str, sizeof(user_id_str));
+        snprintf(user_id_str, sizeof(user_id_str), "%d", session_id);
 
         bzero(this->user_id, SIZE_16);
         memcpy(this->user_id, user_id_str, SIZE_16);

@@ -29,22 +29,6 @@ namespace utils
     );
 
     void print_bytes(const char *title, const char *message, size_t num, int steps_nl);
-
-    void print_red(const char *message);
-
-    void print_yellow(const char *message);
-
-    void print_green(const char *message);
-
-    void println_sep(int color);
-
-    void print_error(const char *message);
-
-    void print(const char *message, int left_padding);
-
-    void int_to_string(int digit, char *buffer, size_t num);
-
-    int run_sys_command(const char *command);
 }
 
 #endif

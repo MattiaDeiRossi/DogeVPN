@@ -140,57 +140,6 @@ namespace vpn_data_utils
         return atoi((char *)netmask);
     }
 
-    void key_exchange_data::log()
-    {
-
-        size_t key_size = encryption::KEY_SIZE_32;
-
-        printf("Key exchange from server:\n");
-        print_start_pad(4);
-        printf("KEY: ");
-
-        for (size_t i = 0; i < key_size; ++i)
-        {
-            if (i % 8 == 7 || i == key_size - 1)
-            {
-                printf("%02X\n", (unsigned char)key[i]);
-                if (i != key_size - 1)
-                {
-                    print_start_pad(9);
-                }
-            }
-            else
-            {
-                printf("%02X::", (unsigned char)key[i]);
-            }
-        }
-
-        print_start_pad(4);
-        printf("ID: ");
-
-        for (size_t i = 0; i < SIZE_16; ++i)
-        {
-            if (id[i])
-            {
-                printf("%c", id[i]);
-            }
-        }
-
-        printf("\n");
-        print_start_pad(4);
-        printf("TUN IP: ");
-
-        for (size_t i = 0; i < SIZE_64; ++i)
-        {
-            if (tun_ip[i])
-            {
-                printf("%c", tun_ip[i]);
-            }
-        }
-
-        printf("\n");
-    }
-
     raw_credentials::raw_credentials(
         const char *username,
         const char *password)

@@ -298,7 +298,7 @@ namespace tun_utils
 
         /* ip a add {ip_addr/mask} dev {interface} */
         bzero(command, sizeof(command));
-        snprintf(command, sizeof(command), "ip a add %s/%d dev %s", addr, netmask, dev); /* This should be checked */
+        snprintf(command, sizeof(command), "ip a add %s/%d dev %s", addr, netmask, dev); /* TODO: this should be checked */
         if (system(command) != 0)
         {
             throw std::invalid_argument("failing when assigning address to TUN device");

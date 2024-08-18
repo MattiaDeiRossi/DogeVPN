@@ -42,8 +42,6 @@ namespace vpn_data_utils
 
         int id_to_i();
         int netmask_to_i();
-
-        void log();
     };
 
     struct raw_credentials

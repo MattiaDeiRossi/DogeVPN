@@ -96,7 +96,7 @@ namespace socket_utils
 			 */
 			if (listen(socket_listen, 0) < 0)
 			{
-				//utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
+				// utils::print_error("bind_server_socket: cannot make TCP server listen to new connections\n");
 				close_socket(socket_listen);
 				return -1;
 			}
@@ -307,7 +307,7 @@ namespace socket_utils
 
 			if (select_result <= 0)
 			{
-				/* Since the given result poniter is NULL, when select encounter an error,
+				/* Since the given result pointer is NULL, when select encounter an error,
 				 * or the timeout in seconds exceed, an exception is thrown instead of reporting an error.
 				 */
 				throw std::invalid_argument("select failed");
@@ -315,7 +315,9 @@ namespace socket_utils
 		}
 		else
 		{
-			/**/
+			/* Before returning the fd_set, if a valid pointer was given as argument, the select result is reported to
+			 * the caller.
+			 */
 			*result = select_result;
 		}
 

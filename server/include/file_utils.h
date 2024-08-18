@@ -6,6 +6,15 @@
 #include <string>
 #include <optional>
 
+/* This namespace contains a collection of functions that deals with files that has the following format:
+ *
+ *  -   key1:value2
+ *      key2:value2
+ *
+ *  -   key1:value1:key2:value2
+ *
+ * Each row stand is one line.
+ */
 namespace file_utils
 {
 

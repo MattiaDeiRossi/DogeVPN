@@ -58,7 +58,7 @@ namespace encryption
 
         ciphertext_len = len;
 
-        /* Finalise the encryption. Further ciphertext bytes may be written at
+        /* Finalize the encryption. Further ciphertext bytes may be written at
          * this stage.
          */
         if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
@@ -106,7 +106,7 @@ namespace encryption
 
         plaintext_len = len;
 
-        /* Finalise the decryption. Further plaintext bytes may be written at
+        /* Finalize the decryption. Further plaintext bytes may be written at
          * this stage.
          */
         if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
@@ -196,13 +196,12 @@ namespace encryption
         packet result;
 
         /* Checking the length for returning an error in case of an UDP packet too large.
-         *  Abusing plus one just for lazyness and safetyness, ignoring modules.
+         * Abusing plus one just for laziness and safeness, ignoring modules.
          */
         size_t ciphertext_max_size = ((size / AES_256_CBC_PADDING) + 1) * AES_256_CBC_PADDING;
         if (ciphertext_max_size > result.max_capacity)
             return std::nullopt;
 
-        /* check error*/
         ssize_t ciphertext_size = encryption::encrypt(buffer, size, enc_data.key, enc_data.iv, result.buffer);
         if (ciphertext_size == -1)
             return std::nullopt;
@@ -242,7 +241,6 @@ namespace encryption
             return false;
         }
 
-        /* Hashes cnt bytes of data at d into the digest context mdCtx. */
         if (!EVP_DigestUpdate(mdCtx, buffer, size))
         {
             EVP_MD_CTX_free(mdCtx);
@@ -263,7 +261,7 @@ namespace encryption
     bool packet::valid_hash(unsigned char *hash)
     {
 
-        /* Creating the buffer with the correct hash size. */
+        /* Creating the buffer with the correct hash size */
         unsigned char computed_hash[SHA_256_SIZE];
         if (!getShaSum(computed_hash))
             return false;

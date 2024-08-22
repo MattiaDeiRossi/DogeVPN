@@ -1,7 +1,6 @@
 FROM ubuntu
-RUN apt -y update
 
-RUN apt install -y \
+RUN apt update && apt install -y \
     g++ \
     cmake \
     git \

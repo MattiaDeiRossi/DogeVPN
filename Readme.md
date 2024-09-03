@@ -30,6 +30,13 @@ server. It contains:
     to send the packet in the correct format
 
 ## How to build and run a simple test using docker compose
+
+To obtain a complete configuration we decided to use docker compose to configure the clients,
+servers and networks. The instructions to compile and run the entire code are
+written. The following image shows the network topology of the system.
+
+<img src="documentation/img/Docker-Network.png" title="Docker-Network" height="100" />
+
 Build
 ```bash
 docker compose build

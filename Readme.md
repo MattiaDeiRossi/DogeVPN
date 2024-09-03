@@ -15,7 +15,21 @@ Authors:
 
 Implementing a well-managed virtual private network (VPN) is not as simple as it might seem. There are several caveats to consider and several ways to make the entire application non-resilient. Of course there are several pieces of complex code, appropriately packaged, that can help with some effort to build a functional VPN, but how the network works depends on the implementers. For this reason DogeVPN aims to be a simple but functional VPN, with almost all the features of a production-ready VPN. DogeVPN was born from a university project at Ca' Foscari University
 
-## How to build and run using docker compose
+## Project structure
+
+The lib directory contains all the library files used by both the client and the
+server. It contains:
+  - encryption that offers all the methods to enable encryption successfully
+    and decryption of every packet exchanged when the VPN is active
+  - logging that allows you to monitor the use of all DogeVPN features
+  - socket_utils which offer some methods to set up a TCP and UDP sockets used in DogeVPN
+  - ssl_utils used to set up an SSL connection in TCP communication between client and server.
+    These features allow you to exchange login information securely
+  - tun_utils contains all the structures to handle packets from TUN devices
+  - vpn_data_utils contains all the functions needed by both the client and the server
+    to send the packet in the correct format
+
+## How to build and run a simple test using docker compose
 Build
 ```bash
 docker compose build

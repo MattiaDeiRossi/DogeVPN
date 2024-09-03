@@ -51,12 +51,19 @@ Build & Run
 
 ```bash
 
+# This stop all the container running in your system and
+# remove images, networks and anonymous volumes. Do not use
+# it if you do not want these operations perform any side effects.
+
 docker stop $(docker ps -q) # Stop already running containers
 docker container prune -f   # Remove all stopped containers from the system
-docker image prune -f       # Removes dangling images, which are not associated with any container and don't have tags
+docker image prune -f       # Removes dangling images,
+                            # which are not associated with any container and don't
+                            # have tags
 docker network prune -f     # Remove unused networks
 docker volume prune -f      # Removes all anonymous volumes not used by any containers
 
+# Start from this point if you do not want a cleared system before running the tests
 docker compose build
 xhost +local:docker         # Allow Qt based GUI to be shown
 docker compose up -d        # Start containers again

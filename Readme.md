@@ -37,15 +37,28 @@ written. The following image shows the network topology of the system.
 
 <img src="documentation/img/Docker-Network.png" title="Docker-Network" height="250" />
 
-Build
+The configured networks are of the bridge type that allow traffic to be forwarded between network segments.
+A bridge network allows containers connected to the same bridge to communicate while providing isolation from
+unconnected containers to that same bridge.
+
+### Run the example
+
+To do a simple test of DogeVPN's features we decided to provide a complete setup.
+The code written is completely independent of this, although there are some example files
+within this repository to allow this example to work correctly.
+
+Build & Run
+
 ```bash
+
+docker stop $(docker ps -q) # Stop already running containers
+docker container prune -f   # Remove all stopped containers from the system
+docker image prune -f       # Removes dangling images, which are not associated with any container and don't have tags
+docker network prune -f     # Remove unused networks
+docker volume prune -f      # Removes all anonymous volumes not used by any containers
+
 docker compose build
-```
-Allow Qt based GUI to be shown
-```bash
-xhost +local:docker
-```
-Run
-```bash
-docker compose up -d
+xhost +local:docker         # Allow Qt based GUI to be shown
+docker compose up -d        # Start containers again
+
 ```

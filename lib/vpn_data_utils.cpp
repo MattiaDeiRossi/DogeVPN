@@ -274,8 +274,8 @@ namespace vpn_data_utils
     void credentials::log_credentials_from_client_message()
     {
         printf(
-            "%s\n  Username: %s\n  Password: %s\n",
-            "Reading client credentials", username, challenge);
+            "%s\n  Username: %s\n  Challenge size: %ld\n",
+            "Reading client credentials", username, challenge_size);
     }
 
     udp_packet_data::udp_packet_data()

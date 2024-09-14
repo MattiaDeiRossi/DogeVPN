@@ -34,12 +34,12 @@ namespace vpn_data_utils
         vpn_data_utils::raw_key_exchange_data data(ssl_session);
 
         /* To keep track of current data to parse a selector is used. The behaviour
-        *  is the following:
-        *   - SELECTOR=0 -> parsing the KEY
-        *   - SELECTOR=1 -> parsing the ID
-        *   - SELECTOR=2 -> parsing the TUN
-        *   - SELECTOR=3 -> parsing the NETMASK
-        */
+         * is the following:
+         *  - SELECTOR=0 -> parsing the KEY
+         *  - SELECTOR=1 -> parsing the ID
+         *  - SELECTOR=2 -> parsing the TUN
+         *  - SELECTOR=3 -> parsing the NETMASK
+         */
         unsigned char selector = 0;
 
         size_t user_id_size = 0;
@@ -144,38 +144,59 @@ namespace vpn_data_utils
         const char *username,
         const char *password)
     {
-        encryption::packet p((unsigned char*)password, strlen(password));
+
         unsigned char hashed_passwd[encryption::SHA_256_SIZE];
         bzero(hashed_passwd, encryption::SHA_256_SIZE);
-        if (!p.getShaSum(hashed_passwd))
+
+        /* Hash of the password that is shared with the actual server.
+         * This is the shared secret that binds the client to the server.
+         */
+        bool hash_result =
+            encryption::packet((unsigned char *)password, strlen(password))
+                .getShaSum(hashed_passwd);
+
+        if (!hash_result)
         {
             throw std::invalid_argument("hash cannot be computed");
         }
 
-        encryption::packet p2((unsigned char*)username, strlen(username));
-        unsigned char iv[encryption::IV_SIZE_16];
-        bzero(iv, encryption::IV_SIZE_16);
-        auto encrypted_username = p2.encrypt(encryption::encryption_data(hashed_passwd, iv));
-        if(!encrypted_username.has_value())
+        /* Username encrypted under the shared secret.
+         * This is the challenge for the client.
+         */
+        std::optional<encryption::packet> opt_encrypted_username =
+            encryption::packet((unsigned char *)username, strlen(username))
+                .encrypt(encryption::encryption_data(hashed_passwd, NULL));
+
+        if (!opt_encrypted_username.has_value())
         {
             throw std::invalid_argument("cannot encrypt username");
         }
 
-        auto actual_encrypted_username = encrypted_username.value();
+        encryption::packet encrypted_username = opt_encrypted_username.value();
+
         size_t username_size = strlen(username);
-        size_t challenge_size = actual_encrypted_username.size;
+        size_t challenge_size = encrypted_username.size;
 
         if (username_size + challenge_size + 1 > sizeof(raw_credentials))
         {
             throw std::invalid_argument("credentials message too long");
         }
 
+        /* Message composition */
         size_t index = 0;
+
         for (size_t i = 0; i < username_size; i++)
+        {
             raw_message[index++] = username[i];
+        }
+
         raw_message[index++] = MESSAGE_SEPARATOR_POINT;
+
         for (size_t i = 0; i < challenge_size; i++)
-            raw_message[index++] = actual_encrypted_username.buffer[i];
+        {
+            raw_message[index++] = encrypted_username.buffer[i];
+        }
+
         actual_size = username_size + challenge_size + 1;
     }
 

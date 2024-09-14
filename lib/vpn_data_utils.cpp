@@ -144,11 +144,28 @@ namespace vpn_data_utils
         const char *username,
         const char *password)
     {
+        encryption::packet p((unsigned char*)password, strlen(password));
+        unsigned char hashed_passwd[encryption::SHA_256_SIZE];
+        bzero(hashed_passwd, encryption::SHA_256_SIZE);
+        if (!p.getShaSum(hashed_passwd))
+        {
+            throw std::invalid_argument("hash cannot be computed");
+        }
 
+        encryption::packet p2((unsigned char*)username, strlen(username));
+        unsigned char iv[encryption::IV_SIZE_16];
+        bzero(iv, encryption::IV_SIZE_16);
+        auto encrypted_username = p2.encrypt(encryption::encryption_data(hashed_passwd, iv));
+        if(!encrypted_username.has_value())
+        {
+            throw std::invalid_argument("cannot encrypt username");
+        }
+
+        auto actual_encrypted_username = encrypted_username.value();
         size_t username_size = strlen(username);
-        size_t password_size = strlen(password);
+        size_t challenge_size = actual_encrypted_username.size;
 
-        if (username_size + password_size + 1 > sizeof(raw_credentials))
+        if (username_size + challenge_size + 1 > sizeof(raw_credentials))
         {
             throw std::invalid_argument("credentials message too long");
         }
@@ -157,9 +174,9 @@ namespace vpn_data_utils
         for (size_t i = 0; i < username_size; i++)
             raw_message[index++] = username[i];
         raw_message[index++] = MESSAGE_SEPARATOR_POINT;
-        for (size_t i = 0; i < password_size; i++)
-            raw_message[index++] = password[i];
-        actual_size = username_size + password_size + 1;
+        for (size_t i = 0; i < challenge_size; i++)
+            raw_message[index++] = actual_encrypted_username.buffer[i];
+        actual_size = username_size + challenge_size + 1;
     }
 
     void raw_credentials::send(SSL *ssl_session)
@@ -224,10 +241,13 @@ namespace vpn_data_utils
             throw std::invalid_argument("username too short");
         }
 
-        if (username_length == 0 || password_length < SIZE_16)
+        if (password_length == 0)
         {
-            throw std::invalid_argument("password too short");
+            throw std::invalid_argument("invalid hash for password");
         }
+
+        this->username_size = username_length;
+        this->password_size = password_length;
     }
 
     void credentials::log_credentials_from_client_message()
@@ -348,10 +368,6 @@ namespace vpn_data_utils
 
     udp_packet_data::udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id)
     {
-        //TODO - implementare sequential IV con l'altro costruttore di encrypted_data
-        //prendere l'IV dallo stato
-        //get_iv(session_id)
-        
         encryption::encryption_data e_data((const unsigned char *)symmetric_key);
         encryption::packet e_packet = from->encrypt(e_data).value();
 

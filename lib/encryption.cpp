@@ -41,7 +41,6 @@ namespace encryption
         }
 
         /* Initialise the encryption operation. 
-         * Improvements-1 -> use EVP_aes_256_ctr instead
          */
         if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
         {

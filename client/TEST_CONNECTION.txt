@@ -1,0 +1,6 @@
+device: devTun
+domain: 10.5.42.15
+network: 192.168.42.0/24
+password: password_12345678_test
+port: 8080
+username: user1

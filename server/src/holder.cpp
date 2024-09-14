@@ -6,6 +6,7 @@
 #include <file_utils.h>
 #include <ssl_utils.h>
 #include <vpn_data_utils.h>
+#include <utils.h>
 
 namespace holder
 {
@@ -176,8 +177,6 @@ namespace holder
         holder.tcp_info.length = info->length;
         holder.tcp_info.address = info->address;
 
-        bzero(holder.iv, sizeof(holder.iv));
-
         SSL *ssl;
         if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1)
         {
@@ -223,10 +222,27 @@ namespace holder
 
         std::map<std::string, std::string> user_row = user_row_opt.value();
         std::string user_password = user_row["password"];
+        unsigned char decryption_key[SIZE_32];
+        utils::hex_string_to_bytes(user_password, decryption_key, SIZE_32);
 
-        if (user_password.compare(credentials.password) != 0)
+        encryption::packet packet((unsigned char*)credentials.password, credentials.password_size);
+        unsigned char iv[encryption::IV_SIZE_16];
+        bzero(iv, encryption::IV_SIZE_16);
+
+        auto decrypt_challenge = packet.decrypt(encryption::encryption_data(decryption_key, iv));
+        if (!decrypt_challenge.has_value())
         {
+            fprintf(stderr, "register_client_holder: challenge cannot be decrypted\n");
+            ssl_utils::free_ssl(ssl, NULL);
+            return -1;
+        }
 
+        /* Compare decrypt_challenge buffer with the credentials.username
+        */
+        auto actual_decrypt_challenge = decrypt_challenge.value();
+        if (strncmp((char *)actual_decrypt_challenge.buffer, credentials.username, actual_decrypt_challenge.size) != 0)
+        {
+            fprintf(stderr, "register_client_holder: wrong credentials\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }

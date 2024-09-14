@@ -214,32 +214,32 @@ namespace vpn_data_utils
         }
 
         bzero(username, CREDENTIALS_FROM_CLIENT_MESSAGE);
-        bzero(password, CREDENTIALS_FROM_CLIENT_MESSAGE);
+        bzero(challenge, CREDENTIALS_FROM_CLIENT_MESSAGE);
 
         bool reading_username = true;
 
         char *usr_p = username;
-        char *pwd_p = password;
+        char *challenge_p = challenge;
 
         size_t username_length = 0;
-        size_t password_length = 0;
+        size_t challenge_length = 0;
 
         for (size_t i = 0; i < num; ++i)
         {
 
-            char bdata = data[i];
+            char b_data = data[i];
 
             if (reading_username)
             {
 
                 /* While reading credentials alway checking if the separator is the current byte */
-                if (bdata == MESSAGE_SEPARATOR_POINT)
+                if (b_data == MESSAGE_SEPARATOR_POINT)
                 {
                     reading_username = false;
                 }
                 else
                 {
-                    *usr_p = bdata;
+                    *usr_p = b_data;
                     usr_p++;
                     username_length++;
                 }
@@ -248,9 +248,9 @@ namespace vpn_data_utils
             {
 
                 /* From now on the data that is being read represents the password */
-                *pwd_p = bdata;
-                pwd_p++;
-                password_length++;
+                *challenge_p = b_data;
+                challenge_p++;
+                challenge_length++;
             }
         }
 
@@ -262,20 +262,20 @@ namespace vpn_data_utils
             throw std::invalid_argument("username too short");
         }
 
-        if (password_length == 0)
+        if (challenge_length == 0)
         {
-            throw std::invalid_argument("invalid hash for password");
+            throw std::invalid_argument("invalid hash for challenge");
         }
 
         this->username_size = username_length;
-        this->password_size = password_length;
+        this->challenge_size = challenge_length;
     }
 
     void credentials::log_credentials_from_client_message()
     {
         printf(
             "%s\n  Username: %s\n  Password: %s\n",
-            "Reading client credentials", username, password);
+            "Reading client credentials", username, challenge);
     }
 
     udp_packet_data::udp_packet_data()

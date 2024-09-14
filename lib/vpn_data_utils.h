@@ -59,9 +59,10 @@ namespace vpn_data_utils
     {
 
         char username[CREDENTIALS_FROM_CLIENT_MESSAGE];
-        char password[CREDENTIALS_FROM_CLIENT_MESSAGE];
+        char challenge[CREDENTIALS_FROM_CLIENT_MESSAGE];
+
         size_t username_size;
-        size_t password_size;
+        size_t challenge_size;
 
         credentials(const char *data, size_t num);
 

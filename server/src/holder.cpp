@@ -225,7 +225,7 @@ namespace holder
         unsigned char decryption_key[SIZE_32];
         utils::hex_string_to_bytes(user_password, decryption_key, SIZE_32);
 
-        encryption::packet packet((unsigned char*)credentials.password, credentials.password_size);
+        encryption::packet packet((unsigned char*)credentials.challenge, credentials.challenge_size);
         unsigned char iv[encryption::IV_SIZE_16];
         bzero(iv, encryption::IV_SIZE_16);
 

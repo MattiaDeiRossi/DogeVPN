@@ -207,8 +207,8 @@ namespace holder
         credentials.log_credentials_from_client_message();
 
         /* The user id is an important property for communicating over UDP.
-         *  Once the id is fetched, it must be saved in memory.
-         *  This is needed since the packet should be encrypted and decrypted with the correct key.
+         * Once the id is fetched, it must be saved in memory.
+         * This is needed since the packet should be encrypted and decrypted with the correct key.
          */
         std::optional<std::map<std::string, std::string>> user_row_opt =
             file_utils::find_in_multi_key_value_lines(file_path, "username", credentials.username);
@@ -222,25 +222,28 @@ namespace holder
 
         std::map<std::string, std::string> user_row = user_row_opt.value();
         std::string user_password = user_row["password"];
+
+        /* Extract password hash from hex string */
         unsigned char decryption_key[SIZE_32];
         utils::hex_string_to_bytes(user_password, decryption_key, SIZE_32);
 
-        encryption::packet packet((unsigned char*)credentials.challenge, credentials.challenge_size);
-        unsigned char iv[encryption::IV_SIZE_16];
-        bzero(iv, encryption::IV_SIZE_16);
+        std::optional<encryption::packet> opt_decrypted_challenge =
+            encryption::packet((unsigned char*)credentials.challenge, credentials.challenge_size)
+                .decrypt(encryption::encryption_data(decryption_key, NULL));
 
-        auto decrypt_challenge = packet.decrypt(encryption::encryption_data(decryption_key, iv));
-        if (!decrypt_challenge.has_value())
+        if (!opt_decrypted_challenge.has_value())
         {
             fprintf(stderr, "register_client_holder: challenge cannot be decrypted\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
-        /* Compare decrypt_challenge buffer with the credentials.username
-        */
-        auto actual_decrypt_challenge = decrypt_challenge.value();
-        if (strncmp((char *)actual_decrypt_challenge.buffer, credentials.username, actual_decrypt_challenge.size) != 0)
+        encryption::packet decrypted_challenge = opt_decrypted_challenge.value();
+
+        bool eq_size = decrypted_challenge.size == credentials.username_size;
+        bool same_string = eq_size && strncmp((char *)decrypted_challenge.buffer, credentials.username, decrypted_challenge.size) == 0;
+
+        if (!same_string)
         {
             fprintf(stderr, "register_client_holder: wrong credentials\n");
             ssl_utils::free_ssl(ssl, NULL);
@@ -256,7 +259,7 @@ namespace holder
         holder.session_id = session_id;
 
         /* A symmetric key must be generated securely.
-         *  The SSL library is used in order to properly delegate such difficult generation.
+         * The SSL library is used in order to properly delegate such difficult generation.
          */
         unsigned char rand_buf[SIZE_32];
         if (ssl_utils::generate_rand_32(rand_buf) == -1)

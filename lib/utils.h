@@ -3,9 +3,14 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 namespace utils
 {
+    unsigned char hex_char_to_byte(char ch);
+
+	void hex_string_to_bytes(const std::string& hex, unsigned char* byte_array, size_t byte_array_size);
+
     void reverse_string(char *str, size_t length);
 
     int read_reverse(

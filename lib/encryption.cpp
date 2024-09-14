@@ -40,7 +40,7 @@ namespace encryption
             return -1;
         }
 
-        /* Initialise the encryption operation. 
+        /* Initialise the encryption operation.
          */
         if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
         {
@@ -160,9 +160,14 @@ namespace encryption
          *   IV:     16 bytes
          */
         for (size_t i = 0; i < KEY_SIZE_32; i++)
+        {
             this->key[i] = key[i];
+        }
+
         for (size_t i = 0; i < IV_SIZE_16; i++)
-            this->iv[i] = iv[i];
+        {
+            this->iv[i] = iv == NULL ? 0 : iv[i];
+        }
     }
 
     packet::packet()

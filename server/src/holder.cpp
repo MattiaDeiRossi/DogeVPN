@@ -176,6 +176,8 @@ namespace holder
         holder.tcp_info.length = info->length;
         holder.tcp_info.address = info->address;
 
+        bzero(holder.iv, sizeof(holder.iv));
+
         SSL *ssl;
         if (ssl_utils::bind_ssl(ctx, info->socket, &ssl, true) == -1)
         {
@@ -337,6 +339,7 @@ namespace holder
             else
                 printf("%02X::", (unsigned char)message[i]);
         }
+        
 
         return 0;
     }

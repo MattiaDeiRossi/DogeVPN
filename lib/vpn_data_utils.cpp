@@ -348,7 +348,10 @@ namespace vpn_data_utils
 
     udp_packet_data::udp_packet_data(encryption::packet *from, const char *symmetric_key, int session_id)
     {
-
+        //TODO - implementare sequential IV con l'altro costruttore di encrypted_data
+        //prendere l'IV dallo stato
+        //get_iv(session_id)
+        
         encryption::encryption_data e_data((const unsigned char *)symmetric_key);
         encryption::packet e_packet = from->encrypt(e_data).value();
 

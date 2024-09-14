@@ -16,6 +16,7 @@ namespace holder
 
     const size_t SIZE_512 = 512;
     const size_t SIZE_32 = 32;
+    const size_t SIZE_16 = 16;
 
     const char MESSAGE_SEPARATOR_POINT = '.';
     const char MESSAGE_SEPARATOR_OPEN = '(';
@@ -42,6 +43,9 @@ namespace holder
         unsigned int session_id;
         unsigned char symmetric_key[SIZE_32];
 
+        /* This value represent the Initial Vector value for every client. This is stored to check the order of the packets.
+         */
+        unsigned char iv[SIZE_16];
         /* The idea behind this data is that it is the server that is in charge of telling the client
          * that wants to connect what is the IPv4 that they should use to properly configure the TUN device.
          * By doing so the client can freely start the communication without selecting the proper IPv4 to assign to the

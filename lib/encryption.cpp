@@ -272,7 +272,14 @@ namespace encryption
         if (!getShaSum(computed_hash))
             return false;
 
-        return strncmp((const char *)computed_hash, (const char *)hash, SHA_256_SIZE) == 0 ? true : false;
+        for (size_t i = 0; i < SHA_256_SIZE; i++)
+        {
+            if (computed_hash[i] != hash[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool packet::append(unsigned const char *data, size_t num)

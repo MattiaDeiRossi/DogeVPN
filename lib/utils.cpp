@@ -88,4 +88,16 @@ namespace utils
 
         return n >= name_size;
     }
+
+	std::string string_from_bytes(unsigned const char *bytes, size_t n) {
+
+		std::string ret;
+
+		for (size_t i = 0; i < n; i++)
+		{
+			ret.push_back(bytes[i]);
+		}
+
+		return ret;
+	}
 }

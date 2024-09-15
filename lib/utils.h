@@ -22,6 +22,8 @@ namespace utils
         bool strict_size);
 
     bool start_with(const char *raw_message, size_t n, std::string start);
+
+    std::string string_from_bytes(unsigned const char *bytes, size_t n);
 }
 
 #endif

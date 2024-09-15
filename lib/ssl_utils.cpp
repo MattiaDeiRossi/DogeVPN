@@ -233,7 +233,7 @@ namespace ssl_utils
         return bytes;
     }
 
-    int write(SSL *ssl, char *buffer, size_t num)
+    int write(SSL *ssl, const char *buffer, size_t num)
     {
 
         /* Errors can be different.
@@ -249,7 +249,7 @@ namespace ssl_utils
         return bytes;
     }
 
-    int write_or_throw(SSL *ssl, char *buffer, size_t num)
+    int write_or_throw(SSL *ssl, const char *buffer, size_t num)
     {
 
         int bytes = write(ssl, buffer, num);

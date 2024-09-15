@@ -12,6 +12,8 @@ add_library(encryption ../lib/encryption.cpp)
 add_library(socket_utils ../lib/socket_utils.cpp)
 add_library(ssl_utils ../lib/ssl_utils.cpp)
 add_library(utils ../lib/utils.cpp)
+add_library(random_utils ../lib/random_utils.cpp)
+add_library(key_exchange_utils ../lib/key_exchange_utils.cpp)
 add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
 add_library(tun_utils ../lib/tun_utils.cpp)
 add_library(logging ../lib/logging.cpp)
@@ -24,6 +26,8 @@ target_link_libraries(vpnserver
   encryption
   socket_utils
   ssl_utils
+  random_utils
+  key_exchange_utils
   holder
   vpn_data_utils
   tun_utils

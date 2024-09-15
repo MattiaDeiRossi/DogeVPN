@@ -178,7 +178,7 @@ namespace encryption
         size = 0;
     }
 
-    packet::packet(unsigned char *data, size_t num)
+    packet::packet(unsigned const char *data, size_t num)
     {
 
         bzero(buffer, SIZE_8_192);
@@ -264,7 +264,7 @@ namespace encryption
         return true;
     }
 
-    bool packet::valid_hash(unsigned char *hash)
+    bool packet::valid_hash(unsigned const char *hash)
     {
 
         /* Creating the buffer with the correct hash size */
@@ -275,7 +275,7 @@ namespace encryption
         return strncmp((const char *)computed_hash, (const char *)hash, SHA_256_SIZE) == 0 ? true : false;
     }
 
-    bool packet::append(const unsigned char *data, size_t num)
+    bool packet::append(unsigned const char *data, size_t num)
     {
 
         size_t current_size = size;
@@ -309,5 +309,26 @@ namespace encryption
 
         std::string result = buff;
         return result;
+    }
+
+    std::string compute_hash(std::string message) {
+
+        encryption::packet packet((unsigned const char *) message.c_str(), message.size());
+        unsigned char output[SHA_256_SIZE];
+
+        if (!packet.getShaSum(output))
+        {
+
+            /**/
+            throw std::invalid_argument("hash cannot be computed");
+        }
+
+        std::string hash;
+        for (size_t i = 0; i < sizeof(output); i++)
+        {
+            hash.push_back(output[i]);
+        }
+
+        return hash;
     }
 }

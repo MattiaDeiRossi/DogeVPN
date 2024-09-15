@@ -39,7 +39,7 @@ namespace encryption
         packet();
 
         /* Build a packet initialized with the given parameter */
-        packet(unsigned char *data, size_t num);
+        packet(unsigned const char *data, size_t num);
 
         /* Encrypt this packet given a valid object of type encryption_data. Since
          * encryption may fail (for example when the given argument is wrong, that is the key or the IV are not correct),
@@ -57,10 +57,10 @@ namespace encryption
         bool getShaSum(unsigned char *output);
 
         /* Check whether, given an hash, this packet represents the same hash */
-        bool valid_hash(unsigned char *hash);
+        bool valid_hash(unsigned const char *hash);
 
         /* Modify this packet with the given argument */
-        bool append(const unsigned char *data, size_t num);
+        bool append(unsigned const char *data, size_t num);
 
         /* Modify this packet with the given argument */
         bool append(unsigned char data);
@@ -68,6 +68,8 @@ namespace encryption
         /* Build a simple representation of this packet */
         std::string to_s();
     };
+
+    std::string compute_hash(std::string message);
 }
 
 #endif

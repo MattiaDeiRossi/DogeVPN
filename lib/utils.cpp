@@ -100,4 +100,8 @@ namespace utils
 
 		return ret;
 	}
+
+	bool equal(std::string str_one, std::string str_two) {
+		return str_one.compare(str_two) == 0;
+	}
 }

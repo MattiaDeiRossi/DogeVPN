@@ -72,4 +72,20 @@ namespace utils
 
 		return j;
 	}
+
+	bool start_with(const char *raw_message, size_t n, std::string start)
+    {
+
+        size_t name_size = start.size();
+
+        for (size_t i = 0; i < n; i++)
+        {
+            if (i == name_size)
+                return true;
+            if (raw_message[i] != start[i])
+                return false;
+        }
+
+        return n >= name_size;
+    }
 }

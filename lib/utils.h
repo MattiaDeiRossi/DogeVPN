@@ -20,6 +20,8 @@ namespace utils
         ssize_t src_size,
         ssize_t *current_index,
         bool strict_size);
+
+    bool start_with(const char *raw_message, size_t n, std::string start);
 }
 
 #endif

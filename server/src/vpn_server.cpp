@@ -11,7 +11,7 @@
 #include <logging.h>
 
 /* This function will handle thw whole TLS handshake */
-void handle_tls_handshake(
+void handle_authentication(
     SSL_CTX *ctx,
     socket_utils::tcp_client_info *info,
     holder::client_register *c_register,
@@ -251,7 +251,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
                          * Instead of blocking the entire server we may want to block only one thread.
                          * This thread is in charge of establish a TLS connection and exchange a key for UDP.
                          */
-                        std::thread(handle_tls_handshake, ctx, &info, &c_register, &logger, config["users"].c_str())
+                        std::thread(handle_authentication, ctx, &info, &c_register, &logger, config["users"].c_str())
                             .detach();
                     }
                 }

@@ -88,12 +88,14 @@ namespace random_utils
 
         /**/
         unsigned char random_bytes[8];
-        generate_8(random_bytes, false);
+        generate_8(random_bytes, secure);
 
         /**/
         for (size_t i = 0; i < 16; i++)
         {
             buffer[i] = i < 8 ? random_bytes[i % 8] : timestamp[i % 8];
         }
+
+        return 0;
     }
 }

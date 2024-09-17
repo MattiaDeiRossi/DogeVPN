@@ -435,8 +435,6 @@ namespace key_exchange_utils
     bool altered_MS_CHAPV2_m2_server_receiver_t::valid_response(unsigned const char *client_challenge, unsigned const char *shared_secret)
     {
 
-        /* the pseudorandom string (B) and the user's password are all encrypted*/
-
         std::string data_to_hash;
         PUSH_BACK(data_to_hash, client_challenge, MAX_CHALLENGE_SIZE);
         PUSH_BACK(data_to_hash, shared_secret, MAX_KEY_SIZE);
@@ -450,13 +448,11 @@ namespace key_exchange_utils
     std::optional<altered_MS_CHAPV2_message> parse(const char *raw_message, size_t n)
     {
 
-        std::optional<altered_MS_CHAPV2_message> ret_value = std::nullopt;
+        altered_MS_CHAPV2_identifier_t m1_s(m1_server);
+        altered_MS_CHAPV2_identifier_t m2_s(m2_server);
+        altered_MS_CHAPV2_identifier_t m1_c(m1_client);
 
         altered_MS_CHAPV2_identifier_t m_identifier;
-        altered_MS_CHAPV2_identifier_t m1_s = altered_MS_CHAPV2_identifier_t(m1_server);
-        altered_MS_CHAPV2_identifier_t m2_s = altered_MS_CHAPV2_identifier_t(m2_server);
-        altered_MS_CHAPV2_identifier_t m1_c = altered_MS_CHAPV2_identifier_t(m1_client);
-
         if (utils::start_with(raw_message, n, m1_s.to_s()))
         {
             m_identifier = m1_s;
@@ -471,45 +467,35 @@ namespace key_exchange_utils
         }
         else
         {
-            return ret_value;
+            return std::nullopt;
         }
 
+        altered_MS_CHAPV2_message message;
         try
         {
             if (m_identifier.message_type == m1_s.message_type)
             {
-
-                /**/
-                altered_MS_CHAPV2_message message;
                 message.type = m1_server;
                 message.m1_server = altered_MS_CHAPV2_m1_server_receiver_t(raw_message, n);
-                ret_value = message;
+                return message;
             }
             else if (m_identifier.message_type == m2_s.message_type)
             {
-
-                /**/
-                altered_MS_CHAPV2_message message;
                 message.type = m2_server;
                 message.m2_server = altered_MS_CHAPV2_m2_server_receiver_t(raw_message, n);
-                ret_value = message;
+                return message;
             }
             else
             {
-
-                /**/
-                altered_MS_CHAPV2_message message;
                 message.type = m1_client;
                 message.m1_client = altered_MS_CHAPV2_m1_client_receiver_t(raw_message, n);
-                ret_value = message;
+                return message;
             }
         }
         catch (const std::exception &e)
         {
-            std::cerr << e.what() << '\n';
+            std::cerr << "Exception caught during parsing: " << e.what() << '\n';
+            return std::nullopt;
         }
-
-        return ret_value;
     }
-
 }

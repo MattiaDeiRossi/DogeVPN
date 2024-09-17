@@ -26,7 +26,7 @@ fi
 
 # Start containers again
 
-docker compose build
+docker compose build --progress plain
 xhost +local:docker
 docker compose up -d
 

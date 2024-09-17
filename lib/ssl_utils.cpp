@@ -221,16 +221,16 @@ namespace ssl_utils
         return bytes;
     }
 
-    int read_or_throw(SSL *ssl, char *buffer, size_t num)
+    size_t read_or_throw(SSL *ssl, char *buffer, size_t num)
     {
 
         int bytes = read(ssl, buffer, num);
-        if (bytes == -1)
+        if (bytes < 0)
         {
             throw std::invalid_argument("SSL report read failure");
         }
 
-        return bytes;
+        return static_cast<size_t>(bytes);
     }
 
     int write(SSL *ssl, const char *buffer, size_t num)

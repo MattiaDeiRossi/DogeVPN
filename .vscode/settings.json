@@ -85,7 +85,12 @@
     "scoped_allocator": "cpp",
     "span": "cpp",
     "syncstream": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "buffer": "cpp",
+    "executor": "cpp",
+    "io_context": "cpp",
+    "netfwd": "cpp",
+    "socket": "cpp"
   },
   "cSpell.words": [
     "CHAPV",

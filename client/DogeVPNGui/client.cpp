@@ -8,6 +8,7 @@
 #include <ssl_utils.h>
 #include <vpn_data_utils.h>
 #include <tun_utils.h>
+#include <key_exchange_utils.h>
 
 bool stop_flag = false;
 
@@ -21,7 +22,7 @@ void handle_tcp_packet(SSL *ssl_session) {}
 void handle_udp_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t tun_device,
-    vpn_data_utils::key_exchange_data key_exchange)
+    unsigned char *key)
 {
 
     encryption::packet e_packet;
@@ -32,7 +33,7 @@ void handle_udp_packet(
      */
     encryption::packet d_packet =
         vpn_data_utils::udp_packet_data(&e_packet, true)
-            .decrypt(key_exchange.key)
+            .decrypt(key)
             .value();
 
     tun_device.write_data(d_packet.buffer, d_packet.size);
@@ -41,7 +42,8 @@ void handle_udp_packet(
 void handle_tun_packet(
     socket_utils::socket_t udp_socket,
     tun_utils::tundev_t tun_device,
-    vpn_data_utils::key_exchange_data key_exchange,
+    unsigned const char *key,
+    unsigned int session_id,
     std::vector<tun_utils::ipv4_netmask_t> nets)
 {
 
@@ -71,7 +73,7 @@ void handle_tun_packet(
          * It is encrypted with the received key.
          */
         encryption::packet tun_pkt((unsigned char *)frame.data, frame.size);
-        vpn_data_utils::udp_packet_data(&tun_pkt, (char *)key_exchange.key, key_exchange.id_to_i())
+        vpn_data_utils::udp_packet_data(&tun_pkt, (const char *)key, session_id)
             .send_or_throw(udp_socket);
     }
 }
@@ -103,19 +105,31 @@ int start_doge_vpn(
     socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
+    /**/
+    unsigned char key_buffer[key_exchange_utils::MAX_KEY_SIZE];
+    std::string hashed_password = encryption::compute_hash(pwd);
+    const unsigned char *secret = (const unsigned char *)hashed_password.c_str();
+
+    int mschap_res = key_exchange_utils::complete_synced_altered_MS_CHAPV2_client_flow(ssl_session, secret, user, key_buffer);
+
+    if (mschap_res != 0) {
+        std::cout << mschap_res << std::endl;
+        throw std::invalid_argument("Here");
+    }
+
+    vpn_data_utils::id_ip_netmask id_ip_net = vpn_data_utils::receive_tun_ip(ssl_session);
+
     /* First message to exchange between client and server under a TLS sessions.
      * After this exchange, the following data is available:
      *  - key:      the symmetric key with which udp packets will be encrypted
      *  - id:       the id for this client
      *  - tun_ip:   the ip to assign to the TUN device
      */
-    vpn_data_utils::raw_credentials(user, pwd).send(ssl_session);
-    vpn_data_utils::key_exchange_data key_exchange(ssl_session);
 
     /* Create the VPN tunnel by making use of the TUN devices. After the key exchange procedure, all the
      *  needed data is available to configure a new entry for the routing table.
      */
-    tun_utils::tundev_t tun_device(device_name, (const char *)key_exchange.tun_ip, key_exchange.netmask_to_i());
+    tun_utils::tundev_t tun_device(device_name, id_ip_net.ip.c_str(), id_ip_net.netmask);
     tun_device.persist();
 
     for (auto net : nets)
@@ -167,9 +181,9 @@ int start_doge_vpn(
                     if (socket == tcp_socket)
                         handle_tcp_packet(ssl_session);
                     else if (socket == udp_socket)
-                        handle_udp_packet(udp_socket, tun_device, key_exchange);
+                        handle_udp_packet(udp_socket, tun_device, key_buffer);
                     else if (socket == tun_device.fd)
-                        handle_tun_packet(udp_socket, tun_device, key_exchange, nets);
+                        handle_tun_packet(udp_socket, tun_device, key_buffer, id_ip_net.session, nets);
                 }
                 catch (const std::exception &e)
                 {

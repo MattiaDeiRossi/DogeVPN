@@ -20,6 +20,13 @@ namespace vpn_data_utils
     const unsigned short KEY_EXCHANGE_FROM_SERVER_MESSAGE_SIZE = 128;
     const unsigned short CREDENTIALS_FROM_CLIENT_MESSAGE = 256;
 
+    struct id_ip_netmask {
+
+        std::string ip;
+        unsigned char netmask;
+        unsigned int session;
+    };
+
     struct raw_key_exchange_data
     {
 
@@ -113,6 +120,8 @@ namespace vpn_data_utils
     std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, bool from_server);
 
     std::optional<udp_packet_data> udp_packet_data_or_empty(encryption::packet *from, const char *key, int user_id);
+
+    id_ip_netmask receive_tun_ip(SSL *ssl);
 }
 
 #endif

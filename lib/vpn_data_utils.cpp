@@ -639,4 +639,87 @@ namespace vpn_data_utils
 
         return buff;
     }
+
+    id_ip_netmask receive_tun_ip(SSL *ssl)
+    {
+
+        std::string session_id;
+        std::string tun_ip;
+        std::string netmask;
+
+        char buffer[128];
+        size_t bytes_read = ssl_utils::read_or_throw(ssl, buffer, sizeof(buffer));
+
+        /* To keep track of current data to parse a selector is used. The behaviour
+         * is the following:
+         *  - SELECTOR=0 -> parsing the TUN
+         *  - SELECTOR=1 -> parsing the NETMASK
+         */
+        unsigned char selector = 0;
+
+        for (size_t i = 0; i < bytes_read; i++)
+        {
+            char byte_data = buffer[i];
+            int is_digit = isdigit(byte_data);
+            int is_point = byte_data == MESSAGE_SEPARATOR_POINT;
+            int is_div = byte_data == MESSAGE_SEPARATOR_DIV;
+
+            if (selector == 0)
+            {
+                if (tun_ip.size() > 15 || !(is_digit || is_point || is_div))
+                {
+                    const char *error_message = "TUN cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
+                }
+                else if (is_digit || is_point)
+                {
+                    tun_ip.push_back(byte_data);
+                    continue;
+                }
+                else if (is_div)
+                {
+                    selector = 1;
+                    continue;
+                }
+            }
+
+            if (selector == 1)
+            {
+                if (netmask.size() > 2 || !is_digit)
+                {
+                    const char *error_message = "NETMASK cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
+                }
+                else if (is_digit)
+                {
+                    netmask.push_back(byte_data);
+                    if (netmask.size() == 2)
+                    {
+                        selector = 2;
+                    }
+                    continue;
+                }
+            }
+
+            if (selector == 2)
+            {
+                if (!is_digit)
+                {
+                    const char *error_message = "ID cannot be extracted since the packet is malformed";
+                    throw std::invalid_argument(error_message);
+                }
+
+                session_id.push_back(byte_data);
+            }
+        }
+
+        /**/
+        id_ip_netmask ret;
+        ret.ip = tun_ip;
+        ret.session = std::stoi(session_id);
+        ret.netmask = static_cast<unsigned char>(std::stoi(netmask));
+
+
+        return ret;
+    }
 }

@@ -69,15 +69,12 @@ namespace key_exchange_utils
         return identifier;
     }
 
-    altered_MS_CHAPV2_m1_server_sender_t::altered_MS_CHAPV2_m1_server_sender_t(unsigned int session_id)
+    altered_MS_CHAPV2_m1_server_sender_t::altered_MS_CHAPV2_m1_server_sender_t()
     {
 
         /**/
         random_utils::random random;
         random.generate_timestamp_random_16(server_challenge, false);
-
-        /**/
-        this->session_id = session_id;
 
         /**/
         message_identifier = altered_MS_CHAPV2_identifier_t(m1_server);
@@ -88,15 +85,14 @@ namespace key_exchange_utils
 
         /**/
         std::string message_to_send = message_identifier.to_s();
-        message_to_send
-            .append(std::to_string(session_id))
-            .append(".");
-
-        /**/
         PUSH_BACK(message_to_send, server_challenge, sizeof(server_challenge));
 
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
+    }
+
+    altered_MS_CHAPV2_m1_server_receiver_t::altered_MS_CHAPV2_m1_server_receiver_t() {
+        bzero(server_challenge, sizeof(this->server_challenge));
     }
 
     void altered_MS_CHAPV2_m1_server_receiver_t::receive(SSL *ssl)
@@ -114,17 +110,7 @@ namespace key_exchange_utils
         }
 
         /**/
-        char session_id_buff[MAX_SESSION_ID_SIZE];
-        bzero(session_id_buff, sizeof(session_id_buff));
-
-        /**/
         unsigned char challenge[MAX_CHALLENGE_SIZE];
-
-        /**/
-        bool reading_session_id = true;
-        bool reading_challenge = false;
-
-        size_t session_id_index = 0;
         size_t challenge_index = 0;
         size_t start_index = m_identifier.to_s().size();
 
@@ -133,67 +119,23 @@ namespace key_exchange_utils
 
             char b_data = raw_message[i];
 
-            if (reading_session_id)
+            if (challenge_index == MAX_CHALLENGE_SIZE)
             {
-
-                if (isdigit(b_data))
-                {
-
-                    /**/
-                    if (session_id_index == MAX_SESSION_ID_SIZE)
-                    {
-
-                        throw std::invalid_argument("");
-                    }
-                    else
-                    {
-                        session_id_buff[session_id_index] = b_data;
-                        session_id_index += 1;
-                        continue;
-                    }
-                }
-                else if (b_data == '.')
-                {
-
-                    /**/
-                    reading_session_id = false;
-                    reading_challenge = true;
-                    continue;
-                }
-                else
-                {
-
-                    /**/
-                    throw std::invalid_argument("");
-                }
+                /**/
+                throw std::invalid_argument("");
             }
 
-            if (reading_challenge)
-            {
-
-                if (challenge_index == MAX_CHALLENGE_SIZE)
-                {
-
-                    /**/
-                    throw std::invalid_argument("");
-                }
-                else
-                {
-                    challenge[challenge_index] = b_data;
-                    challenge_index += 1;
-                }
-            }
+            challenge[challenge_index] = b_data;
+            challenge_index += 1;
         }
 
-        if (session_id_index > MAX_SESSION_ID_SIZE || challenge_index != MAX_CHALLENGE_SIZE)
+        if (challenge_index != MAX_CHALLENGE_SIZE)
         {
-
             /**/
             throw std::invalid_argument("");
         }
 
         /**/
-        session_id = std::stoi(session_id_buff);
         message_identifier = m_identifier;
         memcpy(server_challenge, challenge, sizeof(server_challenge));
     }
@@ -201,9 +143,10 @@ namespace key_exchange_utils
     altered_MS_CHAPV2_m1_client_sender_t::altered_MS_CHAPV2_m1_client_sender_t(
         const char *username,
         unsigned const char *server_challenge,
-        unsigned const char *shared_secret,
-        unsigned int session_id)
+        unsigned const char *shared_secret)
     {
+
+        std::cout << "Sending: " << username << std::endl;
 
         /**/
         message_identifier = altered_MS_CHAPV2_identifier_t(m1_client);
@@ -218,12 +161,11 @@ namespace key_exchange_utils
 
         /**/
         memcpy(this->server_challenge, server_challenge, sizeof(this->server_challenge));
+        utils::log_hex(this->server_challenge, sizeof(this->server_challenge));
 
         /**/
         memcpy(this->shared_secret, shared_secret, sizeof(this->shared_secret));
-
-        /**/
-        this->session_id = session_id;
+        utils::log_hex(this->shared_secret, sizeof(this->shared_secret));
     }
 
     void altered_MS_CHAPV2_m1_client_sender_t::send(SSL *ssl)
@@ -232,21 +174,26 @@ namespace key_exchange_utils
         /**/
         std::string data_to_hash;
         PUSH_BACK(data_to_hash, server_challenge, sizeof(server_challenge));
-        PUSH_BACK(data_to_hash, std::to_string(session_id), std::to_string(session_id).size());
         PUSH_BACK(data_to_hash, shared_secret, sizeof(shared_secret));
         std::string computed_hash = encryption::compute_hash(data_to_hash);
 
         /**/
         std::string message_to_send = message_identifier.to_s();
-        message_to_send
-            .append(username)
-            .append(".");
-
+        PUSH_BACK(message_to_send, username, strlen(username));
+        PUSH_BACK(message_to_send, ".", strlen("."));
         PUSH_BACK(message_to_send, client_challenge, sizeof(client_challenge));
         PUSH_BACK(message_to_send, computed_hash, computed_hash.size());
 
+        std::cout << "sending: " << message_to_send << std::endl;
+
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
+    }
+
+    altered_MS_CHAPV2_m1_client_receiver_t::altered_MS_CHAPV2_m1_client_receiver_t() {
+        bzero(username, sizeof(username));
+        bzero(client_challenge, sizeof(client_challenge));
+        bzero(hashed_challenge, sizeof(hashed_challenge));
     }
 
     void altered_MS_CHAPV2_m1_client_receiver_t::receive(SSL *ssl)
@@ -365,18 +312,23 @@ namespace key_exchange_utils
     }
 
     bool altered_MS_CHAPV2_m1_client_receiver_t::valid_response(
-        unsigned int session_id,
         unsigned const char *server_challenge,
         unsigned const char *shared_secret)
     {
 
-        std::string session_id_str = std::to_string(session_id);
-
         // the pseudorandom string (A), the session identifier (IdS), the user password, under the SHA256.
         std::string data_to_hash;
         PUSH_BACK(data_to_hash, server_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(data_to_hash, session_id_str, session_id_str.size());
         PUSH_BACK(data_to_hash, shared_secret, MAX_KEY_SIZE);
+
+        utils::log_hex(server_challenge, MAX_CHALLENGE_SIZE);
+        utils::log_hex(shared_secret, MAX_HASH_SIZE);
+
+        std::string a = encryption::compute_hash(data_to_hash);
+        std::string b = utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE);
+
+        utils::log_hex(a.c_str(), MAX_HASH_SIZE);
+        utils::log_hex(b.c_str(), MAX_HASH_SIZE);
 
         /**/
         return encryption::compute_hash(data_to_hash)
@@ -410,6 +362,10 @@ namespace key_exchange_utils
 
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
+    }
+
+    altered_MS_CHAPV2_m2_server_receiver_t::altered_MS_CHAPV2_m2_server_receiver_t() {
+        bzero(hashed_challenge, sizeof(hashed_challenge));
     }
 
     void altered_MS_CHAPV2_m2_server_receiver_t::receive(SSL *ssl)
@@ -465,30 +421,36 @@ namespace key_exchange_utils
 
     int complete_synced_altered_MS_CHAPV2_server_flow(
         SSL *ssl,
-        unsigned int session_id,
-        std::string (*secret_fetcher)(const char *),
+        credential_fetcher *fetcher,
         unsigned char *key_buffer)
     {
-        altered_MS_CHAPV2_m1_server_sender_t m1_server_message(session_id);
+        altered_MS_CHAPV2_m1_server_sender_t m1_server_message;
         TRY_EXP_OR_RETURN(m1_server_message.send(ssl), -1);
 
         altered_MS_CHAPV2_m1_client_receiver_t m1_client_message;
         TRY_EXP_OR_RETURN(m1_client_message.receive(ssl), -2);
 
         /**/
-        std::string shared_secret = secret_fetcher(m1_client_message.username);
+        std::string shared_secret = fetcher->secret_by_username(m1_client_message.username);
+        if (shared_secret.empty())
+        {
+            ssl_utils::free_ssl(ssl, NULL);
+            return -3;
+        }
+
         const unsigned char *secret_p = (const unsigned char *)shared_secret.c_str();
 
-        bool valid_response = m1_client_message.valid_response(session_id, m1_client_message.hashed_challenge, secret_p);
+        bool valid_response = m1_client_message.valid_response(m1_server_message.server_challenge, secret_p);
         if (!valid_response)
         {
             /**/
-            return -3;
+            ssl_utils::free_ssl(ssl, NULL);
+            return -4;
         }
 
         /**/
         altered_MS_CHAPV2_m2_server_sender_t m2_s(m1_client_message.client_challenge, secret_p);
-        TRY_EXP_OR_RETURN(m2_s.send(ssl), -4);
+        TRY_EXP_OR_RETURN(m2_s.send(ssl), -5);
 
         /**/
         std::string key_no_hash;
@@ -514,7 +476,7 @@ namespace key_exchange_utils
         altered_MS_CHAPV2_m1_server_receiver_t m1_sr;
         TRY_EXP_OR_RETURN(m1_sr.receive(ssl), -1);
 
-        altered_MS_CHAPV2_m1_client_sender_t m1_cs(username, m1_sr.server_challenge, secret, m1_sr.session_id);
+        altered_MS_CHAPV2_m1_client_sender_t m1_cs(username, m1_sr.server_challenge, secret);
         TRY_EXP_OR_RETURN(m1_cs.send(ssl), -2);
 
         altered_MS_CHAPV2_m2_server_receiver_t m2_sr;
@@ -524,6 +486,7 @@ namespace key_exchange_utils
         if (!valid_response)
         {
             /**/
+            ssl_utils::free_ssl(ssl, NULL);
             return -4;
         }
 

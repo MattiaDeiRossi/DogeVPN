@@ -104,4 +104,16 @@ namespace utils
 	bool equal(std::string str_one, std::string str_two) {
 		return str_one.compare(str_two) == 0;
 	}
+
+	void log_hex(const void *buffer, size_t n) {
+
+		const unsigned char *c_buffer = (const unsigned char *) buffer;
+
+		for (size_t i = 0; i < n; i++)
+		{
+			printf("%02X", c_buffer[i]);
+		}
+
+		printf("\n");
+	}
 }

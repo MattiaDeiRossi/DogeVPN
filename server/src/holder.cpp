@@ -7,9 +7,54 @@
 #include <ssl_utils.h>
 #include <vpn_data_utils.h>
 #include <utils.h>
+#include <key_exchange_utils.h>
 
 namespace holder
 {
+
+    struct credentials_fetcher : key_exchange_utils::credential_fetcher
+    {
+
+        std::string path;
+
+        credentials_fetcher(std::string path)
+        {
+            this->path = path;
+        }
+
+        std::string secret_by_username(std::string username) override
+        {
+
+            using namespace std;
+
+            const char *filter_key = "username";
+            const char *password_key = "password";
+
+            optional<map<string, string>> user_row_opt =
+                file_utils::find_in_multi_key_value_lines(path.c_str(), filter_key, username.c_str());
+
+            if (!user_row_opt.has_value())
+            {
+                string empty;
+                return empty;
+            }
+
+            map<string, string> user_row = user_row_opt.value();
+
+            /**/
+            unsigned char symmetric_key[key_exchange_utils::MAX_KEY_SIZE];
+            utils::hex_string_to_bytes(user_row[password_key], symmetric_key, SIZE_32);
+
+            string password;
+            for (size_t i = 0; i < sizeof(symmetric_key); i++)
+            {
+                /**/
+                password.push_back(symmetric_key[i]);
+            }
+
+            return password;
+        }
+    };
 
     unsigned char extract_netmask(client_register *c_register)
     {
@@ -82,6 +127,7 @@ namespace holder
             tun_ip old_client_tun_ip = old_holder.client_tun_ip;
 
             c_register->pool.insert(old_holder.client_tun_ip_id);
+            c_register->session_pool->push_back(session_id);
 
             if (c_register->tun_ip_per_session.count(old_client_tun_ip) != 0)
             {
@@ -188,89 +234,29 @@ namespace holder
         ssl_utils::log_ssl_cipher(ssl, info->address, info->length);
         holder.ssl = ssl;
 
-        char credentials_buffer[SIZE_512];
-        int bytes_read = ssl_utils::read(ssl, credentials_buffer, sizeof(credentials_buffer));
-        if (bytes_read == -1)
-        {
-            fprintf(stderr, "register_client_holder: client closed connection and credentials cannot be verified\n");
-            return -1;
-        }
+        /**/
 
-        std::optional<vpn_data_utils::credentials> credentials_opt = create_credentials(credentials_buffer, bytes_read);
-        if (!credentials_opt.has_value())
+        std::optional<size_t> opt_session_id = session_pool->pop_next();
+        if (!opt_session_id.has_value())
         {
-            fprintf(stderr, "register_client_holder: client credentials cannot be initialized\n");
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
-        vpn_data_utils::credentials credentials = credentials_opt.value();
-        credentials.log_credentials_from_client_message();
+        /**/
+        credentials_fetcher fetcher(file_path);
+        unsigned char key_buffer[key_exchange_utils::MAX_KEY_SIZE];
+        int result = key_exchange_utils::complete_synced_altered_MS_CHAPV2_server_flow(ssl, &fetcher, key_buffer);
 
-        /* The user id is an important property for communicating over UDP.
-         * Once the id is fetched, it must be saved in memory.
-         * This is needed since the packet should be encrypted and decrypted with the correct key.
-         */
-        std::optional<std::map<std::string, std::string>> user_row_opt =
-            file_utils::find_in_multi_key_value_lines(file_path, "username", credentials.username);
-
-        if (!user_row_opt.has_value())
-        {
-
-            ssl_utils::free_ssl(ssl, NULL);
+        if (result != 0) {
+            /**/
+            std::cout << result << std::endl;
+            session_pool->push_back(opt_session_id.value());
             return -1;
         }
 
-        std::map<std::string, std::string> user_row = user_row_opt.value();
-        std::string user_password = user_row["password"];
-
-        /* Extract password hash from hex string */
-        unsigned char decryption_key[SIZE_32];
-        utils::hex_string_to_bytes(user_password, decryption_key, SIZE_32);
-
-        std::optional<encryption::packet> opt_decrypted_challenge =
-            encryption::packet((unsigned char*)credentials.challenge, credentials.challenge_size)
-                .decrypt(encryption::encryption_data(decryption_key, NULL));
-
-        if (!opt_decrypted_challenge.has_value())
-        {
-            fprintf(stderr, "register_client_holder: challenge cannot be decrypted\n");
-            ssl_utils::free_ssl(ssl, NULL);
-            return -1;
-        }
-
-        encryption::packet decrypted_challenge = opt_decrypted_challenge.value();
-
-        bool eq_size = decrypted_challenge.size == credentials.username_size;
-        bool same_string = eq_size && strncmp((char *)decrypted_challenge.buffer, credentials.username, decrypted_challenge.size) == 0;
-
-        if (!same_string)
-        {
-            fprintf(stderr, "register_client_holder: wrong credentials\n");
-            ssl_utils::free_ssl(ssl, NULL);
-            return -1;
-        }
-
-        int session_id = stoi(user_row["session_id"]);
-
-        char id_buf[SIZE_32];
-        memset(id_buf, 0, sizeof(id_buf));
-        sprintf(id_buf, "%d", session_id);
-
-        holder.session_id = session_id;
-
-        /* A symmetric key must be generated securely.
-         * The SSL library is used in order to properly delegate such difficult generation.
-         */
-        unsigned char rand_buf[SIZE_32];
-        if (ssl_utils::generate_rand_32(rand_buf) == -1)
-        {
-            fprintf(stderr, "register_client_holder: random bytes cannot be generated\n");
-            ssl_utils::free_ssl(ssl, NULL);
-            return -1;
-        }
-
-        memcpy(holder.symmetric_key, rand_buf, sizeof(rand_buf));
+        holder.session_id = opt_session_id.value();
+        memcpy(holder.symmetric_key, key_buffer, sizeof(key_buffer));
 
         /* Check error*/
         if (!insert_client_holder(holder))
@@ -281,33 +267,22 @@ namespace holder
         }
 
         /* Composing the first message for the client. */
-        int start = 0;
+        size_t start = 0;
         char message[SIZE_512];
         bzero(message, sizeof(message));
 
-        for (size_t i = 0; i < sizeof(rand_buf); i++)
-            message[start++] = rand_buf[i];
-
-        char *ptr = id_buf;
-        while (*ptr)
-        {
-            message[start++] = *ptr;
-            ptr++;
-        }
-
-        message[start++] = MESSAGE_SEPARATOR_POINT;
-
-        std::optional<client_holder> prev_holder_opt = get_client_holder(session_id);
+        std::optional<client_holder> prev_holder_opt = get_client_holder(opt_session_id.value());
 
         if (!prev_holder_opt.has_value())
         {
+            /**/
             ssl_utils::free_ssl(ssl, NULL);
             return -1;
         }
 
         client_holder prev_holder = prev_holder_opt.value();
         tun_ip tun_ip = prev_holder.client_tun_ip;
-        ptr = tun_ip.ip;
+        const char *ptr = tun_ip.ip;
 
         while (*ptr)
         {
@@ -318,8 +293,7 @@ namespace holder
         message[start++] = '/';
 
         unsigned char netmask = extract_netmask(this);
-        char netmask_buff[16];
-
+        char netmask_buff[8];
         bzero(netmask_buff, sizeof(netmask_buff));
         snprintf(netmask_buff, sizeof(netmask_buff) - 1, "%d", netmask);
 
@@ -331,17 +305,17 @@ namespace holder
             ptr++;
         }
 
-        /* TODO why not to use start ?*/
-        size_t message_size =
-            sizeof(rand_buf) +    /* Size of the key */
-            strlen(id_buf) +      /* Session id size */
-            1 +                   /* Point separator */
-            strlen(tun_ip.ip) +   /* TUN ip size */
-            1 +                   /* Netmask separator */
-            strlen(netmask_buff); /* Size of the netmask string */
+        std::string session_id_str = std::to_string(opt_session_id.value());
+        ptr = session_id_str.c_str();
+
+        while (*ptr)
+        {
+            message[start++] = *ptr;
+            ptr++;
+        }
 
         /* Sending the message to the client securely under a TLS tunnel. */
-        if (ssl_utils::write(ssl, message, message_size) == -1)
+        if (ssl_utils::write(ssl, message, start) == -1)
         {
             fprintf(stderr, "register_client_holder: first wrote failed between client and server\n");
             update_register(this, holder, false, false);
@@ -351,15 +325,14 @@ namespace holder
         /* Printing message bytes for logging purposes. */
         printf("Client message generated\n");
 
-        for (size_t i = 0; i < message_size; ++i)
+        for (size_t i = 0; i < start; ++i)
         {
 
-            if (i % 8 == 7 || i == message_size - 1)
+            if (i % 8 == 7 || i == start - 1)
                 printf("%02X\n", (unsigned char)message[i]);
             else
                 printf("%02X::", (unsigned char)message[i]);
         }
-        
 
         return 0;
     }

@@ -27,9 +27,9 @@ target_link_libraries(vpnserver
   encryption
   socket_utils
   ssl_utils
-  random_utils
-  key_exchange_utils
   holder
+  key_exchange_utils
+  random_utils
   vpn_data_utils
   tun_utils
   file_utils

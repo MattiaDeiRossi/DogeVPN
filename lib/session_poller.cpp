@@ -3,6 +3,8 @@
 namespace session_poller
 {
 
+    pool_t::pool_t() {}
+
     pool_t::pool_t(unsigned int max)
     {
         for (unsigned int i = 0; i < max; ++i)
@@ -33,8 +35,8 @@ namespace session_poller
         if (session_pool.count(session) != 0)
         {
             /* Since the session must be handled carefully,
-            /* it is the caller's job to ensure that there are no duplicates in the application.
-            */
+             * it is the caller's job to ensure that there are no duplicates in the application.
+             */
             throw std::invalid_argument("The given session is already present");
         }
 

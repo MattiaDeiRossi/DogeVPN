@@ -17,6 +17,7 @@ add_library(key_exchange_utils ../lib/key_exchange_utils.cpp)
 add_library(vpn_data_utils ../lib/vpn_data_utils.cpp)
 add_library(tun_utils ../lib/tun_utils.cpp)
 add_library(logging ../lib/logging.cpp)
+add_library(session_poller ../lib/session_poller.cpp)
 add_library(holder src/holder.cpp)
 add_library(file_utils src/file_utils.cpp)
 
@@ -34,6 +35,7 @@ target_link_libraries(vpnserver
   file_utils
   utils
   logging
+  session_poller
   crypto
   ssl
 )

@@ -14,6 +14,17 @@
         str.push_back(buffer[i]);            \
     }
 
+#define TRY_EXP_OR_RETURN(expression_to_evaluate, return_value_on_failure) \
+    try                                                                    \
+    {                                                                      \
+        expression_to_evaluate;                                            \
+    }                                                                      \
+    catch (const std::exception &e)                                        \
+    {                                                                      \
+        std::cerr << e.what() << std::endl;                                \
+        return return_value_on_failure;                                    \
+    }
+
 namespace key_exchange_utils
 {
 
@@ -58,8 +69,6 @@ namespace key_exchange_utils
         return identifier;
     }
 
-    altered_MS_CHAPV2_m1_server_sender_t::altered_MS_CHAPV2_m1_server_sender_t() {}
-
     altered_MS_CHAPV2_m1_server_sender_t::altered_MS_CHAPV2_m1_server_sender_t(unsigned int session_id)
     {
 
@@ -90,13 +99,19 @@ namespace key_exchange_utils
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m1_server_receiver_t::altered_MS_CHAPV2_m1_server_receiver_t() {}
-
-    altered_MS_CHAPV2_m1_server_receiver_t::altered_MS_CHAPV2_m1_server_receiver_t(const char *raw_message, size_t n)
+    void altered_MS_CHAPV2_m1_server_receiver_t::receive(SSL *ssl)
     {
 
         /**/
+        char raw_message[256];
+        size_t n = ssl_utils::read_or_throw(ssl, raw_message, sizeof(raw_message));
+
+        /**/
         altered_MS_CHAPV2_identifier_t m_identifier(m1_server);
+        if (!utils::start_with(raw_message, n, m_identifier.to_s()))
+        {
+            throw std::invalid_argument("");
+        }
 
         /**/
         char session_id_buff[MAX_SESSION_ID_SIZE];
@@ -183,8 +198,6 @@ namespace key_exchange_utils
         memcpy(server_challenge, challenge, sizeof(server_challenge));
     }
 
-    altered_MS_CHAPV2_m1_client_sender_t::altered_MS_CHAPV2_m1_client_sender_t() {}
-
     altered_MS_CHAPV2_m1_client_sender_t::altered_MS_CHAPV2_m1_client_sender_t(
         const char *username,
         unsigned const char *server_challenge,
@@ -236,14 +249,18 @@ namespace key_exchange_utils
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m1_client_receiver_t::altered_MS_CHAPV2_m1_client_receiver_t() {}
-
-    altered_MS_CHAPV2_m1_client_receiver_t::altered_MS_CHAPV2_m1_client_receiver_t(const char *raw_message, size_t n)
+    void altered_MS_CHAPV2_m1_client_receiver_t::receive(SSL *ssl)
     {
+        /**/
+        char raw_message[512];
+        size_t n = ssl_utils::read_or_throw(ssl, raw_message, sizeof(raw_message));
 
-        // Username.pseudo|hash
         /**/
         altered_MS_CHAPV2_identifier_t m_identifier(m1_client);
+        if (!utils::start_with(raw_message, n, m_identifier.to_s()))
+        {
+            throw std::invalid_argument("");
+        }
 
         /**/
         bool reading_username = true;
@@ -363,12 +380,10 @@ namespace key_exchange_utils
 
         /**/
         return encryption::compute_hash(data_to_hash)
-            .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
+                   .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
     }
 
-    altered_MS_CHAPV2_m2_server_sender_t::altered_MS_CHAPV2_m2_server_sender_t() {}
-
-    altered_MS_CHAPV2_m2_server_sender_t::altered_MS_CHAPV2_m2_server_sender_t(const char *client_challenge, const char *shared_secret)
+    altered_MS_CHAPV2_m2_server_sender_t::altered_MS_CHAPV2_m2_server_sender_t(unsigned const char *client_challenge, unsigned const char *shared_secret)
     {
 
         /**/
@@ -397,12 +412,17 @@ namespace key_exchange_utils
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m2_server_receiver_t::altered_MS_CHAPV2_m2_server_receiver_t() {}
-
-    altered_MS_CHAPV2_m2_server_receiver_t::altered_MS_CHAPV2_m2_server_receiver_t(const char *raw_message, size_t n)
+    void altered_MS_CHAPV2_m2_server_receiver_t::receive(SSL *ssl)
     {
+        /**/
+        char raw_message[256];
+        size_t n = ssl_utils::read_or_throw(ssl, raw_message, sizeof(raw_message));
 
         altered_MS_CHAPV2_identifier_t m_identifier(m2_server);
+        if (!utils::start_with(raw_message, n, m_identifier.to_s()))
+        {
+            throw std::invalid_argument("");
+        }
 
         char challenge_response_buff[MAX_HASH_SIZE];
         bzero(challenge_response_buff, sizeof(challenge_response_buff));
@@ -440,62 +460,54 @@ namespace key_exchange_utils
         PUSH_BACK(data_to_hash, shared_secret, MAX_KEY_SIZE);
 
         return encryption::compute_hash(data_to_hash)
-            .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
+                   .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
     }
 
-    altered_MS_CHAPV2_message::altered_MS_CHAPV2_message() {}
-
-    std::optional<altered_MS_CHAPV2_message> parse(const char *raw_message, size_t n)
+    int complete_synced_altered_MS_CHAPV2_server_flow(SSL *ssl, unsigned int session_id, std::string (*secret_fetcher)(std::string))
     {
+        altered_MS_CHAPV2_m1_server_sender_t m1_server_message(session_id);
+        TRY_EXP_OR_RETURN(m1_server_message.send(ssl), -1);
 
-        altered_MS_CHAPV2_identifier_t m1_s(m1_server);
-        altered_MS_CHAPV2_identifier_t m2_s(m2_server);
-        altered_MS_CHAPV2_identifier_t m1_c(m1_client);
+        altered_MS_CHAPV2_m1_client_receiver_t m1_client_message;
+        TRY_EXP_OR_RETURN(m1_client_message.receive(ssl), -2);
 
-        altered_MS_CHAPV2_identifier_t m_identifier;
-        if (utils::start_with(raw_message, n, m1_s.to_s()))
+        /**/
+        std::string shared_secret = secret_fetcher(m1_client_message.username);
+        const unsigned char *secret_p = (const unsigned char *)shared_secret.c_str();
+
+        bool valid_response = m1_client_message.valid_response(session_id, m1_client_message.hashed_challenge, secret_p);
+        if (!valid_response)
         {
-            m_identifier = m1_s;
-        }
-        else if (utils::start_with(raw_message, n, m2_s.to_s()))
-        {
-            m_identifier = m2_s;
-        }
-        else if (utils::start_with(raw_message, n, m1_c.to_s()))
-        {
-            m_identifier = m1_c;
-        }
-        else
-        {
-            return std::nullopt;
+            /**/
+            return -3;
         }
 
-        altered_MS_CHAPV2_message message;
-        try
+        /**/
+        altered_MS_CHAPV2_m2_server_sender_t m2_s(m1_client_message.client_challenge, secret_p);
+        TRY_EXP_OR_RETURN(m2_s.send(ssl), -4);
+
+        /**/
+        return 0;
+    }
+
+    int complete_synced_altered_MS_CHAPV2_client_flow(SSL *ssl, const unsigned char *secret, const char *username) {
+
+        altered_MS_CHAPV2_m1_server_receiver_t m1_sr;
+        TRY_EXP_OR_RETURN(m1_sr.receive(ssl), -1);
+
+        altered_MS_CHAPV2_m1_client_sender_t m1_cs(username, m1_sr.server_challenge, secret, m1_sr.session_id);
+        TRY_EXP_OR_RETURN(m1_cs.send(ssl), -2);
+
+        altered_MS_CHAPV2_m2_server_receiver_t m2_sr;
+        TRY_EXP_OR_RETURN(m2_sr.receive(ssl), -3);
+
+        bool valid_response = m2_sr.valid_response(m1_cs.client_challenge, secret);
+        if (!valid_response)
         {
-            if (m_identifier.message_type == m1_s.message_type)
-            {
-                message.type = m1_server;
-                message.m1_server = altered_MS_CHAPV2_m1_server_receiver_t(raw_message, n);
-                return message;
-            }
-            else if (m_identifier.message_type == m2_s.message_type)
-            {
-                message.type = m2_server;
-                message.m2_server = altered_MS_CHAPV2_m2_server_receiver_t(raw_message, n);
-                return message;
-            }
-            else
-            {
-                message.type = m1_client;
-                message.m1_client = altered_MS_CHAPV2_m1_client_receiver_t(raw_message, n);
-                return message;
-            }
+            /**/
+            return -4;
         }
-        catch (const std::exception &e)
-        {
-            std::cerr << "Exception caught during parsing: " << e.what() << '\n';
-            return std::nullopt;
-        }
+
+        return 0;
     }
 }

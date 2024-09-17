@@ -57,16 +57,18 @@ add_library(vpn_data_utils ../../lib/vpn_data_utils.cpp)
 add_library(tun_utils ../../lib/tun_utils.cpp)
 add_library(random_utils ../../lib/random_utils.cpp)
 add_library(key_exchange_utils ../../lib/key_exchange_utils.cpp)
+add_library(session_poller ../../lib/session_poller.cpp)
 
 target_link_libraries(DogeVPNGui PUBLIC Qt${QT_VERSION_MAJOR}::Widgets
     vpn_data_utils
     tun_utils
-    random_utils
     key_exchange_utils
+    random_utils
     encryption
     ssl_utils
     socket_utils
     utils
+    session_poller
     crypto
     ssl
 )

@@ -1,5 +1,7 @@
 #include "session_poller.h"
 
+#include <stdexcept>
+
 namespace session_poller
 {
 

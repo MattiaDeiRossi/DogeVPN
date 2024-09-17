@@ -463,7 +463,11 @@ namespace key_exchange_utils
                    .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
     }
 
-    int complete_synced_altered_MS_CHAPV2_server_flow(SSL *ssl, unsigned int session_id, std::string (*secret_fetcher)(std::string))
+    int complete_synced_altered_MS_CHAPV2_server_flow(
+        SSL *ssl,
+        unsigned int session_id,
+        std::string (*secret_fetcher)(const char *),
+        unsigned char *key_buffer)
     {
         altered_MS_CHAPV2_m1_server_sender_t m1_server_message(session_id);
         TRY_EXP_OR_RETURN(m1_server_message.send(ssl), -1);
@@ -487,10 +491,25 @@ namespace key_exchange_utils
         TRY_EXP_OR_RETURN(m2_s.send(ssl), -4);
 
         /**/
+        std::string key_no_hash;
+        PUSH_BACK(key_no_hash, m1_server_message.server_challenge, MAX_CHALLENGE_SIZE);
+        PUSH_BACK(key_no_hash, m1_client_message.client_challenge, MAX_CHALLENGE_SIZE);
+        PUSH_BACK(key_no_hash, secret_p, MAX_KEY_SIZE);
+
+        /**/
+        std::string key = encryption::compute_hash(key_no_hash);
+        memcpy(key_buffer, key.c_str(), key.size());
+
+        /**/
         return 0;
     }
 
-    int complete_synced_altered_MS_CHAPV2_client_flow(SSL *ssl, const unsigned char *secret, const char *username) {
+    int complete_synced_altered_MS_CHAPV2_client_flow(
+        SSL *ssl,
+        const unsigned char *secret,
+        const char *username,
+        unsigned char *key_buffer)
+    {
 
         altered_MS_CHAPV2_m1_server_receiver_t m1_sr;
         TRY_EXP_OR_RETURN(m1_sr.receive(ssl), -1);
@@ -507,6 +526,16 @@ namespace key_exchange_utils
             /**/
             return -4;
         }
+
+        /**/
+        std::string key_no_hash;
+        PUSH_BACK(key_no_hash, m1_sr.server_challenge, MAX_CHALLENGE_SIZE);
+        PUSH_BACK(key_no_hash, m1_cs.client_challenge, MAX_CHALLENGE_SIZE);
+        PUSH_BACK(key_no_hash, secret, MAX_KEY_SIZE);
+
+        /**/
+        std::string key = encryption::compute_hash(key_no_hash);
+        memcpy(key_buffer, key.c_str(), key.size());
 
         return 0;
     }

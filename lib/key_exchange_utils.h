@@ -145,9 +145,19 @@ namespace key_exchange_utils
         bool valid_response(unsigned const char *client_challenge, unsigned const char *shared_secret);
     };
 
-    int complete_synced_altered_MS_CHAPV2_server_flow(SSL *ssl, unsigned int session_id, std::string (*secret_fetcher)(std::string));
+    int complete_synced_altered_MS_CHAPV2_server_flow(
+        SSL *ssl,
+        unsigned int session_id,
+        std::string (*secret_fetcher)(const char *),
+        unsigned char *key_buffer
+    );
 
-    int complete_synced_altered_MS_CHAPV2_client_flow(SSL *ssl, const unsigned char *secret, const char *username);
+    int complete_synced_altered_MS_CHAPV2_client_flow(
+        SSL *ssl,
+        const unsigned char *secret,
+        const char *username,
+        unsigned char *key_buffer
+    );
 }
 
 #endif

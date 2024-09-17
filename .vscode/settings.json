@@ -93,6 +93,7 @@
     "socket": "cpp"
   },
   "cSpell.words": [
+    "bdata",
     "CHAPV",
     "iphdr",
     "tundev",

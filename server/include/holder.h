@@ -10,6 +10,7 @@
 
 #include <socket_utils.h>
 #include <tun_utils.h>
+#include <session_poller.h>
 
 namespace holder
 {
@@ -102,10 +103,11 @@ namespace holder
         std::map<tun_ip, unsigned int> tun_ip_per_session;
 
         tun_utils::ip_pool_t pool;
+        session_poller::pool_t *session_pool;
 
         std::shared_mutex mutex;
 
-        client_register(tun_utils::ip_pool_t pool);
+        client_register(tun_utils::ip_pool_t pool, session_poller::pool_t *session_pool);
 
         /* When calling this method a thread approach may be a better approach since SSL_accept is I/O blocking.
          * When handling a new client there is no need to just create the client socket and return.

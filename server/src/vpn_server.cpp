@@ -192,6 +192,9 @@ void start_doge_vpn(std::map<std::string, std::string> config)
     tun_utils::tundev_t device(config["name"].c_str(), server_pool.next(server_tun_ip, sizeof(server_tun_ip), NULL), server_pool.netmask);
     device.persist();
 
+    /* Session pool: for each client a unique session is give */
+    session_poller::pool_t session_pool(server_pool.available_ips());
+
     SSL_CTX *ctx = ssl_utils::create_ssl_context_or_abort(true, config["public_cert"].c_str(), config["private_key"].c_str());
 
     holder::socket_holder server_tcp_holder =
@@ -215,7 +218,7 @@ void start_doge_vpn(std::map<std::string, std::string> config)
     /* The client register with which current clients are saved in memory. By using the register
      * packets can be related to the correct client in both direction.
      */
-    holder::client_register c_register(server_pool);
+    holder::client_register c_register(server_pool, &session_pool);
 
     while (true)
     {

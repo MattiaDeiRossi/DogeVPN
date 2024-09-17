@@ -42,9 +42,10 @@ namespace holder
         return strncmp(ip, o.ip, SIZE_32) < 0 ? true : false;
     }
 
-    client_register::client_register(tun_utils::ip_pool_t pool)
+    client_register::client_register(tun_utils::ip_pool_t pool, session_poller::pool_t *session_pool)
     {
         this->pool = pool;
+        this->session_pool = session_pool;
     }
 
     int init_tcp_server_holder(char const *host, char const *port, socket_holder *holder)

@@ -12,14 +12,14 @@ namespace session_poller
     struct pool_t {
 
         std::shared_mutex mutex;
-        std::set<unsigned int> session_pool;
+        std::set<size_t> session_pool;
 
         pool_t();
-        pool_t(unsigned int max);
+        pool_t(size_t max);
 
-        std::optional<unsigned int> pop_next();
+        std::optional<size_t> pop_next();
 
-        void push_back(unsigned int session);
+        void push_back(size_t session);
     };
 }
 

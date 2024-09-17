@@ -5,15 +5,15 @@ namespace session_poller
 
     pool_t::pool_t() {}
 
-    pool_t::pool_t(unsigned int max)
+    pool_t::pool_t(size_t max)
     {
-        for (unsigned int i = 0; i < max; ++i)
+        for (size_t i = 0; i < max; ++i)
         {
             session_pool.insert(i);
         }
     }
 
-    std::optional<unsigned int> pool_t::pop_next()
+    std::optional<size_t> pool_t::pop_next()
     {
         std::unique_lock lock(mutex);
 
@@ -22,13 +22,13 @@ namespace session_poller
             return std::nullopt;
         }
 
-        unsigned int session_id = *session_pool.begin();
+        size_t session_id = *session_pool.begin();
         session_pool.erase(session_pool.begin());
 
         return session_id;
     }
 
-    void pool_t::push_back(unsigned int session)
+    void pool_t::push_back(size_t session)
     {
         std::unique_lock lock(mutex);
 

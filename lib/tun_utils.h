@@ -115,6 +115,8 @@ namespace tun_utils
         void insert(unsigned int ip);
 
         ipv4_netmask_t compose_ipv4_netmask();
+
+        size_t available_ips();
     };
 }
 

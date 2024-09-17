@@ -143,7 +143,8 @@ namespace tun_utils
         flatten_netmask = UINT_MAX << (32 - mask);
     }
 
-    ipv4_netmask_t::ipv4_netmask_t(const char *ip) {
+    ipv4_netmask_t::ipv4_netmask_t(const char *ip)
+    {
 
         int i_netmask = 0;
 
@@ -549,5 +550,24 @@ namespace tun_utils
 
         ipv4_netmask_t ipv4_netmask(buffer, netmask);
         return ipv4_netmask;
+    }
+
+    size_t ip_pool_t::available_ips()
+    {
+
+        unsigned int host_bits = 32 - netmask;
+        unsigned int max_ips = (static_cast<int>(pow(2, host_bits)));
+
+        long int current_ips = max_ips - unavailable_ips.size();
+
+        if (current_ips < 0)
+        {
+            /* In case this happens a build composition has been carried out.
+             * Instead of ignoring this scenario, an exception is thrown.
+             */
+            throw std::invalid_argument("The set size is greater than the maximum number of IPs allowed");
+        }
+
+        return static_cast<size_t>(current_ips);
     }
 }

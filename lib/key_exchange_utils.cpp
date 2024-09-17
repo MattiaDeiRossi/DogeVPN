@@ -65,7 +65,7 @@ namespace key_exchange_utils
 
         /**/
         random_utils::random random;
-        random.generate_16(server_challenge, false);
+        random.generate_timestamp_random_16(server_challenge, false);
 
         /**/
         this->session_id = session_id;
@@ -197,7 +197,7 @@ namespace key_exchange_utils
 
         /**/
         random_utils::random random;
-        random.generate_16(client_challenge, false);
+        random.generate_timestamp_random_16(client_challenge, false);
 
         /**/
         bzero(this->username, sizeof(this->username));

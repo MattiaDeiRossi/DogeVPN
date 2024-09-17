@@ -89,6 +89,8 @@
   },
   "cSpell.words": [
     "CHAPV",
-    "tundev"
+    "iphdr",
+    "tundev",
+    "TUNSETIFF"
   ]
 }

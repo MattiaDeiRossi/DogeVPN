@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <cstring>
 #include <mutex>
+#include <chrono>
 
 namespace random_utils
 {
@@ -37,12 +38,6 @@ namespace random_utils
 
     int random::generate_secure(unsigned char *buffer, size_t num)
     {
-
-        /* Generating a key by using the OpenSSL library.
-         * It will be num bytes long.
-         */
-        bzero(buffer, num);
-
         if (RAND_bytes(buffer, num) != 1)
         {
             return -1;
@@ -64,6 +59,11 @@ namespace random_utils
         return 0;
     }
 
+    int random::generate_8(unsigned char *buffer, bool secure)
+    {
+        return secure ? generate_secure(buffer, 8) : generate(buffer, 8);
+    }
+
     int random::generate_16(unsigned char *buffer, bool secure)
     {
         return secure ? generate_secure(buffer, 16) : generate(buffer, 16);
@@ -72,5 +72,28 @@ namespace random_utils
     int random::generate_32(unsigned char *buffer, bool secure)
     {
         return secure ? generate_secure(buffer, 32) : generate(buffer, 32);
+    }
+
+    int random::generate_timestamp_random_16(unsigned char *buffer, bool secure)
+    {
+
+        /**/
+        using namespace std::chrono;
+        uint64_t time_value =
+            duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+        /**/
+        unsigned char timestamp[8];
+        memcpy(timestamp, &time_value, sizeof(time_value));
+
+        /**/
+        unsigned char random_bytes[8];
+        generate_8(random_bytes, false);
+
+        /**/
+        for (size_t i = 0; i < 16; i++)
+        {
+            buffer[i] = i < 8 ? random_bytes[i % 8] : timestamp[i % 8];
+        }
     }
 }

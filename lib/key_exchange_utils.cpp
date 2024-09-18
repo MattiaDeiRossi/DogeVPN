@@ -8,12 +8,6 @@
 #include <encryption.h>
 #include <utils.h>
 
-#define PUSH_BACK(str, buffer, buffer_size)  \
-    for (size_t i = 0; i < buffer_size; i++) \
-    {                                        \
-        str.push_back(buffer[i]);            \
-    }
-
 #define TRY_EXP_OR_RETURN(expression_to_evaluate, return_value_on_failure) \
     try                                                                    \
     {                                                                      \
@@ -85,7 +79,7 @@ namespace key_exchange_utils
 
         /**/
         std::string message_to_send = message_identifier.to_s();
-        PUSH_BACK(message_to_send, server_challenge, sizeof(server_challenge));
+        utils::push_back(message_to_send, server_challenge, sizeof(server_challenge));
 
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
@@ -145,9 +139,6 @@ namespace key_exchange_utils
         unsigned const char *server_challenge,
         unsigned const char *shared_secret)
     {
-
-        std::cout << "Sending: " << username << std::endl;
-
         /**/
         message_identifier = altered_MS_CHAPV2_identifier_t(m1_client);
 
@@ -155,17 +146,11 @@ namespace key_exchange_utils
         random_utils::random random;
         random.generate_timestamp_random_16(client_challenge, false);
 
-        /**/
         bzero(this->username, sizeof(this->username));
         memcpy(this->username, username, strlen(username));
 
-        /**/
         memcpy(this->server_challenge, server_challenge, sizeof(this->server_challenge));
-        utils::log_hex(this->server_challenge, sizeof(this->server_challenge));
-
-        /**/
         memcpy(this->shared_secret, shared_secret, sizeof(this->shared_secret));
-        utils::log_hex(this->shared_secret, sizeof(this->shared_secret));
     }
 
     void altered_MS_CHAPV2_m1_client_sender_t::send(SSL *ssl)
@@ -173,16 +158,16 @@ namespace key_exchange_utils
 
         /**/
         std::string data_to_hash;
-        PUSH_BACK(data_to_hash, server_challenge, sizeof(server_challenge));
-        PUSH_BACK(data_to_hash, shared_secret, sizeof(shared_secret));
+        utils::push_back(data_to_hash, server_challenge, sizeof(server_challenge));
+        utils::push_back(data_to_hash, shared_secret, sizeof(shared_secret));
         std::string computed_hash = encryption::compute_hash(data_to_hash);
 
         /**/
         std::string message_to_send = message_identifier.to_s();
-        PUSH_BACK(message_to_send, username, strlen(username));
-        PUSH_BACK(message_to_send, ".", strlen("."));
-        PUSH_BACK(message_to_send, client_challenge, sizeof(client_challenge));
-        PUSH_BACK(message_to_send, computed_hash, computed_hash.size());
+        utils::push_back(message_to_send, username, strlen(username));
+        utils::push_back(message_to_send, ".", strlen("."));
+        utils::push_back(message_to_send, client_challenge, sizeof(client_challenge));
+        utils::push_back(message_to_send, computed_hash.c_str(), computed_hash.size());
 
         std::cout << "sending: " << message_to_send << std::endl;
 
@@ -318,17 +303,11 @@ namespace key_exchange_utils
 
         // the pseudorandom string (A), the session identifier (IdS), the user password, under the SHA256.
         std::string data_to_hash;
-        PUSH_BACK(data_to_hash, server_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(data_to_hash, shared_secret, MAX_KEY_SIZE);
-
-        utils::log_hex(server_challenge, MAX_CHALLENGE_SIZE);
-        utils::log_hex(shared_secret, MAX_HASH_SIZE);
+        utils::push_back(data_to_hash, server_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(data_to_hash, shared_secret, MAX_KEY_SIZE);
 
         std::string a = encryption::compute_hash(data_to_hash);
         std::string b = utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE);
-
-        utils::log_hex(a.c_str(), MAX_HASH_SIZE);
-        utils::log_hex(b.c_str(), MAX_HASH_SIZE);
 
         /**/
         return encryption::compute_hash(data_to_hash)
@@ -350,15 +329,15 @@ namespace key_exchange_utils
     {
 
         std::string data_to_hash;
-        PUSH_BACK(data_to_hash, client_challenge, sizeof(client_challenge));
-        PUSH_BACK(data_to_hash, shared_secret, sizeof(shared_secret));
+        utils::push_back(data_to_hash, client_challenge, sizeof(client_challenge));
+        utils::push_back(data_to_hash, shared_secret, sizeof(shared_secret));
 
         /**/
         std::string hash = encryption::compute_hash(data_to_hash);
 
         /**/
         std::string message_to_send = message_identifier.to_s();
-        PUSH_BACK(message_to_send, hash, hash.size());
+        utils::push_back(message_to_send, hash.c_str(), hash.size());
 
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
@@ -412,8 +391,8 @@ namespace key_exchange_utils
     {
 
         std::string data_to_hash;
-        PUSH_BACK(data_to_hash, client_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(data_to_hash, shared_secret, MAX_KEY_SIZE);
+        utils::push_back(data_to_hash, client_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(data_to_hash, shared_secret, MAX_KEY_SIZE);
 
         return encryption::compute_hash(data_to_hash)
                    .compare(utils::string_from_bytes(hashed_challenge, MAX_HASH_SIZE)) == 0;
@@ -454,9 +433,9 @@ namespace key_exchange_utils
 
         /**/
         std::string key_no_hash;
-        PUSH_BACK(key_no_hash, m1_server_message.server_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(key_no_hash, m1_client_message.client_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(key_no_hash, secret_p, MAX_KEY_SIZE);
+        utils::push_back(key_no_hash, m1_server_message.server_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(key_no_hash, m1_client_message.client_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(key_no_hash, secret_p, MAX_KEY_SIZE);
 
         /**/
         std::string key = encryption::compute_hash(key_no_hash);
@@ -492,9 +471,9 @@ namespace key_exchange_utils
 
         /**/
         std::string key_no_hash;
-        PUSH_BACK(key_no_hash, m1_sr.server_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(key_no_hash, m1_cs.client_challenge, MAX_CHALLENGE_SIZE);
-        PUSH_BACK(key_no_hash, secret, MAX_KEY_SIZE);
+        utils::push_back(key_no_hash, m1_sr.server_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(key_no_hash, m1_cs.client_challenge, MAX_CHALLENGE_SIZE);
+        utils::push_back(key_no_hash, secret, MAX_KEY_SIZE);
 
         /**/
         std::string key = encryption::compute_hash(key_no_hash);

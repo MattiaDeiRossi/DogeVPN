@@ -1,6 +1,5 @@
 #include "encryption.h"
 
-#include <openssl/rand.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <sys/socket.h>
@@ -11,20 +10,10 @@
 #include <random>
 #include <iostream>
 #include <stdexcept>
+#include <random_utils.h>
 
 namespace encryption
 {
-
-    struct r_engine
-    {
-        std::default_random_engine source;
-
-        r_engine()
-        {
-            std::random_device r;
-            source.seed(r());
-        }
-    } engine;
 
     int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
                 unsigned char *iv, unsigned char *ciphertext)
@@ -128,28 +117,12 @@ namespace encryption
 
         /* Assuming the key follows specifications given (KEY: 32 bytes). */
         for (size_t i = 0; i < KEY_SIZE_32; i++)
-            this->key[i] = key[i];
-
-        unsigned char _iv[IV_SIZE_16];
-        bzero(_iv, IV_SIZE_16);
-
-        int rand_value = RAND_bytes(_iv, IV_SIZE_16);
-        if (rand_value != 1)
         {
-
-            /* When RAND_bytes cannot produce secured random bytes, a fallback is made by using
-             * the random std library.
-             */
-            std::uniform_int_distribution<uint32_t> uint_dist(0, UCHAR_MAX);
-            for (int i = 0; i < 16; i++)
-            {
-                _iv[i] = uint_dist(encryption::engine.source);
-            }
-
-            std::cerr << "RAND_bytes reported failure" << "\n";
+            this->key[i] = key[i];
         }
 
-        memcpy(iv, _iv, IV_SIZE_16);
+        random_utils::random rnd;
+        rnd.generate_timestamp_random_16(iv, false);
     }
 
     encryption_data::encryption_data(const unsigned char *key, const unsigned char *iv)
@@ -274,7 +247,8 @@ namespace encryption
 
         for (size_t i = 0; i < SHA_256_SIZE; i++)
         {
-            if (computed_hash[i] != hash[i]) {
+            if (computed_hash[i] != hash[i])
+            {
                 return false;
             }
         }
@@ -318,9 +292,10 @@ namespace encryption
         return result;
     }
 
-    std::string compute_hash(std::string message) {
+    std::string compute_hash(std::string message)
+    {
 
-        encryption::packet packet((unsigned const char *) message.c_str(), message.size());
+        encryption::packet packet((unsigned const char *)message.c_str(), message.size());
         unsigned char output[SHA_256_SIZE];
 
         if (!packet.getShaSum(output))

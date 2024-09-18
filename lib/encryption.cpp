@@ -125,7 +125,7 @@ namespace encryption
         }
 
         random_utils::random rnd;
-        rnd.generate_timestamp_random_16(iv, false);
+        rnd.generate_16(iv, false);
     }
 
     encryption_data::encryption_data(const unsigned char *key, const unsigned char *iv)

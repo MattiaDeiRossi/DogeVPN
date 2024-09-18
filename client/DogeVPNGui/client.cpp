@@ -87,6 +87,11 @@ int start_doge_vpn(
     char const *network)
 {
 
+    char password[256];
+    bzero(password, sizeof(256));
+    strncpy(password, pwd, sizeof(password) - 1);
+    std::string hashed_password = encryption::compute_scrypt_hash(password, strlen(password));
+
     /* This allow to specify the networks that the client would like to reach. This sets
      * will contain just one network, but this should change, allowing the client to select multiple networks
      * that can be handled by the server.
@@ -105,16 +110,13 @@ int start_doge_vpn(
     socket_utils::socket_t tcp_socket = ssl_utils::ssl_fd(ssl_session);
     socket_utils::socket_t udp_socket = socket_utils::connect_udp_client_socket_or_abort(domain, port);
 
-    /**/
     unsigned char key_buffer[key_exchange_utils::MAX_KEY_SIZE];
-    std::string hashed_password = encryption::compute_hash(pwd);
     const unsigned char *secret = (const unsigned char *)hashed_password.c_str();
 
     int mschap_res = key_exchange_utils::complete_synced_altered_MS_CHAPV2_client_flow(ssl_session, secret, user, key_buffer);
-
-    if (mschap_res != 0) {
-        std::cout << mschap_res << std::endl;
-        throw std::invalid_argument("Here");
+    if (mschap_res != 0)
+    {
+        throw std::invalid_argument("Altered MS_CHAPV2 flow failed");
     }
 
     vpn_data_utils::id_ip_netmask id_ip_net = vpn_data_utils::receive_tun_ip(ssl_session);

@@ -26,6 +26,8 @@ namespace utils
     std::string string_from_bytes(unsigned const char *bytes, size_t n);
 
     void log_hex(const void *buffer, size_t n);
+
+    void push_back(std::string &str, const void *buffer, size_t buffer_size);
 }
 
 #endif

@@ -5,22 +5,29 @@ namespace utils
 {
 
 	// Function to convert a single hex character to a byte
-	unsigned char hex_char_to_byte(char ch) {
-			if (ch >= '0' && ch <= '9') return ch - '0';
-			if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
-			if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
-			throw std::invalid_argument("Invalid character in hex format");
+	unsigned char hex_char_to_byte(char ch)
+	{
+		if (ch >= '0' && ch <= '9')
+			return ch - '0';
+		if (ch >= 'A' && ch <= 'F')
+			return ch - 'A' + 10;
+		if (ch >= 'a' && ch <= 'f')
+			return ch - 'a' + 10;
+		throw std::invalid_argument("Invalid character in hex format");
 	}
 
 	// Function to convert a hex string into an array of bytes
-	void hex_string_to_bytes(const std::string& hex, unsigned char* byte_array, size_t byte_array_size) {
-			if (hex.length() != byte_array_size * 2) {
-					throw std::invalid_argument("The hex string must be exactly " + std::to_string(byte_array_size * 2) + " characters long.");
-			}
+	void hex_string_to_bytes(const std::string &hex, unsigned char *byte_array, size_t byte_array_size)
+	{
+		if (hex.length() != byte_array_size * 2)
+		{
+			throw std::invalid_argument("The hex string must be exactly " + std::to_string(byte_array_size * 2) + " characters long.");
+		}
 
-			for (size_t i = 0; i < byte_array_size; ++i) {
-					byte_array[i] = (hex_char_to_byte(hex[2 * i]) << 4) | hex_char_to_byte(hex[2 * i + 1]);
-			}
+		for (size_t i = 0; i < byte_array_size; ++i)
+		{
+			byte_array[i] = (hex_char_to_byte(hex[2 * i]) << 4) | hex_char_to_byte(hex[2 * i + 1]);
+		}
 	}
 
 	void reverse_string(char *str, size_t length)
@@ -74,22 +81,23 @@ namespace utils
 	}
 
 	bool start_with(const char *raw_message, size_t n, std::string start)
-    {
+	{
 
-        size_t name_size = start.size();
+		size_t name_size = start.size();
 
-        for (size_t i = 0; i < n; i++)
-        {
-            if (i == name_size)
-                return true;
-            if (raw_message[i] != start[i])
-                return false;
-        }
+		for (size_t i = 0; i < n; i++)
+		{
+			if (i == name_size)
+				return true;
+			if (raw_message[i] != start[i])
+				return false;
+		}
 
-        return n >= name_size;
-    }
+		return n >= name_size;
+	}
 
-	std::string string_from_bytes(unsigned const char *bytes, size_t n) {
+	std::string string_from_bytes(unsigned const char *bytes, size_t n)
+	{
 
 		std::string ret;
 
@@ -101,9 +109,10 @@ namespace utils
 		return ret;
 	}
 
-	void log_hex(const void *buffer, size_t n) {
+	void log_hex(const void *buffer, size_t n)
+	{
 
-		const unsigned char *c_buffer = (const unsigned char *) buffer;
+		const unsigned char *c_buffer = (const unsigned char *)buffer;
 
 		for (size_t i = 0; i < n; i++)
 		{
@@ -111,5 +120,16 @@ namespace utils
 		}
 
 		printf("\n");
+	}
+
+	void push_back(std::string &str, const void *buffer, size_t buffer_size)
+	{
+
+		const char *c_buffer = (const char *) buffer;
+
+		for (size_t i = 0; i < buffer_size; i++)
+		{
+			str.push_back(c_buffer[i]);
+		}
 	}
 }

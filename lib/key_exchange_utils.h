@@ -73,6 +73,10 @@ namespace key_exchange_utils
         altered_MS_CHAPV2_identifier_t();
         altered_MS_CHAPV2_identifier_t(altered_MS_CHAPV2_message_type message_type);
 
+        /**
+         * Converts the altered_MS_CHAPV2 identifier to a
+         * string representation.
+         */
         std::string to_s();
     };
 

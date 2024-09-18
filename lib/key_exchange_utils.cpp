@@ -26,14 +26,14 @@ namespace key_exchange_utils
 
     altered_MS_CHAPV2_identifier_t::altered_MS_CHAPV2_identifier_t(altered_MS_CHAPV2_message_type message_type)
     {
-
-        /**/
+        /**
+         * The following code initializes the protocol name and
+         * sets the message type.
+         */
         const char *p_name = "altered_MS_CHAPV2";
-
         bzero(protocol_name, sizeof(protocol_name));
         memcpy(protocol_name, p_name, strlen(p_name));
 
-        /**/
         this->message_type = message_type;
     }
 
@@ -55,12 +55,7 @@ namespace key_exchange_utils
             type_str = std::string("m2_server");
         }
 
-        std::string identifier(protocol_name);
-        identifier
-            .append(":")
-            .append(type_str);
-
-        return identifier;
+        return std::string(protocol_name) + ":" + type_str;
     }
 
     altered_MS_CHAPV2_m1_server_sender_t::altered_MS_CHAPV2_m1_server_sender_t()
@@ -85,7 +80,8 @@ namespace key_exchange_utils
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m1_server_receiver_t::altered_MS_CHAPV2_m1_server_receiver_t() {
+    altered_MS_CHAPV2_m1_server_receiver_t::altered_MS_CHAPV2_m1_server_receiver_t()
+    {
         bzero(server_challenge, sizeof(this->server_challenge));
     }
 
@@ -169,13 +165,12 @@ namespace key_exchange_utils
         utils::push_back(message_to_send, client_challenge, sizeof(client_challenge));
         utils::push_back(message_to_send, computed_hash.c_str(), computed_hash.size());
 
-        std::cout << "sending: " << message_to_send << std::endl;
-
         /**/
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m1_client_receiver_t::altered_MS_CHAPV2_m1_client_receiver_t() {
+    altered_MS_CHAPV2_m1_client_receiver_t::altered_MS_CHAPV2_m1_client_receiver_t()
+    {
         bzero(username, sizeof(username));
         bzero(client_challenge, sizeof(client_challenge));
         bzero(hashed_challenge, sizeof(hashed_challenge));
@@ -343,7 +338,8 @@ namespace key_exchange_utils
         ssl_utils::write_or_throw(ssl, message_to_send.c_str(), message_to_send.size());
     }
 
-    altered_MS_CHAPV2_m2_server_receiver_t::altered_MS_CHAPV2_m2_server_receiver_t() {
+    altered_MS_CHAPV2_m2_server_receiver_t::altered_MS_CHAPV2_m2_server_receiver_t()
+    {
         bzero(hashed_challenge, sizeof(hashed_challenge));
     }
 

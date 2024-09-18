@@ -25,8 +25,6 @@ namespace utils
 
     std::string string_from_bytes(unsigned const char *bytes, size_t n);
 
-    bool equal(std::string str_one, std::string str_two);
-
     void log_hex(const void *buffer, size_t n);
 }
 

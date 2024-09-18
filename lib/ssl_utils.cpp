@@ -260,29 +260,4 @@ namespace ssl_utils
 
         return bytes;
     }
-
-    int generate_rand(unsigned char *buffer, size_t num)
-    {
-
-        /* Generating a key by using the OpenSSL library.
-         * It will be num bytes long.
-         */
-        memset(buffer, 0, num);
-        int rand_value = RAND_bytes(buffer, num);
-        if (rand_value != 1)
-            return -1;
-        else
-            return 0;
-    }
-
-    int generate_rand_32(unsigned char *buffer)
-    {
-        return generate_rand(buffer, 32);
-    }
-
-    int generate_rand_16(unsigned char *buffer)
-    {
-        return generate_rand(buffer, 16);
-    }
-
 }

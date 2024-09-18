@@ -70,6 +70,8 @@ namespace encryption
     };
 
     std::string compute_hash(std::string message);
+
+    std::string compute_scrypt_hash(char *password, size_t n);
 }
 
 #endif

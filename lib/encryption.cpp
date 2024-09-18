@@ -2,6 +2,8 @@
 
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/kdf.h>
+#include <openssl/core_names.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -10,6 +12,7 @@
 #include <random>
 #include <iostream>
 #include <stdexcept>
+
 #include <random_utils.h>
 
 namespace encryption
@@ -309,6 +312,45 @@ namespace encryption
         for (size_t i = 0; i < sizeof(output); i++)
         {
             hash.push_back(output[i]);
+        }
+
+        return hash;
+    }
+
+    std::string compute_scrypt_hash(char *password, size_t n)
+    {
+        uint64_t N = 16384;
+        uint32_t r = 8;
+        uint32_t pa = 16;
+
+        EVP_KDF *kdf;
+        EVP_KDF_CTX *kctx;
+        unsigned char out[32];
+        OSSL_PARAM params[6], *p = params;
+
+        kdf = EVP_KDF_fetch(NULL, "SCRYPT", NULL);
+        kctx = EVP_KDF_CTX_new(kdf);
+        EVP_KDF_free(kdf);
+
+        *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_PASSWORD, password, n);
+        *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SALT, NULL, 0);
+        *p++ = OSSL_PARAM_construct_uint64(OSSL_KDF_PARAM_SCRYPT_N, &N);
+        *p++ = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_SCRYPT_R, &r);
+        *p++ = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_SCRYPT_P, &pa);
+        *p = OSSL_PARAM_construct_end();
+
+        if (EVP_KDF_derive(kctx, out, sizeof(out), params) <= 0)
+        {
+            throw std::invalid_argument("hash cannot be computed");
+        }
+
+        EVP_KDF_CTX_free(kctx);
+
+        std::string hash;
+        for (size_t i = 0; i < sizeof(out); i++)
+        {
+            /**/
+            hash.push_back(out[i]);
         }
 
         return hash;

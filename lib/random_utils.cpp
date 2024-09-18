@@ -7,6 +7,7 @@
 #include <cstring>
 #include <mutex>
 #include <chrono>
+#include <iostream>
 
 namespace random_utils
 {
@@ -40,6 +41,7 @@ namespace random_utils
     {
         if (RAND_bytes(buffer, num) != 1)
         {
+            std::cerr << "RAND_bytes reported failure" << "\n";
             return -1;
         }
         else
@@ -53,6 +55,10 @@ namespace random_utils
 
         if (generate_secure(buffer, num) != 0)
         {
+            /**
+             * When the crypto secure random number generator cannot produce secured random bytes,
+             * a fallback is made by using the random std library.
+             */
             engine.generate(buffer, num);
         }
 
